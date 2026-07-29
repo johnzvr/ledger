@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#FAF8F3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  :root {
+    --bg: #FAF8F3;
+    --ink: #1A1A1A;
+    --ink-dim: #6B6B6B;
+    --ink-mute: #A5A5A5;
+    --line: #E8E4DA;
+    --line-hi: #D4CFC1;
+    
+    --cream: #F3E9CD;
+    --cream-deep: #E8D9AC;
+    --mint: #D2E5C7;
+    --sky: #CFDEE8;
+    --lavender: #DFD3E8;
+    --lavender-deep: #C4B0D6;
+    --coral: #F0D0C4;
+    --coral-deep: #E0A896;
+    --sage: #E4EAD7;
+    
+    --danger: #C4553B;
+    --gain: #6B8E4E;
+    
+    --input-bg: #1A1A1A;
+    --input-glass: rgba(255,255,255,0.08);
+    --input-border: rgba(255,255,255,0.12);
+    --input-ink: #FAF8F3;
+    --input-placeholder: rgba(250,248,243,0.35);
+  }
+  
+  body.dark {
+    --bg: #0F0E0D;
+    --ink: #F2EDE4;
+    --ink-dim: #A39D92;
+    --ink-mute: #6B665E;
+    --line: #2A2725;
+    --line-hi: #3A3735;
+    
+    --cream: #4A3D24;
+    --cream-deep: #5D4E30;
+    --mint: #2D3E24;
+    --sky: #263440;
+    --lavender: #3A2E44;
+    --lavender-deep: #5C4A70;
+    --coral: #4A2E24;
+    --coral-deep: #6B4438;
+    --sage: #2E3624;
+    
+    --danger: #E07862;
+    --gain: #A0C481;
+    
+    --input-bg: #1F1D1B;
+    --input-glass: rgba(255,255,255,0.05);
+    --input-border: rgba(255,255,255,0.08);
+    --input-ink: #F2EDE4;
+    --input-placeholder: rgba(242,237,228,0.3);
+  }
+  
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    font-optical-sizing: auto;
+  }
+  
+  .num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .serif-italic { font-family: 'Instrument Serif', serif; font-style: italic; }
+  
+  .app {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 20px 16px 160px;
+    position: relative;
+  }
+  
+  /* Header */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding: 8px 4px 0;
+  }
+  .greeting {
+    font-size: 14px;
+    color: var(--ink-dim);
+    font-weight: 400;
+  }
+  .greeting .serif-italic {
+    color: var(--ink);
+    font-size: 17px;
+  }
+  .date-badge {
+    background: var(--ink);
+    color: var(--bg);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+  
+  .theme-toggle {
+    background: transparent;
+    border: 1.5px solid var(--line-hi);
+    color: var(--ink);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    padding: 0;
+    transition: transform 0.2s;
+  }
+  .theme-toggle:active { transform: scale(0.9); }
+  
+  /* Hero card */
+  .hero-card {
+    background: var(--cream);
+    border-radius: 28px;
+    padding: 22px;
+    position: relative;
+    margin-bottom: 12px;
+    overflow: hidden;
+    min-height: 210px;
+  }
+  .hero-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+    background: var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    font-size: 18px;
+  }
+  .hero-arrow {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    font-size: 18px;
+    cursor: pointer;
+    background: transparent;
+  }
+  .hero-arrow:active { background: rgba(0,0,0,0.05); }
+  .hero-label {
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 82px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+  .hero-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 52px;
+    letter-spacing: -0.05em;
+    line-height: 0.95;
+    color: var(--ink);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-amount .currency {
+    font-size: 22px;
+    color: var(--ink-dim);
+    font-weight: 500;
+    vertical-align: 14px;
+    margin-right: 6px;
+    letter-spacing: -0.02em;
+  }
+  .hero-progress {
+    margin-top: 18px;
+    height: 4px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .hero-progress-fill {
+    height: 100%;
+    background: var(--ink);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  .hero-progress-meta {
+    height: 100%;
+    background: var(--lavender-deep, #C4B0D6);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    position: absolute;
+    right: 0;
+    top: 0;
+    opacity: 0.8;
+  }
+  
+  .hero-meta-info {
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .hero-meta-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+  .hero-meta-chip strong {
+    color: var(--ink);
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 12px;
+  }
+  .hero-meta-dot {
+    width: 8px;
+    height: 8px;
+    background: #C4B0D6;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .hero-meta-total {
+    font-size: 11px;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  .hero-meta-total span {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero-card.meta-active .hero-amount {
+    color: var(--ink);
+  }
+  .hero-card.meta-risk .hero-amount {
+    color: var(--danger);
+  }
+  
+  /* Bento */
+  .bento {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .bento-card {
+    border-radius: 22px;
+    padding: 18px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .bento-card.coral { background: var(--coral); }
+  .bento-card.sky { background: var(--sky); }
+  .bento-card.mint { background: var(--mint); }
+  .bento-card.sage { background: var(--sage); }
+  
+  .bento-icon {
+    width: 34px;
+    height: 34px;
+    background: var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    font-size: 14px;
+    margin-bottom: 10px;
+  }
+  .bento-label {
+    font-size: 10px;
+    color: var(--ink-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .bento-value {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .bento-value .cur {
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-weight: 500;
+    vertical-align: 4px;
+    margin-right: 2px;
+  }
+  .bento-sub {
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  
+  /* Semanas */
+  .weeks-strip {
+    background: var(--sage);
+    border-radius: 22px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .weeks-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .cycle-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.08);
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+  .cycle-info .cycle-progress-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 10px;
+  }
+  .cycle-info .cycle-progress-fill {
+    height: 100%;
+    background: var(--ink);
+    transition: width 0.4s ease;
+  }
+  .cycle-ended-warn {
+    margin-top: 12px;
+    background: var(--coral);
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--ink);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  
+  /* Comparación */
+  .comparison-card {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 22px;
+    padding: 4px 18px;
+    margin-bottom: 12px;
+  }
+  .comparison-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .comparison-row:last-child { border-bottom: none; }
+  .comparison-label {
+    font-size: 12px;
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+  .comparison-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .comp-prev {
+    font-size: 12px;
+    color: var(--ink-mute);
+    font-weight: 500;
+  }
+  .comp-arrow {
+    color: var(--ink-mute);
+    font-size: 11px;
+  }
+  .comp-now {
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .comp-delta {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    margin-left: 4px;
+  }
+  .comp-delta.up { background: var(--coral); color: var(--danger); }
+  .comp-delta.down { background: var(--mint); color: var(--gain); }
+  .comp-delta.same { background: var(--line); color: var(--ink-dim); }
+  .weeks-header-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    font-size: 13px;
+  }
+  .weeks-header-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .weeks-header-title .aside {
+    color: var(--ink-dim);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .weeks-grid {
+    display: flex;
+    gap: 8px;
+  }
+  .week-chip {
+    flex: 1;
+    background: rgba(255,255,255,0.55);
+    border-radius: 14px;
+    padding: 12px 10px;
+  }
+  .week-chip.current {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .week-chip .wk-label {
+    font-size: 9px;
+    color: var(--ink-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+  }
+  .week-chip.current .wk-label { color: rgba(250,248,243,0.65); }
+  .week-chip .wk-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .week-chip.current .wk-amount { color: var(--bg); }
+  .week-chip.zero .wk-amount { color: var(--danger); }
+  .week-chip.current.zero .wk-amount { color: var(--coral-deep); }
+  .week-chip.zero {
+    position: relative;
+  }
+  .week-chip.zero::after {
+    content: '↳';
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 11px;
+    color: var(--danger);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .wk-range {
+    font-size: 9px;
+    color: var(--ink-mute);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .week-chip.current .wk-range { color: rgba(250,248,243,0.55); }
+  
+  /* Tarjeta */
+  .tc-card {
+    background: var(--lavender);
+    border-radius: 22px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .tc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .tc-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tc-icon {
+    width: 30px;
+    height: 30px;
+    background: var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    font-size: 12px;
+  }
+  .tc-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .tc-btn {
+    background: rgba(255,255,255,0.6);
+    color: var(--ink);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .tc-btn:active { background: rgba(255,255,255,0.9); }
+  .tc-dates {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .tc-date-card {
+    background: rgba(255,255,255,0.5);
+    border-radius: 14px;
+    padding: 12px;
+  }
+  .tc-date-label {
+    font-size: 9px;
+    color: var(--ink-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tc-date-value {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .tc-date-sub {
+    font-size: 10px;
+    color: var(--ink-dim);
+    margin-top: 2px;
+    font-weight: 500;
+  }
+  .tc-hint {
+    margin-top: 12px;
+    background: rgba(255,255,255,0.4);
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    color: var(--ink);
+    line-height: 1.5;
+    font-weight: 500;
+  }
+  
+  /* Semáforo estratégico */
+  .tc-signal {
+    margin-top: 12px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .tc-signal-dot {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+    position: relative;
+  }
+  .tc-signal-dot.good { background: #A8CC8F; }
+  .tc-signal-dot.mid { background: #F0D48A; }
+  .tc-signal-dot.bad { background: #E8A090; }
+  .tc-signal-dot::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,0,0,0.08);
+  }
+  .tc-signal-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .tc-signal-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .tc-signal-sub {
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 3px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  
+  /* Sección */
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 28px 6px 12px;
+  }
+  .section-head h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .section-head h2 .aside {
+    color: var(--ink-mute);
+    font-weight: 500;
+    font-size: 20px;
+  }
+  .section-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .action-btn {
+    background: transparent;
+    border: 1.5px solid var(--line-hi);
+    color: var(--ink);
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .action-btn:active { background: var(--line); }
+  .action-btn.primary {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+    font-weight: 600;
+  }
+  .action-btn.primary:active { background: #333; }
+  .action-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  
+  /* Ver todos: modal ancho */
+  .modal.wide {
+    max-width: 460px;
+  }
+  .all-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .all-sum-item {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .all-sum-item.S { background: var(--mint); }
+  .all-sum-item.DS { background: var(--coral); }
+  .all-sum-label {
+    font-size: 9px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .all-sum-value {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .all-sum-value .cur {
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-weight: 500;
+    margin-right: 2px;
+  }
+  .all-list {
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    max-height: 50vh;
+    overflow-y: auto;
+    margin: 0 -8px;
+    padding: 0 8px;
+  }
+  .all-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--ink-mute);
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 16px;
+  }
+  
+  /* Búsqueda */
+  .search-box {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .search-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 14px;
+    padding: 11px 14px 11px 38px;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+  .search-input:focus { border-color: var(--ink); }
+  .search-input::placeholder { color: var(--ink-mute); }
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-mute);
+    font-size: 15px;
+    pointer-events: none;
+  }
+  .search-clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--line);
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: var(--ink-dim);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .filter-tag {
+    background: var(--lavender);
+    color: var(--ink);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-left: 6px;
+    letter-spacing: 0.03em;
+  }
+  
+  /* Log */
+  .log-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+  .log-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+  .log-dot.S { background: var(--mint); color: var(--gain); }
+  .log-dot.DS { background: var(--coral); color: var(--danger); }
+  .log-dot.RC { background: var(--lavender); color: var(--ink); }
+  .log-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .log-detail {
+    font-size: 14px;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .log-meta {
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 2px;
+    font-weight: 400;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .log-meta .badge {
+    background: var(--line);
+    color: var(--ink-dim);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .log-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .log-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .log-undo {
+    background: none;
+    border: none;
+    color: var(--ink-mute);
+    font-size: 10px;
+    cursor: pointer;
+    padding: 0;
+    font-family: inherit;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .log-undo:active { color: var(--danger); }
+  
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ink-mute);
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 18px;
+  }
+  
+  /* Input bar */
+  .input-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(180deg, transparent 0%, var(--bg) 40%);
+    padding: 40px 12px 20px;
+    z-index: 100;
+  }
+  .input-inner {
+    max-width: 460px;
+    margin: 0 auto;
+    background: var(--input-bg);
+    border-radius: 24px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  }
+  
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+  .input-amount {
+    width: 100px;
+    background: var(--input-glass);
+    border: 1px solid var(--input-border);
+    border-radius: 14px;
+    padding: 12px 10px;
+    color: var(--input-ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    letter-spacing: -0.02em;
+    -moz-appearance: textfield;
+  }
+  .input-amount::-webkit-outer-spin-button,
+  .input-amount::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .input-amount:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); }
+  .input-amount::placeholder { color: var(--input-placeholder); font-weight: 500; }
+  
+  .input-detalle {
+    flex: 1;
+    background: var(--input-glass);
+    border: 1px solid var(--input-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: var(--input-ink);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    min-width: 0;
+  }
+  .input-detalle:focus { border-color: rgba(255,255,255,0.35); background: rgba(255,255,255,0.12); }
+  .input-detalle::placeholder { color: var(--input-placeholder); }
+  
+  .chips-row {
+    display: flex;
+    gap: 6px;
+  }
+  .chip {
+    background: var(--input-glass);
+    border: 1px solid var(--input-border);
+    color: rgba(250,248,243,0.7);
+    padding: 10px 0;
+    border-radius: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    flex: 1;
+    text-align: center;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .chip:active { transform: scale(0.96); }
+  
+  .chip.type-S.active {
+    background: var(--mint);
+    color: var(--ink);
+    border-color: var(--mint);
+  }
+  .chip.type-DS.active {
+    background: var(--coral);
+    color: var(--ink);
+    border-color: var(--coral);
+  }
+  .chip.mod.active {
+    background: var(--lavender);
+    color: var(--ink);
+    border-color: var(--lavender);
+  }
+  
+  .btn-send {
+    background: var(--cream-deep);
+    color: var(--ink);
+    border: none;
+    border-radius: 14px;
+    padding: 0 20px;
+    font-weight: 700;
+    font-size: 20px;
+    cursor: pointer;
+    font-family: inherit;
+    flex-shrink: 0;
+    min-height: 46px;
+    transition: all 0.15s;
+  }
+  .btn-send:active { transform: scale(0.95); background: var(--cream); }
+  
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(26, 26, 26, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--bg);
+    border-radius: 24px;
+    padding: 24px;
+    max-width: 420px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  .modal h2 {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 28px;
+    letter-spacing: -0.04em;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+  .modal h2 .accent {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ink-dim);
+  }
+  .modal-sub {
+    font-size: 13px;
+    color: var(--ink-dim);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .modal-field {
+    margin-bottom: 12px;
+  }
+  .modal-field label {
+    display: block;
+    font-size: 10px;
+    color: var(--ink-mute);
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .modal-field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 12px;
+    padding: 11px 14px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    font-weight: 500;
+  }
+  .modal-field input:focus { border-color: var(--ink); }
+  
+  .modal-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .modal-buttons button {
+    flex: 1;
+    padding: 13px;
+    border-radius: 14px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .btn-primary { background: var(--ink); color: var(--bg); }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line-hi) !important; }
+  .btn-danger { background: var(--coral-deep); color: var(--ink); }
+  
+  .help-item {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 8px;
+  }
+  .help-item-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .help-item-chip {
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .help-item-chip.S { background: var(--mint); color: var(--gain); }
+  .help-item-chip.DS { background: var(--coral); color: var(--danger); }
+  .help-item-chip.MOD { background: var(--lavender); color: var(--ink); }
+  .help-item-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .help-item-desc {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  
+  /* Rollover breakdown */
+  .rollover-breakdown {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 4px 14px;
+    margin: 12px 0;
+  }
+  .rollover-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rollover-row:last-child { border-bottom: none; }
+  .rollover-row.highlight {
+    background: rgba(196, 176, 214, 0.15);
+    margin: 0 -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .rollover-row.danger {
+    background: rgba(196, 85, 59, 0.1);
+    margin: 0 -14px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .rollover-week {
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rollover-tag {
+    background: var(--lavender-deep, #C4B0D6);
+    color: var(--ink);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .rollover-row.danger .rollover-week {
+    color: var(--danger);
+  }
+  .rollover-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .rollover-row.danger .rollover-amount {
+    color: var(--danger);
+  }
+  
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 140px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: var(--bg);
+    padding: 10px 18px;
+    border-radius: 16px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 300;
+    pointer-events: none;
+    max-width: 90%;
+    font-weight: 500;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .toast.error { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="greeting">
+      Hola, <span class="serif-italic">amigo</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" aria-label="Cambiar tema">◐</button>
+      <div class="date-badge" id="currentDate"></div>
+    </div>
+  </div>
+  
+  <!-- Hero -->
+  <div class="hero-card" id="heroCard">
+    <div class="hero-badge">◆</div>
+    <button class="hero-arrow" onclick="openSettings()">↗</button>
+    <div class="hero-label" id="heroLabel">Total disponible</div>
+    <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
+    <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
+      <div class="hero-meta-chip">
+        <span class="hero-meta-dot"></span>
+        <span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span>
+      </div>
+      <div class="hero-meta-total">de <span id="heroTotalRef">S/ 0</span></div>
+    </div>
+    <div class="hero-progress" id="heroProgress">
+      <div class="hero-progress-fill" id="progressFill" style="width: 100%"></div>
+      <div class="hero-progress-meta" id="progressMeta" style="width: 0%"></div>
+    </div>
+  </div>
+  
+  <!-- Bento -->
+  <div class="bento">
+    <div class="bento-card coral">
+      <div>
+        <div class="bento-icon">↓</div>
+        <div class="bento-label">Deuda actual</div>
+      </div>
+      <div>
+        <div class="bento-value"><span class="cur">S/</span><span id="deudaActual">0</span></div>
+        <div class="bento-sub">acumulada</div>
+      </div>
+    </div>
+    <div class="bento-card sky">
+      <div>
+        <div class="bento-icon">◈</div>
+        <div class="bento-label">Monto intocable</div>
+      </div>
+      <div>
+        <div class="bento-value"><span class="cur">S/</span><span id="montoIntocable">0</span></div>
+        <div class="bento-sub">protegido</div>
+      </div>
+    </div>
+    <div class="bento-card mint">
+      <div>
+        <div class="bento-icon">✓</div>
+        <div class="bento-label">No adeudado</div>
+      </div>
+      <div>
+        <div class="bento-value"><span class="cur">S/</span><span id="gastoNoAdeudado">0</span></div>
+        <div class="bento-sub">gastado</div>
+      </div>
+    </div>
+    <div class="bento-card sage">
+      <div>
+        <div class="bento-icon">Σ</div>
+        <div class="bento-label">Gasto total</div>
+      </div>
+      <div>
+        <div class="bento-value"><span class="cur">S/</span><span id="gastoTotal">0</span></div>
+        <div class="bento-sub">acumulado</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Semanas -->
+  <div class="weeks-strip">
+    <div class="weeks-header">
+      <div class="weeks-header-icon">◷</div>
+      <div class="weeks-header-title">
+        Presupuesto semanal<span class="aside" id="semanasInfo"></span>
+      </div>
+      <button class="tc-btn" onclick="confirmarNuevoCiclo()" style="margin-left:auto;">Nuevo ciclo</button>
+    </div>
+    <div class="weeks-grid" id="weeksContainer"></div>
+    <div class="cycle-info" id="cycleInfo"></div>
+  </div>
+  
+  <!-- Tarjeta -->
+  <div class="tc-card">
+    <div class="tc-header">
+      <div class="tc-header-left">
+        <div class="tc-icon">▭</div>
+        <div class="tc-title">Calendario tarjeta</div>
+      </div>
+      <button class="tc-btn" onclick="openCCConfig()">Editar</button>
+    </div>
+    <div class="tc-dates">
+      <div class="tc-date-card">
+        <div class="tc-date-label">Cierre</div>
+        <div class="tc-date-value" id="ccProxCierre">—</div>
+        <div class="tc-date-sub" id="ccCierreSub">—</div>
+      </div>
+      <div class="tc-date-card">
+        <div class="tc-date-label">Pago</div>
+        <div class="tc-date-value" id="ccProxPago">—</div>
+        <div class="tc-date-sub" id="ccPagoSub">—</div>
+      </div>
+    </div>
+    <div class="tc-signal" id="ccSignal">
+      <div class="tc-signal-dot" id="signalDot">—</div>
+      <div class="tc-signal-content">
+        <div class="tc-signal-title" id="signalTitle">—</div>
+        <div class="tc-signal-sub" id="signalSub">—</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Comparación con ciclo anterior -->
+  <div id="comparisonSection" style="display:none;">
+    <div class="section-head">
+      <h2>Vs ciclo <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">anterior</span></h2>
+    </div>
+    <div class="comparison-card">
+      <div class="comparison-row">
+        <div class="comparison-label">Gasto total</div>
+        <div class="comparison-values">
+          <span class="comp-prev" id="compPrevTotal">S/ 0</span>
+          <span class="comp-arrow" id="compArrowTotal">→</span>
+          <span class="comp-now" id="compNowTotal">S/ 0</span>
+          <span class="comp-delta" id="compDeltaTotal">—</span>
+        </div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-label">Solo S</div>
+        <div class="comparison-values">
+          <span class="comp-prev" id="compPrevS">S/ 0</span>
+          <span class="comp-arrow">→</span>
+          <span class="comp-now" id="compNowS">S/ 0</span>
+        </div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-label">Solo DS</div>
+        <div class="comparison-values">
+          <span class="comp-prev" id="compPrevDS">S/ 0</span>
+          <span class="comp-arrow">→</span>
+          <span class="comp-now" id="compNowDS">S/ 0</span>
+        </div>
+      </div>
+      <div class="comparison-row">
+        <div class="comparison-label">Movimientos</div>
+        <div class="comparison-values">
+          <span class="comp-prev" id="compPrevMov">0</span>
+          <span class="comp-arrow">→</span>
+          <span class="comp-now" id="compNowMov">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Movimientos -->
+  <div class="section-head">
+    <h2>Movimientos <span class="aside" id="movCount"></span></h2>
+    <div class="section-actions">
+      <button class="action-btn primary" onclick="undoLast()" id="btnUndo">↶ Deshacer</button>
+      <button class="action-btn" onclick="showAllMovements()">Ver todos</button>
+      <button class="action-btn" onclick="showHelp()">Ayuda</button>
+    </div>
+  </div>
+  <div id="logContainer"></div>
+</div>
+
+<!-- Input bar -->
+<div class="input-bar">
+  <div class="input-inner">
+    <div class="input-row">
+      <input type="number" id="inputAmount" class="input-amount" placeholder="0" inputmode="decimal" step="0.01">
+      <input type="text" id="inputDetalle" class="input-detalle" placeholder="Detalle (opcional)" autocomplete="off" autocapitalize="sentences">
+      <button class="btn-send" id="btnSend" onclick="processStructuredCommand()">→</button>
+    </div>
+    <div class="chips-row">
+      <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
+      <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
+      <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
+      <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')">recalc</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const DEFAULT_STATE = {
+    totalDisponible: 1759.06,
+    montoIntocable: 9200.00,
+    metaResidual: 0,
+    deudaActual: 1756.94,
+    gastoNoAdeudado: 4618.00,
+    gastoTotal: 6374.94,
+    presupuestoInicial: 1759.06,
+    fechaInicioCiclo: null, // se setea la primera vez
+    cicloAnterior: null,
+    darkMode: false,
+    semanas: [
+      { label: 'Semana actual', presupuesto: 328.59, isCurrent: true },
+      { label: 'Semana +1', presupuesto: 715.24, isCurrent: false },
+      { label: 'Semana +2', presupuesto: 715.24, isCurrent: false }
+    ],
+    tarjeta: { diaCierre: 24, diaPago: 20 },
+    log: []
+  };
+  
+  let state = loadState();
+  
+  function loadState() {
+    try {
+      const saved = localStorage.getItem('ledger-state-v2');
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return JSON.parse(JSON.stringify(DEFAULT_STATE));
+  }
+  
+  function saveState() {
+    try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); }
+    catch(e) { toast('Error guardando', true); }
+  }
+  
+  function fmt(n) {
+    return (Number(n) || 0).toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  }
+  function fmtInt(n) {
+    return Math.round(Number(n) || 0).toLocaleString('es-PE');
+  }
+  function formatFecha(d) {
+    return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+  }
+  
+  function proxCierre() {
+    const hoy = new Date();
+    const cierre = new Date(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaCierre);
+    if (hoy.getDate() > state.tarjeta.diaCierre) cierre.setMonth(cierre.getMonth() + 1);
+    return cierre;
+  }
+  function proxPago() {
+    const hoy = new Date();
+    const pago = new Date(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaPago);
+    if (hoy.getDate() > state.tarjeta.diaPago) pago.setMonth(pago.getMonth() + 1);
+    return pago;
+  }
+  function diasHasta(fecha) {
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+  }
+  
+  // ============ AUTO-DETECCIÓN DE SEMANA (CALENDARIO REAL) ============
+  function initFechaCiclo() {
+    if (!state.fechaInicioCiclo) {
+      state.fechaInicioCiclo = new Date().toISOString();
+      saveState();
+    }
+  }
+  
+  // Retorna array con {inicio, fin, dias} para cada semana calendario del ciclo
+  function calcularRangoSemanas() {
+    if (!state.fechaInicioCiclo) return [];
+    const inicio = new Date(state.fechaInicioCiclo);
+    inicio.setHours(0,0,0,0);
+    
+    const rangos = [];
+    let cursor = new Date(inicio);
+    
+    for (let i = 0; i < state.semanas.length; i++) {
+      const inicioSem = new Date(cursor);
+      inicioSem.setHours(0,0,0,0);
+      
+      // Fin: el próximo domingo (o el mismo día si es domingo)
+      // getDay(): 0=domingo, 1=lunes, ..., 6=sábado
+      const diaSemana = cursor.getDay();
+      const diasHastaDomingo = diaSemana === 0 ? 0 : (7 - diaSemana);
+      const finSem = new Date(cursor);
+      finSem.setDate(cursor.getDate() + diasHastaDomingo);
+      finSem.setHours(23,59,59,999);
+      
+      rangos.push({
+        inicio: inicioSem,
+        fin: finSem,
+        dias: diasHastaDomingo + 1
+      });
+      
+      // Siguiente semana empieza el lunes
+      cursor = new Date(finSem);
+      cursor.setDate(cursor.getDate() + 1);
+      cursor.setHours(0,0,0,0);
+    }
+    
+    return rangos;
+  }
+  
+  function calcularSemanaActualIdx() {
+    const rangos = calcularRangoSemanas();
+    if (rangos.length === 0) return 0;
+    
+    const hoy = new Date();
+    hoy.setHours(12,0,0,0); // mediodía para evitar edge cases
+    
+    for (let i = 0; i < rangos.length; i++) {
+      if (hoy >= rangos[i].inicio && hoy <= rangos[i].fin) {
+        return i;
+      }
+    }
+    // Ya pasó el ciclo entero
+    if (hoy > rangos[rangos.length-1].fin) return rangos.length;
+    return 0;
+  }
+  
+  function diasEnCiclo() {
+    if (!state.fechaInicioCiclo) return 0;
+    const inicio = new Date(state.fechaInicioCiclo);
+    inicio.setHours(0,0,0,0);
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    return Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  
+  function diasTotalesCiclo() {
+    const rangos = calcularRangoSemanas();
+    if (rangos.length === 0) return 0;
+    const inicio = rangos[0].inicio;
+    const fin = rangos[rangos.length-1].fin;
+    return Math.floor((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  
+  function actualizarSemanaActual() {
+    const idx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
+    state.semanas.forEach((s, i) => {
+      s.isCurrent = (i === idx);
+    });
+  }
+  
+  function detectarCambioSemana() {
+    const currentIdx = calcularSemanaActualIdx();
+    const prev = state.ultimaSemanaVista;
+    
+    if (prev !== undefined && prev !== null && currentIdx > prev && currentIdx < state.semanas.length) {
+      // Avanzó de semana → auto-redistribuir el disponible entre las restantes
+      autoRecalcRestantes();
+      const rangos = calcularRangoSemanas();
+      const semLabel = rangos[currentIdx] 
+        ? formatRangoCorto(rangos[currentIdx]) 
+        : 'nueva semana';
+      setTimeout(() => {
+        toast(`↻ Semana avanzó (${semLabel}) · presupuesto redistribuido`);
+      }, 500);
+    }
+    state.ultimaSemanaVista = currentIdx;
+  }
+  
+  function autoRecalcRestantes() {
+    const currentIdx = calcularSemanaActualIdx();
+    const restantes = state.semanas.length - currentIdx;
+    if (restantes <= 0) return;
+    const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
+    const porSem = gastable / restantes;
+    for (let i = currentIdx; i < state.semanas.length; i++) {
+      state.semanas[i].presupuesto = porSem;
+    }
+  }
+  
+  function formatRangoCorto(r) {
+    const opts = { day: 'numeric', month: 'short' };
+    const i = r.inicio.toLocaleDateString('es-PE', opts);
+    const f = r.fin.toLocaleDateString('es-PE', opts);
+    if (i === f) return i;
+    return i + '–' + r.fin.toLocaleDateString('es-PE', { day: 'numeric' });
+  }
+  
+  function cicloTerminado() {
+    return calcularSemanaActualIdx() >= state.semanas.length;
+  }
+  
+  function render() {
+    initFechaCiclo();
+    detectarCambioSemana();
+    actualizarSemanaActual();
+    
+    document.getElementById('currentDate').textContent = 
+      new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+    
+    // Hero con lógica de meta
+    const metaActiva = state.metaResidual > 0;
+    const gastable = Math.max(0, state.totalDisponible - state.metaResidual);
+    const heroCard = document.getElementById('heroCard');
+    const heroLabel = document.getElementById('heroLabel');
+    const heroMetaInfo = document.getElementById('heroMetaInfo');
+    
+    if (metaActiva) {
+      heroCard.classList.add('meta-active');
+      heroLabel.textContent = 'Gastable';
+      document.getElementById('totalDisponible').textContent = fmt(gastable);
+      heroMetaInfo.style.display = 'flex';
+      document.getElementById('heroMetaValue').textContent = 'S/ ' + fmt(state.metaResidual);
+      document.getElementById('heroTotalRef').textContent = 'S/ ' + fmt(state.totalDisponible);
+      
+      // Riesgo: gastable = 0 significa que ya te comiste la meta
+      if (state.totalDisponible < state.metaResidual) {
+        heroCard.classList.add('meta-risk');
+        heroLabel.textContent = 'Meta en riesgo';
+      } else {
+        heroCard.classList.remove('meta-risk');
+      }
+      
+      // Barra bicolor: gastable (negro) + meta (lavender)
+      const total = state.totalDisponible;
+      if (total > 0) {
+        const pctGastable = (gastable / (state.presupuestoInicial || total)) * 100;
+        const pctMeta = (state.metaResidual / (state.presupuestoInicial || total)) * 100;
+        document.getElementById('progressFill').style.width = Math.min(100, pctGastable) + '%';
+        document.getElementById('progressMeta').style.width = Math.min(100 - pctGastable, pctMeta) + '%';
+      }
+    } else {
+      heroCard.classList.remove('meta-active', 'meta-risk');
+      heroLabel.textContent = 'Total disponible';
+      document.getElementById('totalDisponible').textContent = fmt(state.totalDisponible);
+      heroMetaInfo.style.display = 'none';
+      
+      const pct = state.presupuestoInicial > 0 
+        ? Math.max(0, Math.min(100, (state.totalDisponible / state.presupuestoInicial) * 100))
+        : 0;
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressMeta').style.width = '0%';
+    }
+    
+    document.getElementById('deudaActual').textContent = fmtInt(state.deudaActual);
+    document.getElementById('montoIntocable').textContent = fmtInt(state.montoIntocable);
+    document.getElementById('gastoNoAdeudado').textContent = fmtInt(state.gastoNoAdeudado);
+    document.getElementById('gastoTotal').textContent = fmtInt(state.gastoTotal);
+    
+    document.getElementById('semanasInfo').textContent = ' · ' + state.semanas.length + ' semanas';
+    const weeksEl = document.getElementById('weeksContainer');
+    weeksEl.innerHTML = '';
+    const rangos = calcularRangoSemanas();
+    state.semanas.forEach((sem, i) => {
+      const div = document.createElement('div');
+      const isZero = sem.presupuesto <= 0;
+      div.className = 'week-chip' + (sem.isCurrent ? ' current' : '') + (isZero ? ' zero' : '');
+      const label = sem.isCurrent ? 'Actual' : 'S+' + i;
+      const rango = rangos[i];
+      const rangoTxt = rango ? formatRangoCorto(rango) : '';
+      const diasTxt = rango && rango.dias < 7 ? ` · ${rango.dias}d` : '';
+      div.innerHTML = `
+        <span class="wk-label">${label}</span>
+        <div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>
+        <div class="wk-range">${rangoTxt}${diasTxt}</div>
+      `;
+      weeksEl.appendChild(div);
+    });
+    
+    // Info del ciclo
+    const diaActual = diasEnCiclo();
+    const totalDias = diasTotalesCiclo();
+    const pctCiclo = totalDias > 0 ? Math.min(100, (diaActual / totalDias) * 100) : 0;
+    const cycleInfoEl = document.getElementById('cycleInfo');
+    
+    if (cicloTerminado()) {
+      cycleInfoEl.innerHTML = `
+        <div class="cycle-ended-warn" style="width:100%;">
+          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Nuevo ciclo" para empezar.
+        </div>
+      `;
+    } else {
+      cycleInfoEl.innerHTML = `
+        <span>Día ${diaActual}</span>
+        <div class="cycle-progress-bar"><div class="cycle-progress-fill" style="width:${pctCiclo}%"></div></div>
+        <span>de ${totalDias}</span>
+      `;
+    }
+    
+    const cierre = proxCierre();
+    const pago = proxPago();
+    const diasCierre = diasHasta(cierre);
+    const diasPago = diasHasta(pago);
+    document.getElementById('ccProxCierre').textContent = formatFecha(cierre);
+    document.getElementById('ccProxPago').textContent = formatFecha(pago);
+    document.getElementById('ccCierreSub').textContent = 'en ' + diasCierre + ' días';
+    document.getElementById('ccPagoSub').textContent = 'en ' + diasPago + ' días';
+    
+    // Semáforo estratégico
+    // Días de gracia si compras hoy = días hasta próximo cierre + días desde próximo cierre hasta próximo pago
+    // Simplificación: diasCierre + (diaPago - diaCierre) si pago > cierre, sino + (30 - cierre + pago)
+    let diasEntreCierrePago = state.tarjeta.diaPago - state.tarjeta.diaCierre;
+    if (diasEntreCierrePago <= 0) diasEntreCierrePago += 30;
+    const diasGracia = diasCierre + diasEntreCierrePago;
+    
+    let signalClass, signalTitle, signalSub, signalIcon;
+    
+    if (diasPago <= 3 && diasPago > 0) {
+      // Prioridad máxima: pago inminente
+      signalClass = 'bad';
+      signalIcon = '!';
+      signalTitle = `Pago en ${diasPago} día${diasPago === 1 ? '' : 's'}`;
+      signalSub = `No olvides transferir antes del ${state.tarjeta.diaPago}. Compras nuevas: espera.`;
+    } else if (diasCierre <= 4) {
+      // Cerca del cierre: mala compra
+      signalClass = 'bad';
+      signalIcon = '×';
+      signalTitle = `Mal día para tarjeta`;
+      signalSub = `Cierre en ${diasCierre} d. Si compras ahora, la pagas en solo ${diasGracia} días. Mejor espera ${diasCierre + 1} días.`;
+    } else if (diasCierre <= 10) {
+      // Media tabla
+      signalClass = 'mid';
+      signalIcon = '~';
+      signalTitle = `Día regular`;
+      signalSub = `Cierre en ${diasCierre} d. Si compras hoy tienes ${diasGracia} días para pagar. OK pero no ideal.`;
+    } else {
+      // Buen día: recién pasó el cierre
+      signalClass = 'good';
+      signalIcon = '✓';
+      signalTitle = `Buen día para tarjeta`;
+      signalSub = `Cierre en ${diasCierre} d. Lo que compres hoy lo pagas en ~${diasGracia} días. Máximo financiamiento gratis.`;
+    }
+    
+    const dot = document.getElementById('signalDot');
+    dot.className = 'tc-signal-dot ' + signalClass;
+    dot.textContent = signalIcon;
+    document.getElementById('signalTitle').textContent = signalTitle;
+    document.getElementById('signalSub').textContent = signalSub;
+    
+    renderLog();
+    renderComparison();
+    saveState();
+  }
+  
+  function renderComparison() {
+    const section = document.getElementById('comparisonSection');
+    if (!state.cicloAnterior) {
+      section.style.display = 'none';
+      return;
+    }
+    section.style.display = 'block';
+    
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const nowS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
+    const nowDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const nowTotal = nowS + nowDS;
+    const nowMov = soloGastos.length;
+    
+    const prev = state.cicloAnterior;
+    
+    document.getElementById('compPrevTotal').textContent = 'S/ ' + fmt(prev.totalGastado);
+    document.getElementById('compNowTotal').textContent = 'S/ ' + fmt(nowTotal);
+    document.getElementById('compPrevS').textContent = 'S/ ' + fmt(prev.totalS);
+    document.getElementById('compNowS').textContent = 'S/ ' + fmt(nowS);
+    document.getElementById('compPrevDS').textContent = 'S/ ' + fmt(prev.totalDS);
+    document.getElementById('compNowDS').textContent = 'S/ ' + fmt(nowDS);
+    document.getElementById('compPrevMov').textContent = prev.numMovimientos;
+    document.getElementById('compNowMov').textContent = nowMov;
+    
+    // Delta total
+    const delta = nowTotal - prev.totalGastado;
+    const deltaEl = document.getElementById('compDeltaTotal');
+    if (Math.abs(delta) < 0.01) {
+      deltaEl.textContent = '=';
+      deltaEl.className = 'comp-delta same';
+    } else if (delta > 0) {
+      const pct = prev.totalGastado > 0 ? Math.round((delta / prev.totalGastado) * 100) : 100;
+      deltaEl.textContent = '+' + pct + '%';
+      deltaEl.className = 'comp-delta up';
+    } else {
+      const pct = prev.totalGastado > 0 ? Math.round((-delta / prev.totalGastado) * 100) : 100;
+      deltaEl.textContent = '−' + pct + '%';
+      deltaEl.className = 'comp-delta down';
+    }
+  }
+  
+  function renderLog() {
+    const logEl = document.getElementById('logContainer');
+    document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
+    
+    // Estado del botón Deshacer
+    const btnUndo = document.getElementById('btnUndo');
+    if (btnUndo) btnUndo.disabled = state.log.length === 0;
+    
+    if (state.log.length === 0) {
+      logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
+      return;
+    }
+    
+    logEl.innerHTML = '';
+    const recent = state.log.slice(-15).reverse();
+    recent.forEach((mov, i) => {
+      const idx = state.log.length - 1 - i;
+      const div = document.createElement('div');
+      div.className = 'log-item';
+      
+      let dotType = mov.tipo;
+      let dotLabel = mov.tipo;
+      if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
+      
+      let badge = '';
+      if (mov.etiqueta === 'sem') badge = '<span class="badge">SEM</span>';
+      
+      div.innerHTML = `
+        <div class="log-left">
+          <div class="log-dot ${dotType}">${dotLabel}</div>
+          <div class="log-info">
+            <div class="log-detail">${mov.detalle || 'Sin detalle'}</div>
+            <div class="log-meta">${badge}<span>${mov.fecha}</span></div>
+          </div>
+        </div>
+        <div class="log-right">
+          <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+          <button class="log-undo" onclick="confirmDelete(${idx})">deshacer</button>
+        </div>
+      `;
+      logEl.appendChild(div);
+    });
+  }
+  
+  // ============ DESHACER ÚLTIMO ============
+  function undoLast() {
+    if (state.log.length === 0) {
+      toast('No hay movimientos que deshacer', true);
+      return;
+    }
+    const lastIdx = state.log.length - 1;
+    const mov = state.log[lastIdx];
+    
+    openModal(`
+      <h2>Deshacer <span class="accent">último gasto</span></h2>
+      <p class="modal-sub">
+        <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
+        ${mov.detalle || 'Sin detalle'}<br>
+        <span style="color:var(--ink-mute);font-size:11px;">${mov.fecha}</span>
+      </p>
+      <p class="modal-sub" style="font-size:11px;">
+        Todos los montos volverán a como estaban antes de este movimiento.
+      </p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-danger" onclick="doDelete(${lastIdx})">Sí, deshacer</button>
+      </div>
+    `);
+  }
+  
+  // ============ VER TODOS ============
+  let searchQuery = '';
+  
+  function showAllMovements() {
+    searchQuery = '';
+    renderAllMovements();
+  }
+  
+  function renderAllMovements() {
+    const q = searchQuery.toLowerCase().trim();
+    const filtrados = q 
+      ? state.log.filter(m => (m.detalle || '').toLowerCase().includes(q))
+      : state.log;
+    
+    // Calcular sumas (excluyendo recalcs) sobre los filtrados
+    const soloGastos = filtrados.filter(m => m.etiqueta !== 'recalcula');
+    const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
+    const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const count = soloGastos.length;
+    
+    let listaHTML = '';
+    if (filtrados.length === 0) {
+      listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + searchQuery + '»' : 'Sin movimientos aún'}</div>`;
+    } else {
+      filtrados.slice().reverse().forEach((mov, i) => {
+        const originalIdx = state.log.indexOf(mov);
+        let dotType = mov.tipo;
+        let dotLabel = mov.tipo;
+        if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
+        let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        listaHTML += `
+          <div class="log-item">
+            <div class="log-left">
+              <div class="log-dot ${dotType}">${dotLabel}</div>
+              <div class="log-info">
+                <div class="log-detail">${mov.detalle || 'Sin detalle'}</div>
+                <div class="log-meta">${badge}<span>${mov.fecha}</span></div>
+              </div>
+            </div>
+            <div class="log-right">
+              <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+              <button class="log-undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">deshacer</button>
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    const totalGeneral = state.log.filter(m => m.etiqueta !== 'recalcula').length;
+    const filtroActivo = q ? `<span class="filter-tag">${count} de ${totalGeneral}</span>` : '';
+    
+    openModal(`
+      <h2>Todos los <span class="accent">movimientos</span></h2>
+      <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'} en el ciclo ${filtroActivo}</p>
+      
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Buscar por detalle..." 
+          value="${searchQuery}"
+          oninput="onSearchInput(this.value)"
+        >
+        ${q ? '<button class="search-clear" onclick="clearSearch()">×</button>' : ''}
+      </div>
+      
+      <div class="all-summary">
+        <div class="all-sum-item S">
+          <div class="all-sum-label">No adeudado (S)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalS)}</div>
+        </div>
+        <div class="all-sum-item DS">
+          <div class="all-sum-label">Deuda (DS)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div>
+        </div>
+      </div>
+      
+      <div class="all-list">${listaHTML}</div>
+      
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="exportarCSV()">Exportar CSV</button>
+        <button class="btn-primary" onclick="closeModal()">Cerrar</button>
+      </div>
+    `);
+    
+    // Foco no destructivo
+    setTimeout(() => {
+      const inp = document.getElementById('searchInput');
+      if (inp && q) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    }, 30);
+  }
+  
+  function onSearchInput(val) {
+    searchQuery = val;
+    renderAllMovements();
+  }
+  
+  function clearSearch() {
+    searchQuery = '';
+    renderAllMovements();
+  }
+  
+  // ============ NUEVO CICLO ============
+  function confirmarNuevoCiclo() {
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
+    const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalGastado = totalS + totalDS;
+    
+    openModal(`
+      <h2>Nuevo <span class="accent">ciclo</span></h2>
+      <p class="modal-sub">
+        Se guardará el ciclo actual como histórico para comparar con el próximo, y se reinicia el contador de semanas.
+      </p>
+      
+      <div class="rollover-breakdown">
+        <div class="rollover-row">
+          <span class="rollover-week">Movimientos</span>
+          <span class="rollover-amount">${soloGastos.length}</span>
+        </div>
+        <div class="rollover-row">
+          <span class="rollover-week">Gasto S (no adeudado)</span>
+          <span class="rollover-amount">S/ ${fmt(totalS)}</span>
+        </div>
+        <div class="rollover-row">
+          <span class="rollover-week">Gasto DS (deuda)</span>
+          <span class="rollover-amount">S/ ${fmt(totalDS)}</span>
+        </div>
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Total gastado</span>
+          <span class="rollover-amount">S/ ${fmt(totalGastado)}</span>
+        </div>
+      </div>
+      
+      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+        Los montos (disponible, deuda, intocable, meta) se mantienen. Solo se resetea el log y el conteo de días. Ideal cuando cae tu sueldo.
+      </p>
+      
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="ejecutarNuevoCiclo()">Empezar nuevo ciclo</button>
+      </div>
+    `);
+  }
+  
+  function ejecutarNuevoCiclo() {
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
+    const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    
+    // Snapshot del ciclo actual
+    state.cicloAnterior = {
+      fechaInicio: state.fechaInicioCiclo,
+      fechaFin: new Date().toISOString(),
+      totalS,
+      totalDS,
+      totalGastado: totalS + totalDS,
+      numMovimientos: soloGastos.length,
+      dias: diasEnCiclo()
+    };
+    
+    // Reset
+    state.log = [];
+    state.fechaInicioCiclo = new Date().toISOString();
+    state.semanas.forEach((s, i) => s.isCurrent = i === 0);
+    
+    closeModal();
+    toast('Nuevo ciclo iniciado');
+    render();
+  }
+  
+  // ============ EXPORTAR CSV ============
+  function exportarCSV() {
+    if (state.log.length === 0) {
+      toast('Nada que exportar', true);
+      return;
+    }
+    const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
+    const rows = state.log.map(m => [
+      m.fecha,
+      m.tipo,
+      m.etiqueta || '',
+      (m.detalle || '').replace(/"/g, '""'),
+      m.monto.toFixed(2)
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fecha = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `ledger-${fecha}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV descargado');
+  }
+  
+  let selectedType = null;
+  let selectedMod = null;
+  
+  function setType(tipo) {
+    selectedType = (selectedType === tipo) ? null : tipo;
+    updateChipsUI();
+  }
+  
+  function setMod(mod) {
+    if (mod === 'recalcula') { ejecutarRecalculo(); return; }
+    selectedMod = (selectedMod === mod) ? null : mod;
+    updateChipsUI();
+  }
+  
+  function updateChipsUI() {
+    document.querySelectorAll('.chip[data-type]').forEach(el => {
+      el.classList.toggle('active', el.dataset.type === selectedType);
+    });
+    document.querySelectorAll('.chip[data-mod]').forEach(el => {
+      if (el.dataset.mod === 'recalcula') el.classList.remove('active');
+      else el.classList.toggle('active', el.dataset.mod === selectedMod);
+    });
+  }
+  
+  function ejecutarRecalculo() {
+    const numSem = state.semanas.length;
+    if (numSem === 0) { toast('No hay semanas configuradas', true); return; }
+    const currentIdx = calcularSemanaActualIdx();
+    const restantes = Math.max(1, state.semanas.length - currentIdx);
+    const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
+    const nuevoPresupuesto = gastable / restantes;
+    const snapshot = {
+      totalDisponible: state.totalDisponible,
+      metaResidual: state.metaResidual || 0,
+      deudaActual: state.deudaActual,
+      gastoNoAdeudado: state.gastoNoAdeudado,
+      gastoTotal: state.gastoTotal,
+      semanas: JSON.parse(JSON.stringify(state.semanas))
+    };
+    // Solo modifica las semanas restantes (actual + futuras)
+    for (let i = currentIdx; i < state.semanas.length; i++) {
+      state.semanas[i].presupuesto = nuevoPresupuesto;
+    }
+    state.log.push({
+      monto: nuevoPresupuesto, tipo: 'S', etiqueta: 'recalcula',
+      detalle: state.metaResidual > 0 
+        ? `Redistribución (${restantes} sem · meta S/ ${fmt(state.metaResidual)} protegida)` 
+        : `Redistribución en ${restantes} sem restantes`,
+      fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      snapshot
+    });
+    toast(`S/ ${fmt(nuevoPresupuesto)} en cada semana restante`);
+    render();
+  }
+  
+  function processStructuredCommand() {
+    const amountEl = document.getElementById('inputAmount');
+    const detalleEl = document.getElementById('inputDetalle');
+    const monto = parseFloat(amountEl.value);
+    if (isNaN(monto) || monto <= 0) { toast('Ingresa un monto válido', true); amountEl.focus(); return; }
+    if (!selectedType) { toast('Elige tipo: S o DS', true); return; }
+    
+    const detalle = detalleEl.value.trim();
+    
+    // Si es un gasto normal (no sem) y excede la semana actual → confirmación previa
+    if (selectedMod !== 'sem') {
+      const semActual = state.semanas.find(s => s.isCurrent);
+      if (semActual && monto > semActual.presupuesto) {
+        confirmarRollover(monto, selectedType, selectedMod, detalle);
+        return;
+      }
+    }
+    
+    aplicarMovimiento(monto, selectedType, selectedMod, detalle);
+    resetInputs();
+  }
+  
+  function resetInputs() {
+    document.getElementById('inputAmount').value = '';
+    document.getElementById('inputDetalle').value = '';
+    selectedType = null;
+    selectedMod = null;
+    updateChipsUI();
+    document.getElementById('inputAmount').focus();
+  }
+  
+  function confirmarRollover(monto, tipo, etiqueta, detalle) {
+    const semActual = state.semanas.find(s => s.isCurrent);
+    const semActualIdx = state.semanas.findIndex(s => s.isCurrent);
+    const restanteSemActual = semActual.presupuesto;
+    let restante = monto - restanteSemActual;
+    
+    // Simular el rollover para mostrar el desglose
+    const desgloseHtml = [];
+    desgloseHtml.push(`
+      <div class="rollover-row">
+        <span class="rollover-week">Semana actual</span>
+        <span class="rollover-amount">−S/ ${fmt(restanteSemActual)}</span>
+      </div>
+    `);
+    
+    for (let i = semActualIdx + 1; i < state.semanas.length && restante > 0; i++) {
+      const disponibleEnSem = state.semanas[i].presupuesto;
+      const tomarDeSem = Math.min(disponibleEnSem, restante);
+      restante -= tomarDeSem;
+      const nombreSem = `Semana +${i}`;
+      desgloseHtml.push(`
+        <div class="rollover-row highlight">
+          <span class="rollover-week">${nombreSem} <span class="rollover-tag">rollover</span></span>
+          <span class="rollover-amount">−S/ ${fmt(tomarDeSem)}</span>
+        </div>
+      `);
+    }
+    
+    let sinCubrirHtml = '';
+    if (restante > 0) {
+      sinCubrirHtml = `
+        <div class="rollover-row danger">
+          <span class="rollover-week">Sin cubrir</span>
+          <span class="rollover-amount">S/ ${fmt(restante)}</span>
+        </div>
+      `;
+    }
+    
+    openModal(`
+      <h2>Excede la <span class="accent">semana actual</span></h2>
+      <p class="modal-sub">
+        Tu gasto de <strong>S/ ${fmt(monto)}</strong> supera lo que tienes esta semana (S/ ${fmt(restanteSemActual)}). Se cubrirá tomando del presupuesto de las próximas semanas:
+      </p>
+      
+      <div class="rollover-breakdown">
+        ${desgloseHtml.join('')}
+        ${sinCubrirHtml}
+      </div>
+      
+      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+        Tu total disponible del ciclo no cambia — solo se redistribuye la carga entre semanas.
+      </p>
+      
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="ejecutarConRollover(${monto}, '${tipo}', ${etiqueta ? "'"+etiqueta+"'" : 'null'}, '${detalle.replace(/'/g, "\\'")}')">Confirmar gasto</button>
+      </div>
+    `);
+  }
+  
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle) {
+    closeModal();
+    aplicarMovimiento(monto, tipo, etiqueta === 'null' ? null : etiqueta, detalle);
+    resetInputs();
+  }
+  
+  function aplicarMovimiento(monto, tipo, etiqueta, detalle) {
+    const mov = {
+      monto, tipo, etiqueta, detalle,
+      fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      snapshot: {
+        totalDisponible: state.totalDisponible,
+        metaResidual: state.metaResidual || 0,
+        deudaActual: state.deudaActual,
+        gastoNoAdeudado: state.gastoNoAdeudado,
+        gastoTotal: state.gastoTotal,
+        semanas: JSON.parse(JSON.stringify(state.semanas))
+      }
+    };
+    
+    if (etiqueta === 'sem') {
+      state.totalDisponible -= monto;
+      state.gastoTotal += monto;
+      if (tipo === 'S') state.gastoNoAdeudado += monto;
+      if (tipo === 'DS') state.deudaActual += monto;
+      const porSem = monto / state.semanas.length;
+      state.semanas.forEach(s => s.presupuesto -= porSem);
+      toast(`-S/ ${fmt(porSem)} en cada semana`);
+    } else {
+      state.totalDisponible -= monto;
+      state.gastoTotal += monto;
+      if (tipo === 'S') state.gastoNoAdeudado += monto;
+      if (tipo === 'DS') state.deudaActual += monto;
+      
+      let restante = monto;
+      let tomadoDeSemActual = 0;
+      let semanasAfectadas = 0;
+      const idx = state.semanas.findIndex(s => s.isCurrent);
+      if (idx >= 0) {
+        for (let i = idx; i < state.semanas.length && restante > 0; i++) {
+          if (state.semanas[i].presupuesto >= restante) {
+            state.semanas[i].presupuesto -= restante;
+            if (i === idx) tomadoDeSemActual += restante;
+            else semanasAfectadas++;
+            restante = 0;
+          } else {
+            const tomado = state.semanas[i].presupuesto;
+            if (i === idx) tomadoDeSemActual += tomado;
+            else semanasAfectadas++;
+            restante -= tomado;
+            state.semanas[i].presupuesto = 0;
+          }
+        }
+      }
+      
+      if (restante > 0) toast(`⚠️ S/ ${fmt(restante)} sin cubrir en las semanas`, true);
+      else if (semanasAfectadas > 0) {
+        toast(`↳ Se tomó S/ ${fmt(monto - tomadoDeSemActual)} de próximas semanas`);
+      } else {
+        toast(`−S/ ${fmt(monto)} registrado`);
+      }
+    }
+    
+    state.log.push(mov);
+    render();
+  }
+  
+  function confirmDelete(idx) {
+    const mov = state.log[idx];
+    if (!mov) return;
+    openModal(`
+      <h2>Deshacer <span class="accent">movimiento</span></h2>
+      <p class="modal-sub">
+        <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
+        ${mov.detalle || 'Sin detalle'}<br>
+        <span style="color:var(--ink-mute);font-size:11px;">${mov.fecha}</span>
+      </p>
+      <p class="modal-sub" style="font-size:11px;">Se restaura el estado exacto anterior al movimiento.</p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-danger" onclick="doDelete(${idx})">Deshacer</button>
+      </div>
+    `);
+  }
+  
+  function doDelete(idx) {
+    const mov = state.log[idx];
+    if (!mov || !mov.snapshot) { closeModal(); return; }
+    state.totalDisponible = mov.snapshot.totalDisponible;
+    if (mov.snapshot.metaResidual !== undefined) state.metaResidual = mov.snapshot.metaResidual;
+    state.deudaActual = mov.snapshot.deudaActual;
+    state.gastoNoAdeudado = mov.snapshot.gastoNoAdeudado;
+    state.gastoTotal = mov.snapshot.gastoTotal;
+    state.semanas = mov.snapshot.semanas;
+    state.log.splice(idx, 1);
+    closeModal();
+    toast('Movimiento deshecho');
+    render();
+  }
+  
+  function showHelp() {
+    openModal(`
+      <h2>Cómo <span class="accent">registrar</span></h2>
+      <p class="modal-sub">Escribe el monto → toca el tipo → (opcional) modificador → detalle → enviar.</p>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip S">S</span>
+          <span class="help-item-title">Contado</span>
+        </div>
+        <div class="help-item-desc">Efectivo o débito. Resta del disponible y de la semana actual.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip DS">DS</span>
+          <span class="help-item-title">Deuda o tarjeta</span>
+        </div>
+        <div class="help-item-desc">Resta del disponible y semana, suma a deuda acumulada.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip MOD">sem</span>
+          <span class="help-item-title">Reparto semanal</span>
+        </div>
+        <div class="help-item-desc">Modificador. Divide el gasto entre todas las semanas del mes.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip MOD">recalc</span>
+          <span class="help-item-title">Redistribuir</span>
+        </div>
+        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible actual por igual entre todas las semanas.</div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-primary" onclick="closeModal()">Entendido</button>
+      </div>
+    `);
+  }
+  
+  function openSettings() {
+    openModal(`
+      <h2>Ajustes</h2>
+      <p class="modal-sub">Edita cualquier valor. El presupuesto por semana se calcula solo al cambiar disponible o número de semanas.</p>
+      <div class="modal-field">
+        <label>Total disponible</label>
+        <input type="number" step="0.01" id="setDisponible" value="${state.totalDisponible.toFixed(2)}" oninput="autoRecalcPresupuesto()">
+      </div>
+      <div class="modal-field">
+        <label>Meta de ahorro <span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">(0 = sin meta)</span></label>
+        <input type="number" step="0.01" id="setMeta" value="${(state.metaResidual || 0).toFixed(2)}" oninput="autoRecalcPresupuesto()">
+      </div>
+      <div class="modal-field">
+        <label>Monto intocable</label>
+        <input type="number" step="0.01" id="setIntocable" value="${state.montoIntocable.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Deuda actual</label>
+        <input type="number" step="0.01" id="setDeuda" value="${state.deudaActual.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Gasto no adeudado</label>
+        <input type="number" step="0.01" id="setGastoS" value="${state.gastoNoAdeudado.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Gasto total acumulado</label>
+        <input type="number" step="0.01" id="setGastoTotal" value="${state.gastoTotal.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Fecha inicio del ciclo</label>
+        <input type="date" id="setFechaInicio" value="${state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).toISOString().slice(0,10) : ''}">
+      </div>
+      <div class="modal-field">
+        <label>Número de semanas</label>
+        <input type="number" min="1" max="6" id="setNumSem" value="${state.semanas.length}" oninput="autoRecalcPresupuesto()">
+      </div>
+      <div class="modal-field">
+        <label>Presupuesto por semana <span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">(editable)</span></label>
+        <input type="text" id="setPresSem" value="${state.semanas.map(s => s.presupuesto.toFixed(2)).join(', ')}">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-danger" onclick="resetAll()">Reset</button>
+        <button class="btn-primary" onclick="saveSettings()">Guardar</button>
+      </div>
+    `);
+  }
+  
+  function autoRecalcPresupuesto() {
+    const disp = parseFloat(document.getElementById('setDisponible').value);
+    const numSem = parseInt(document.getElementById('setNumSem').value);
+    const meta = parseFloat(document.getElementById('setMeta').value) || 0;
+    if (isNaN(disp) || isNaN(numSem) || numSem < 1 || numSem > 6) return;
+    const gastable = Math.max(0, disp - meta);
+    const porSem = gastable / numSem;
+    const arr = [];
+    for (let i = 0; i < numSem; i++) arr.push(porSem.toFixed(2));
+    document.getElementById('setPresSem').value = arr.join(', ');
+  }
+  
+  function saveSettings() {
+    const disp = parseFloat(document.getElementById('setDisponible').value);
+    const meta = parseFloat(document.getElementById('setMeta').value);
+    const intoc = parseFloat(document.getElementById('setIntocable').value);
+    const deuda = parseFloat(document.getElementById('setDeuda').value);
+    const gastoS = parseFloat(document.getElementById('setGastoS').value);
+    const gastoT = parseFloat(document.getElementById('setGastoTotal').value);
+    const numSem = parseInt(document.getElementById('setNumSem').value);
+    const presStr = document.getElementById('setPresSem').value;
+    const fechaInicio = document.getElementById('setFechaInicio').value;
+    
+    if (!isNaN(disp)) { state.totalDisponible = disp; state.presupuestoInicial = disp; }
+    if (!isNaN(meta)) state.metaResidual = Math.max(0, meta);
+    if (!isNaN(intoc)) state.montoIntocable = intoc;
+    if (!isNaN(deuda)) state.deudaActual = deuda;
+    if (!isNaN(gastoS)) state.gastoNoAdeudado = gastoS;
+    if (!isNaN(gastoT)) state.gastoTotal = gastoT;
+    if (fechaInicio) {
+      const nuevaFecha = new Date(fechaInicio + 'T00:00:00');
+      if (!isNaN(nuevaFecha.getTime())) {
+        state.fechaInicioCiclo = nuevaFecha.toISOString();
+        state.ultimaSemanaVista = null; // reset para que no dispare toast falso
+      }
+    }
+    
+    if (!isNaN(numSem) && numSem >= 1 && numSem <= 6) {
+      const presArr = presStr.split(',').map(v => parseFloat(v.trim()));
+      const newSem = [];
+      for (let i = 0; i < numSem; i++) {
+        newSem.push({
+          label: i === 0 ? 'Semana actual' : 'Semana +' + i,
+          presupuesto: !isNaN(presArr[i]) ? presArr[i] : 0,
+          isCurrent: i === 0
+        });
+      }
+      state.semanas = newSem;
+    }
+    
+    closeModal();
+    toast('Ajustes guardados');
+    render();
+  }
+  
+  function resetAll() {
+    if (confirm('¿Borrar todo y volver al estado inicial?')) {
+      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+      closeModal();
+      toast('Reseteado');
+      render();
+    }
+  }
+  
+  function openCCConfig() {
+    openModal(`
+      <h2>Calendario <span class="accent">tarjeta</span></h2>
+      <p class="modal-sub">Los días clave de tu ciclo. Solo referenciales — tus gastos se siguen registrando como DS.</p>
+      <div class="modal-field">
+        <label>Día de cierre</label>
+        <input type="number" min="1" max="31" id="setCierre" value="${state.tarjeta.diaCierre}">
+      </div>
+      <div class="modal-field">
+        <label>Día de pago máximo</label>
+        <input type="number" min="1" max="31" id="setPago" value="${state.tarjeta.diaPago}">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveCCConfig()">Guardar</button>
+      </div>
+    `);
+  }
+  
+  function saveCCConfig() {
+    const cierre = parseInt(document.getElementById('setCierre').value);
+    const pago = parseInt(document.getElementById('setPago').value);
+    if (cierre >= 1 && cierre <= 31) state.tarjeta.diaCierre = cierre;
+    if (pago >= 1 && pago <= 31) state.tarjeta.diaPago = pago;
+    closeModal();
+    toast('Calendario actualizado');
+    render();
+  }
+  
+  function openModal(html) {
+    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('modalOverlay').classList.add('active');
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('active');
+  }
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'modalOverlay') closeModal();
+  });
+  
+  let toastTimeout;
+  function toast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+  
+  document.getElementById('inputAmount').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      if (!selectedType) document.getElementById('inputDetalle').focus();
+      else processStructuredCommand();
+    }
+  });
+  document.getElementById('inputDetalle').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') processStructuredCommand();
+  });
+  
+  // ============ MODO OSCURO ============
+  function toggleTheme() {
+    state.darkMode = !state.darkMode;
+    applyTheme();
+    saveState();
+  }
+  
+  function applyTheme() {
+    document.body.classList.toggle('dark', state.darkMode);
+    document.querySelector('meta[name="theme-color"]').setAttribute(
+      'content', state.darkMode ? '#0F0E0D' : '#FAF8F3'
+    );
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = state.darkMode ? '☀' : '◐';
+  }
+  
+  // ============ INIT ============
+  applyTheme();
+  render();
+</script>
+
+</body>
+</html>
