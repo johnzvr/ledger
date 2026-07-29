@@ -2912,6 +2912,42 @@
   applyTheme();
   render();
   initGoogleSync();
+  
+  // ============ AUTO-SYNC AL VOLVER DEL BACKGROUND ============
+  // iOS mantiene las PWA en memoria, no las recarga al abrirlas.
+  // Detectamos cuando la app vuelve a ser visible para sincronizar.
+  let lastSyncCheck = Date.now();
+  const SYNC_COOLDOWN_MS = 10000; // no sincronizar más de una vez cada 10s
+  
+  function checkAndSync(reason) {
+    if (!accessToken) return;
+    const now = Date.now();
+    if (now - lastSyncCheck < SYNC_COOLDOWN_MS) return;
+    lastSyncCheck = now;
+    syncFromDrive();
+  }
+  
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkAndSync('visibility');
+    }
+  });
+  
+  window.addEventListener('focus', () => {
+    checkAndSync('focus');
+  });
+  
+  // También sincronizar cuando vuelva la conexión
+  window.addEventListener('online', () => {
+    checkAndSync('online');
+  });
+  
+  // pageshow: iOS lo dispara cuando la PWA se restaura del background
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      checkAndSync('pageshow-persisted');
+    }
+  });
 </script>
 
 </body>
