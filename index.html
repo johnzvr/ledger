@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
@@ -134,6 +135,51 @@
     transition: transform 0.2s;
   }
   .theme-toggle:active { transform: scale(0.9); }
+  
+  /* Sync badge */
+  .sync-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: fit-content;
+  }
+  .sync-badge:active { transform: scale(0.96); }
+  .sync-badge .sync-dot {
+    font-size: 11px;
+    line-height: 1;
+    display: inline-block;
+  }
+  .sync-badge.off {
+    background: var(--line);
+    color: var(--ink-mute);
+  }
+  .sync-badge.ok {
+    background: var(--mint);
+    color: var(--gain);
+  }
+  .sync-badge.syncing {
+    background: var(--sky);
+    color: #4A6F8A;
+  }
+  .sync-badge.syncing .sync-dot {
+    animation: spin 1.2s linear infinite;
+  }
+  .sync-badge.error {
+    background: var(--coral);
+    color: var(--danger);
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
   
   /* Hero card */
   .hero-card {
@@ -1265,6 +1311,10 @@
   <div class="header">
     <div class="greeting">
       Hola, <span class="serif-italic">amigo</span>
+      <div class="sync-badge off" id="syncBadge" onclick="openDriveSync()">
+        <span class="sync-dot">○</span>
+        <span>Sin sync</span>
+      </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
       <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" aria-label="Cambiar tema">◐</button>
@@ -1487,8 +1537,11 @@
   }
   
   function saveState() {
-    try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); }
-    catch(e) { toast('Error guardando', true); }
+    try {
+      state.lastModified = Date.now();
+      localStorage.setItem('ledger-state-v2', JSON.stringify(state));
+    } catch(e) { toast('Error guardando', true); }
+    scheduleSyncUpload();
   }
   
   function fmt(n) {
@@ -2568,6 +2621,277 @@
     if (e.key === 'Enter') processStructuredCommand();
   });
   
+  // ============ GOOGLE DRIVE SYNC ============
+  const GOOGLE_CLIENT_ID = '944900044688-t8qsle009qmfm0vck5o2otl9gij30pq4.apps.googleusercontent.com';
+  const DRIVE_FILE_NAME = 'ledger-data.json';
+  
+  let tokenClient = null;
+  let accessToken = null;
+  let syncTimer = null;
+  let driveFileId = null;
+  let gisReady = false;
+  let syncInProgress = false;
+  
+  function initGoogleSync() {
+    if (typeof google === 'undefined' || !google.accounts) {
+      // El script no cargó aún, reintenta
+      setTimeout(initGoogleSync, 500);
+      return;
+    }
+    if (gisReady) return;
+    gisReady = true;
+    
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: async (tokenResponse) => {
+        if (tokenResponse.access_token) {
+          accessToken = tokenResponse.access_token;
+          const expiresIn = tokenResponse.expires_in || 3600;
+          try {
+            localStorage.setItem('ledger-token', accessToken);
+            localStorage.setItem('ledger-token-exp', String(Date.now() + expiresIn * 1000));
+          } catch(e){}
+          updateSyncUI('syncing');
+          await syncFromDrive();
+        }
+      },
+      error_callback: (err) => {
+        console.warn('OAuth error:', err);
+        updateSyncUI('error');
+      }
+    });
+    
+    // Restaurar token si existe y no expiró
+    try {
+      const saved = localStorage.getItem('ledger-token');
+      const exp = parseInt(localStorage.getItem('ledger-token-exp') || '0');
+      if (saved && Date.now() < exp) {
+        accessToken = saved;
+        updateSyncUI('syncing');
+        syncFromDrive();
+      }
+    } catch(e){}
+  }
+  
+  function connectDrive() {
+    if (!tokenClient) {
+      toast('Google Sign-In cargando, espera un segundo', true);
+      return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'consent' });
+  }
+  
+  function disconnectDrive() {
+    if (accessToken && typeof google !== 'undefined' && google.accounts) {
+      try { google.accounts.oauth2.revoke(accessToken, () => {}); } catch(e){}
+    }
+    accessToken = null;
+    driveFileId = null;
+    try {
+      localStorage.removeItem('ledger-token');
+      localStorage.removeItem('ledger-token-exp');
+    } catch(e){}
+    updateSyncUI('off');
+    closeModal();
+    toast('Drive desconectado');
+  }
+  
+  async function findDriveFile() {
+    const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,modifiedTime)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (res.status === 401) { handleTokenExpired(); return null; }
+    if (!res.ok) throw new Error('find ' + res.status);
+    const data = await res.json();
+    return (data.files && data.files[0]) || null;
+  }
+  
+  async function syncFromDrive() {
+    if (!accessToken || syncInProgress) return;
+    syncInProgress = true;
+    try {
+      updateSyncUI('syncing');
+      const file = await findDriveFile();
+      if (!file) {
+        // No hay archivo remoto, crear uno con el estado actual
+        driveFileId = null;
+        await uploadToDrive();
+        updateSyncUI('ok');
+        return;
+      }
+      driveFileId = file.id;
+      const remoteTime = new Date(file.modifiedTime).getTime();
+      const localTime = state.lastModified || 0;
+      
+      if (remoteTime > localTime + 1000) {
+        // Drive tiene versión más nueva, descargar
+        const res = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (res.status === 401) { handleTokenExpired(); return; }
+        if (!res.ok) throw new Error('download ' + res.status);
+        const remoteState = await res.json();
+        // Preservar prefs locales
+        const localDarkMode = state.darkMode;
+        state = { ...remoteState, darkMode: localDarkMode };
+        try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e){}
+        applyTheme();
+        render();
+        toast('↓ Cambios traídos de Drive');
+      } else if (localTime > remoteTime + 1000) {
+        // Local es más nuevo, subir
+        await uploadToDrive();
+      }
+      updateSyncUI('ok');
+    } catch (e) {
+      console.error('sync error:', e);
+      updateSyncUI('error');
+    } finally {
+      syncInProgress = false;
+    }
+  }
+  
+  function scheduleSyncUpload() {
+    if (!accessToken) return;
+    clearTimeout(syncTimer);
+    updateSyncUI('syncing');
+    syncTimer = setTimeout(async () => {
+      try {
+        await uploadToDrive();
+        updateSyncUI('ok');
+      } catch (e) {
+        console.error('upload error:', e);
+        updateSyncUI('error');
+      }
+    }, 2000);
+  }
+  
+  async function uploadToDrive() {
+    if (!accessToken) return;
+    state.lastModified = Date.now();
+    const content = JSON.stringify(state);
+    
+    // Si no tengo fileId, primero crear el archivo (metadata)
+    if (!driveFileId) {
+      const file = await findDriveFile();
+      if (file) {
+        driveFileId = file.id;
+      } else {
+        const createRes = await fetch(
+          'https://www.googleapis.com/drive/v3/files',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: DRIVE_FILE_NAME,
+              mimeType: 'application/json'
+            })
+          }
+        );
+        if (createRes.status === 401) { handleTokenExpired(); return; }
+        if (!createRes.ok) throw new Error('create ' + createRes.status);
+        const created = await createRes.json();
+        driveFileId = created.id;
+      }
+    }
+    
+    // Actualizar contenido
+    const res = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: content
+      }
+    );
+    if (res.status === 401) { handleTokenExpired(); return; }
+    if (!res.ok) throw new Error('upload ' + res.status);
+  }
+  
+  function handleTokenExpired() {
+    accessToken = null;
+    driveFileId = null;
+    try {
+      localStorage.removeItem('ledger-token');
+      localStorage.removeItem('ledger-token-exp');
+    } catch(e){}
+    updateSyncUI('off');
+    toast('Sesión Drive expiró, reconecta', true);
+  }
+  
+  function updateSyncUI(estado) {
+    const badge = document.getElementById('syncBadge');
+    if (!badge) return;
+    const configs = {
+      off:      { icon: '○', text: 'Sin sync',       cls: 'off' },
+      syncing:  { icon: '↻', text: 'Sincronizando',  cls: 'syncing' },
+      ok:       { icon: '●', text: 'Sincronizado',   cls: 'ok' },
+      error:    { icon: '!', text: 'Error de sync',  cls: 'error' }
+    };
+    const c = configs[estado] || configs.off;
+    badge.className = 'sync-badge ' + c.cls;
+    badge.innerHTML = `<span class="sync-dot">${c.icon}</span><span>${c.text}</span>`;
+  }
+  
+  function openDriveSync() {
+    const conectado = !!accessToken;
+    openModal(`
+      <h2>Google Drive <span class="accent">sync</span></h2>
+      <p class="modal-sub">
+        Sincroniza tus datos entre celular y computadora usando tu propia cuenta de Google. Los datos se guardan como un archivo <code style="background:var(--line);padding:2px 6px;border-radius:4px;font-size:11px;">ledger-data.json</code> en tu Drive.
+      </p>
+      
+      <div class="rollover-breakdown">
+        <div class="rollover-row">
+          <span class="rollover-week">Estado</span>
+          <span class="rollover-amount" style="color:${conectado ? 'var(--gain)' : 'var(--ink-mute)'};">${conectado ? '● Conectado' : '○ Desconectado'}</span>
+        </div>
+        ${conectado ? `
+          <div class="rollover-row">
+            <span class="rollover-week">Sync automático</span>
+            <span class="rollover-amount" style="font-size:11px;">Cada 2 segundos</span>
+          </div>
+          <div class="rollover-row">
+            <span class="rollover-week">Al abrir la app</span>
+            <span class="rollover-amount" style="font-size:11px;">Descarga cambios</span>
+          </div>
+        ` : ''}
+      </div>
+      
+      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+        ${conectado 
+          ? '💡 Tus datos se suben automáticamente. Puedes usar la app en tu celular y compu y verás lo mismo en ambos.'
+          : '💡 Al conectar por primera vez, Google te pedirá permiso. Aprueba solo los permisos de "ver y administrar archivos que creaste con esta app".'}
+      </p>
+      
+      <div class="modal-buttons">
+        ${conectado 
+          ? `<button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+             <button class="btn-secondary" onclick="forceSyncNow()">Sincronizar ahora</button>
+             <button class="btn-danger" onclick="disconnectDrive()">Desconectar</button>`
+          : `<button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+             <button class="btn-primary" onclick="connectDrive(); closeModal();">Conectar Google Drive</button>`
+        }
+      </div>
+    `);
+  }
+  
+  async function forceSyncNow() {
+    closeModal();
+    driveFileId = null; // forzar re-búsqueda
+    await syncFromDrive();
+  }
+  
   // ============ MODO OSCURO ============
   function toggleTheme() {
     state.darkMode = !state.darkMode;
@@ -2587,6 +2911,7 @@
   // ============ INIT ============
   applyTheme();
   render();
+  initGoogleSync();
 </script>
 
 </body>
