@@ -2931,7 +2931,6 @@
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
-      // El script no cargó aún, reintenta
       setTimeout(initGoogleSync, 500);
       return;
     }
@@ -2948,26 +2947,58 @@
           try {
             localStorage.setItem('ledger-token', accessToken);
             localStorage.setItem('ledger-token-exp', String(Date.now() + expiresIn * 1000));
+            localStorage.setItem('ledger-drive-authorized', '1'); // marca que ya autorizó una vez
           } catch(e){}
           updateSyncUI('ok');
-          toast('Conectado a Drive · usa ⬆ Subir o ⬇ Bajar');
+          scheduleTokenRefresh(expiresIn);
         }
       },
       error_callback: (err) => {
         console.warn('OAuth error:', err);
+        // Si falla el silencioso, intentar con prompt visible
+        if (err && err.type === 'popup_failed_to_open') {
+          toast('Reconecta manualmente Drive', true);
+        }
         updateSyncUI('error');
       }
     });
     
-    // Restaurar token si existe y no expiró (no auto-sync)
+    // Restaurar token si existe y no expiró
     try {
       const saved = localStorage.getItem('ledger-token');
       const exp = parseInt(localStorage.getItem('ledger-token-exp') || '0');
       if (saved && Date.now() < exp) {
         accessToken = saved;
         updateSyncUI('ok');
+        // Programar refresh silencioso antes de que expire
+        const msRemaining = exp - Date.now();
+        scheduleTokenRefresh(msRemaining / 1000);
+      } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
+        // Token expirado pero ya autorizó antes → intentar refresh silencioso
+        setTimeout(silentRefresh, 500);
       }
     } catch(e){}
+  }
+  
+  let refreshTimer = null;
+  
+  function scheduleTokenRefresh(expiresInSeconds) {
+    // Refrescar 5 min antes de expirar
+    clearTimeout(refreshTimer);
+    const refreshInMs = Math.max(60000, (expiresInSeconds - 300) * 1000);
+    refreshTimer = setTimeout(silentRefresh, refreshInMs);
+  }
+  
+  function silentRefresh() {
+    if (!tokenClient) return;
+    // Si ya autorizó antes, intentar sin prompt (silencioso)
+    if (localStorage.getItem('ledger-drive-authorized') === '1') {
+      try {
+        tokenClient.requestAccessToken({ prompt: '' });
+      } catch (e) {
+        console.warn('Silent refresh failed:', e);
+      }
+    }
   }
   
   function connectDrive() {
@@ -2975,7 +3006,11 @@
       toast('Google Sign-In cargando, espera un segundo', true);
       return;
     }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
+    // Primera vez: con consent. Después: silencioso.
+    const yaAutorizado = localStorage.getItem('ledger-drive-authorized') === '1';
+    tokenClient.requestAccessToken({ 
+      prompt: yaAutorizado ? '' : 'consent' 
+    });
   }
   
   function disconnectDrive() {
@@ -3082,7 +3117,12 @@
       localStorage.removeItem('ledger-token-exp');
     } catch(e){}
     updateSyncUI('off');
-    toast('Sesión Drive expiró, reconecta', true);
+    // Intentar refresh silencioso automáticamente
+    if (localStorage.getItem('ledger-drive-authorized') === '1') {
+      setTimeout(silentRefresh, 500);
+    } else {
+      toast('Sesión Drive expiró, reconecta', true);
+    }
   }
   
   function handleConnectClick() {
