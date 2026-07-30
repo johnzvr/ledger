@@ -1205,6 +1205,76 @@
     letter-spacing: -0.02em;
     -moz-appearance: textfield;
   }
+  .input-amount.with-currency {
+    width: 100%;
+    text-align: left;
+    padding-left: 46px;
+  }
+  
+  .amount-wrap {
+    position: relative;
+    width: 130px;
+    flex-shrink: 0;
+  }
+  
+  .currency-toggle {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    bottom: 4px;
+    width: 38px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    border-radius: 10px;
+    color: rgba(250,248,243,0.85);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    z-index: 2;
+    padding: 0;
+  }
+  .currency-toggle:active { transform: scale(0.94); }
+  .currency-toggle.usd {
+    background: rgba(143, 168, 118, 0.35);
+    color: #A8CC8F;
+  }
+  
+  .conversion-preview {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: rgba(250,248,243,0.75);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .conversion-preview strong {
+    color: var(--input-ink);
+    font-weight: 700;
+  }
+  .conversion-preview .tc-info {
+    color: rgba(250,248,243,0.5);
+    font-size: 10px;
+  }
+  .conversion-preview .tc-stale {
+    color: #E0A896;
+  }
+  .conversion-preview .tc-loading {
+    color: rgba(250,248,243,0.5);
+    font-style: italic;
+  }
   .input-amount::-webkit-outer-spin-button,
   .input-amount::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -1688,10 +1758,16 @@
       </button>
     </div>
     <div class="input-row">
-      <input type="number" id="inputAmount" class="input-amount" placeholder="0" inputmode="decimal" step="0.01">
+      <div class="amount-wrap">
+        <button class="currency-toggle" id="currencyToggle" onclick="toggleCurrency()" aria-label="Cambiar moneda">
+          <span id="currencyLabel">S/</span>
+        </button>
+        <input type="number" id="inputAmount" class="input-amount with-currency" placeholder="0" inputmode="decimal" step="0.01" oninput="updateConversionPreview()">
+      </div>
       <input type="text" id="inputDetalle" class="input-detalle" placeholder="Detalle (opcional)" autocomplete="off" autocapitalize="sentences">
       <button class="btn-send" id="btnSend" onclick="processStructuredCommand()">→</button>
     </div>
+    <div class="conversion-preview" id="conversionPreview" style="display:none;"></div>
     <div class="chips-row">
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
       <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
@@ -1719,6 +1795,7 @@
     fechaInicioCiclo: null, // se setea la primera vez
     cicloAnterior: null,
     darkMode: false,
+    tcCache: { rate: null, fetchedAt: null }, // último USD→PEN conocido
     semanas: [
       { label: 'Semana actual', presupuesto: 328.59, isCurrent: true },
       { label: 'Semana +1', presupuesto: 715.24, isCurrent: false },
@@ -2426,11 +2503,25 @@
   function processStructuredCommand() {
     const amountEl = document.getElementById('inputAmount');
     const detalleEl = document.getElementById('inputDetalle');
-    const monto = parseFloat(amountEl.value);
-    if (isNaN(monto) || monto <= 0) { toast('Ingresa un monto válido', true); amountEl.focus(); return; }
+    const montoRaw = parseFloat(amountEl.value);
+    if (isNaN(montoRaw) || montoRaw <= 0) { toast('Ingresa un monto válido', true); amountEl.focus(); return; }
     if (!selectedType) { toast('Elige tipo: S o DS', true); return; }
     
-    const detalle = detalleEl.value.trim();
+    let detalle = detalleEl.value.trim();
+    let monto = montoRaw;
+    
+    // Si está en USD, convertir a PEN
+    if (currentCurrency === 'USD') {
+      const rate = getExchangeRate();
+      if (!rate) {
+        toast('Sin tipo de cambio · toca US$ y espera', true);
+        return;
+      }
+      monto = montoRaw * rate;
+      // Agregar info de USD al detalle
+      const usdInfo = `USD ${montoRaw.toFixed(2)} @ ${rate.toFixed(3)}`;
+      detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
+    }
     
     // Si es un gasto normal (no sem) y excede la semana actual → confirmación previa
     if (selectedMod !== 'sem') {
@@ -2451,6 +2542,10 @@
     selectedType = null;
     selectedMod = null;
     updateChipsUI();
+    // Volver a PEN por defecto tras enviar
+    currentCurrency = 'PEN';
+    updateCurrencyUI();
+    updateConversionPreview();
     document.getElementById('inputAmount').focus();
   }
   
@@ -3178,10 +3273,173 @@
     if (btn) btn.textContent = state.darkMode ? '☀' : '◐';
   }
   
+  // ============ TIPO DE CAMBIO USD → PEN ============
+  let currentCurrency = 'PEN'; // 'PEN' | 'USD'
+  let tcFetchInProgress = false;
+  const TC_CACHE_HOURS = 24;
+  
+  function toggleCurrency() {
+    currentCurrency = (currentCurrency === 'PEN') ? 'USD' : 'PEN';
+    updateCurrencyUI();
+    updateConversionPreview();
+    if (currentCurrency === 'USD') {
+      fetchExchangeRate();
+    }
+  }
+  
+  function updateCurrencyUI() {
+    const label = document.getElementById('currencyLabel');
+    const btn = document.getElementById('currencyToggle');
+    if (label) label.textContent = currentCurrency === 'PEN' ? 'S/' : 'US$';
+    if (btn) btn.classList.toggle('usd', currentCurrency === 'USD');
+  }
+  
+  async function fetchExchangeRate() {
+    if (tcFetchInProgress) return;
+    
+    // Si hay caché reciente (menos de 1h), no refetch
+    const cache = state.tcCache || {};
+    if (cache.rate && cache.fetchedAt) {
+      const hoursOld = (Date.now() - cache.fetchedAt) / (1000 * 60 * 60);
+      if (hoursOld < 1) return;
+    }
+    
+    tcFetchInProgress = true;
+    updateConversionPreview();
+    
+    // Múltiples fuentes de fallback (gratuitas, con CORS)
+    const sources = [
+      {
+        name: 'exchangerate.host',
+        url: 'https://api.exchangerate-api.com/v4/latest/USD',
+        extract: (d) => d && d.rates && d.rates.PEN
+      },
+      {
+        name: 'open.er-api',
+        url: 'https://open.er-api.com/v6/latest/USD',
+        extract: (d) => d && d.rates && d.rates.PEN
+      },
+      {
+        name: 'currencyapi',
+        url: 'https://api.currencyapi.com/v3/latest?apikey=cur_live_demo&currencies=PEN&base_currency=USD',
+        extract: (d) => d && d.data && d.data.PEN && d.data.PEN.value
+      }
+    ];
+    
+    for (const source of sources) {
+      try {
+        const res = await fetch(source.url);
+        if (!res.ok) {
+          console.warn(`${source.name}: HTTP ${res.status}`);
+          continue;
+        }
+        const data = await res.json();
+        const rate = source.extract(data);
+        if (rate && !isNaN(rate) && rate > 0) {
+          state.tcCache = {
+            rate: rate,
+            fetchedAt: Date.now(),
+            source: source.name
+          };
+          saveState();
+          tcFetchInProgress = false;
+          updateConversionPreview();
+          return;
+        }
+      } catch (e) {
+        console.warn(`${source.name} error:`, e.message);
+      }
+    }
+    
+    // Todas fallaron
+    tcFetchInProgress = false;
+    updateConversionPreview();
+  }
+  
+  function getExchangeRate() {
+    return state.tcCache && state.tcCache.rate ? state.tcCache.rate : null;
+  }
+  
+  function getTcAgeHours() {
+    if (!state.tcCache || !state.tcCache.fetchedAt) return null;
+    return (Date.now() - state.tcCache.fetchedAt) / (1000 * 60 * 60);
+  }
+  
+  function formatTcAge() {
+    const hours = getTcAgeHours();
+    if (hours === null) return 'sin datos';
+    if (hours < 1) return `hace ${Math.round(hours * 60)} min`;
+    if (hours < 24) return `hace ${Math.round(hours)} h`;
+    return `hace ${Math.round(hours / 24)} d`;
+  }
+  
+  function updateConversionPreview() {
+    const preview = document.getElementById('conversionPreview');
+    if (!preview) return;
+    
+    if (currentCurrency === 'PEN') {
+      preview.style.display = 'none';
+      return;
+    }
+    
+    // USD mode
+    preview.style.display = 'flex';
+    const amount = parseFloat(document.getElementById('inputAmount').value) || 0;
+    const rate = getExchangeRate();
+    
+    if (!rate) {
+      if (tcFetchInProgress) {
+        preview.innerHTML = `<span class="tc-loading">Consultando tipo de cambio...</span>`;
+      } else {
+        preview.innerHTML = `
+          <span class="tc-loading">Sin TC disponible</span>
+          <span onclick="promptManualTc()" style="cursor:pointer;color:#A8CC8F;font-weight:600;">Ingresar manual →</span>
+        `;
+      }
+      return;
+    }
+    
+    const converted = amount * rate;
+    const ageHours = getTcAgeHours();
+    const stale = ageHours && ageHours > TC_CACHE_HOURS;
+    
+    preview.innerHTML = `
+      <span>≈ <strong>S/ ${converted.toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong></span>
+      <span class="tc-info ${stale ? 'tc-stale' : ''}" onclick="promptManualTc()" style="cursor:pointer;">TC ${rate.toFixed(3)} · ${formatTcAge()}${stale ? ' ⚠' : ''}</span>
+    `;
+  }
+  
+  function promptManualTc() {
+    const current = getExchangeRate();
+    const val = prompt(
+      `Ingresa el tipo de cambio actual (1 USD = X PEN)\n\nEjemplo: 3.72`,
+      current ? current.toFixed(3) : '3.72'
+    );
+    if (val === null) return;
+    const rate = parseFloat(val.replace(',', '.'));
+    if (isNaN(rate) || rate <= 0 || rate > 100) {
+      toast('Tipo de cambio inválido', true);
+      return;
+    }
+    state.tcCache = {
+      rate: rate,
+      fetchedAt: Date.now(),
+      source: 'manual'
+    };
+    saveState();
+    updateConversionPreview();
+    toast(`TC actualizado: ${rate.toFixed(3)}`);
+  }
+  
   // ============ INIT ============
   applyTheme();
   render();
   initGoogleSync();
+  // Precargar TC en background (silencioso, solo si es viejo)
+  const cacheAge = getTcAgeHours();
+  if (cacheAge === null || cacheAge > 1) {
+    fetchExchangeRate();
+  }
 </script>
 
 </body>
