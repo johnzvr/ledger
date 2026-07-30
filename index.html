@@ -181,6 +181,69 @@
     to { transform: rotate(360deg); }
   }
   
+  /* Sync actions modal */
+  .sync-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .sync-action-btn {
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--ink);
+    text-align: left;
+    transition: all 0.15s;
+    width: 100%;
+  }
+  .sync-action-btn:active { transform: scale(0.98); }
+  .sync-action-btn.upload:hover { border-color: var(--gain); background: rgba(107, 142, 78, 0.05); }
+  .sync-action-btn.download:hover { border-color: var(--sky-deep, #B0C5D6); background: rgba(176, 197, 214, 0.1); }
+  .sync-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .sync-action-btn.upload .sync-action-icon {
+    background: var(--mint);
+    color: var(--gain);
+  }
+  .sync-action-btn.download .sync-action-icon {
+    background: var(--sky);
+    color: #4A6F8A;
+  }
+  .sync-action-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .sync-action-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .sync-action-sub {
+    font-size: 11px;
+    color: var(--ink-dim);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  
   /* Hero card */
   .hero-card {
     background: var(--cream);
@@ -2652,8 +2715,8 @@
             localStorage.setItem('ledger-token', accessToken);
             localStorage.setItem('ledger-token-exp', String(Date.now() + expiresIn * 1000));
           } catch(e){}
-          updateSyncUI('syncing');
-          await syncFromDrive();
+          updateSyncUI('ok');
+          toast('Conectado a Drive · usa ⬆ Subir o ⬇ Bajar');
         }
       },
       error_callback: (err) => {
@@ -2662,14 +2725,13 @@
       }
     });
     
-    // Restaurar token si existe y no expiró
+    // Restaurar token si existe y no expiró (no auto-sync)
     try {
       const saved = localStorage.getItem('ledger-token');
       const exp = parseInt(localStorage.getItem('ledger-token-exp') || '0');
       if (saved && Date.now() < exp) {
         accessToken = saved;
-        updateSyncUI('syncing');
-        syncFromDrive();
+        updateSyncUI('ok');
       }
     } catch(e){}
   }
@@ -2710,49 +2772,9 @@
   }
   
   async function syncFromDrive() {
-    if (!accessToken || syncInProgress) return;
-    syncInProgress = true;
-    try {
-      updateSyncUI('syncing');
-      const file = await findDriveFile();
-      if (!file) {
-        // No hay archivo remoto, crear uno con el estado actual
-        driveFileId = null;
-        await uploadToDrive();
-        updateSyncUI('ok');
-        return;
-      }
-      driveFileId = file.id;
-      const remoteTime = new Date(file.modifiedTime).getTime();
-      const localTime = state.lastModified || 0;
-      
-      if (remoteTime > localTime + 1000) {
-        // Drive tiene versión más nueva, descargar
-        const res = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (res.status === 401) { handleTokenExpired(); return; }
-        if (!res.ok) throw new Error('download ' + res.status);
-        const remoteState = await res.json();
-        // Preservar prefs locales
-        const localDarkMode = state.darkMode;
-        state = { ...remoteState, darkMode: localDarkMode };
-        try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e){}
-        applyTheme();
-        render();
-        toast('↓ Cambios traídos de Drive');
-      } else if (localTime > remoteTime + 1000) {
-        // Local es más nuevo, subir
-        await uploadToDrive();
-      }
-      updateSyncUI('ok');
-    } catch (e) {
-      console.error('sync error:', e);
-      updateSyncUI('error');
-    } finally {
-      syncInProgress = false;
-    }
+    // Ya no se usa. La sincronización ahora es manual via subirAhora() y bajarAhora()
+    // Se deja por compatibilidad
+    return;
   }
   
   function scheduleSyncUpload() {
@@ -2845,10 +2867,14 @@
   
   function openDriveSync() {
     const conectado = !!accessToken;
+    const lastMod = state.lastModified 
+      ? new Date(state.lastModified).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'nunca';
+    
     openModal(`
       <h2>Google Drive <span class="accent">sync</span></h2>
       <p class="modal-sub">
-        Sincroniza tus datos entre celular y computadora usando tu propia cuenta de Google. Los datos se guardan como un archivo <code style="background:var(--line);padding:2px 6px;border-radius:4px;font-size:11px;">ledger-data.json</code> en tu Drive.
+        Sincroniza tus datos entre celular y computadora. Los datos se guardan como <code style="background:var(--line);padding:2px 6px;border-radius:4px;font-size:11px;">ledger-data.json</code> en tu Drive.
       </p>
       
       <div class="rollover-breakdown">
@@ -2858,26 +2884,43 @@
         </div>
         ${conectado ? `
           <div class="rollover-row">
-            <span class="rollover-week">Sync automático</span>
-            <span class="rollover-amount" style="font-size:11px;">Cada 2 segundos</span>
-          </div>
-          <div class="rollover-row">
-            <span class="rollover-week">Al abrir la app</span>
-            <span class="rollover-amount" style="font-size:11px;">Descarga cambios</span>
+            <span class="rollover-week">Última edición local</span>
+            <span class="rollover-amount" style="font-size:11px;">${lastMod}</span>
           </div>
         ` : ''}
       </div>
       
-      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        ${conectado 
-          ? '💡 Tus datos se suben automáticamente. Puedes usar la app en tu celular y compu y verás lo mismo en ambos.'
-          : '💡 Al conectar por primera vez, Google te pedirá permiso. Aprueba solo los permisos de "ver y administrar archivos que creaste con esta app".'}
-      </p>
+      ${conectado ? `
+        <div class="sync-actions">
+          <button class="sync-action-btn upload" onclick="subirAhora()">
+            <div class="sync-action-icon">⬆</div>
+            <div class="sync-action-content">
+              <div class="sync-action-title">Subir a Drive</div>
+              <div class="sync-action-sub">Envía tus datos locales · pisa lo que hay en Drive</div>
+            </div>
+          </button>
+          
+          <button class="sync-action-btn download" onclick="bajarAhora()">
+            <div class="sync-action-icon">⬇</div>
+            <div class="sync-action-content">
+              <div class="sync-action-title">Bajar de Drive</div>
+              <div class="sync-action-sub">Trae los datos de Drive · pisa lo local</div>
+            </div>
+          </button>
+        </div>
+        
+        <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+          💡 <strong>Cuando cambias de dispositivo</strong>, toca "Bajar de Drive" antes de empezar a editar para traer los cambios más recientes. Los gastos que registres se suben solos.
+        </p>
+      ` : `
+        <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+          💡 Al conectar por primera vez, Google te pedirá permiso. Aprueba solo los permisos de "ver y administrar archivos que creaste con esta app".
+        </p>
+      `}
       
       <div class="modal-buttons">
         ${conectado 
           ? `<button class="btn-secondary" onclick="closeModal()">Cerrar</button>
-             <button class="btn-secondary" onclick="forceSyncNow()">Sincronizar ahora</button>
              <button class="btn-danger" onclick="disconnectDrive()">Desconectar</button>`
           : `<button class="btn-secondary" onclick="closeModal()">Cancelar</button>
              <button class="btn-primary" onclick="connectDrive(); closeModal();">Conectar Google Drive</button>`
@@ -2886,10 +2929,59 @@
     `);
   }
   
-  async function forceSyncNow() {
+  async function subirAhora() {
+    if (!accessToken) { toast('No conectado a Drive', true); return; }
     closeModal();
-    driveFileId = null; // forzar re-búsqueda
-    await syncFromDrive();
+    updateSyncUI('syncing');
+    try {
+      driveFileId = null; // forzar re-búsqueda por si el archivo cambió
+      const file = await findDriveFile();
+      if (file) driveFileId = file.id;
+      await uploadToDrive();
+      updateSyncUI('ok');
+      toast('↑ Datos subidos a Drive');
+    } catch (e) {
+      console.error(e);
+      updateSyncUI('error');
+      toast('Error al subir', true);
+    }
+  }
+  
+  async function bajarAhora() {
+    if (!accessToken) { toast('No conectado a Drive', true); return; }
+    closeModal();
+    updateSyncUI('syncing');
+    try {
+      driveFileId = null;
+      const file = await findDriveFile();
+      if (!file) {
+        updateSyncUI('ok');
+        toast('No hay datos en Drive todavía', true);
+        return;
+      }
+      driveFileId = file.id;
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (res.status === 401) { handleTokenExpired(); return; }
+      if (!res.ok) throw new Error('download ' + res.status);
+      const remoteState = await res.json();
+      // Preservar preferencias locales (modo oscuro es por dispositivo)
+      const localDarkMode = state.darkMode;
+      state = { ...remoteState, darkMode: localDarkMode };
+      // Marcar como más reciente que lo remoto para que el auto-upload no dispare
+      state.lastModified = Date.now();
+      try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e){}
+      applyTheme();
+      render();
+      updateSyncUI('ok');
+      toast('↓ Datos traídos de Drive');
+    } catch (e) {
+      console.error(e);
+      updateSyncUI('error');
+      toast('Error al bajar', true);
+    }
   }
   
   // ============ MODO OSCURO ============
@@ -2912,42 +3004,6 @@
   applyTheme();
   render();
   initGoogleSync();
-  
-  // ============ AUTO-SYNC AL VOLVER DEL BACKGROUND ============
-  // iOS mantiene las PWA en memoria, no las recarga al abrirlas.
-  // Detectamos cuando la app vuelve a ser visible para sincronizar.
-  let lastSyncCheck = Date.now();
-  const SYNC_COOLDOWN_MS = 10000; // no sincronizar más de una vez cada 10s
-  
-  function checkAndSync(reason) {
-    if (!accessToken) return;
-    const now = Date.now();
-    if (now - lastSyncCheck < SYNC_COOLDOWN_MS) return;
-    lastSyncCheck = now;
-    syncFromDrive();
-  }
-  
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      checkAndSync('visibility');
-    }
-  });
-  
-  window.addEventListener('focus', () => {
-    checkAndSync('focus');
-  });
-  
-  // También sincronizar cuando vuelva la conexión
-  window.addEventListener('online', () => {
-    checkAndSync('online');
-  });
-  
-  // pageshow: iOS lo dispara cuando la PWA se restaura del background
-  window.addEventListener('pageshow', (e) => {
-    if (e.persisted) {
-      checkAndSync('pageshow-persisted');
-    }
-  });
 </script>
 
 </body>
