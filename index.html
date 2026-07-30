@@ -896,7 +896,16 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin: 28px 6px 12px;
+    margin: 16px 6px 12px;
+  }
+  .section-head.stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .section-head.stack .section-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
   .section-head h2 {
     font-family: 'Bricolage Grotesque', sans-serif;
@@ -1652,13 +1661,13 @@
   </div>
   
   <!-- Movimientos -->
-  <div class="section-head">
-    <h2>Movimientos <span class="aside" id="movCount"></span></h2>
+  <div class="section-head stack">
     <div class="section-actions">
       <button class="action-btn primary" onclick="undoLast()" id="btnUndo">↶ Deshacer</button>
       <button class="action-btn" onclick="showAllMovements()">Ver todos</button>
       <button class="action-btn" onclick="showHelp()">Ayuda</button>
     </div>
+    <h2>Movimientos <span class="aside" id="movCount"></span></h2>
   </div>
   <div id="logContainer"></div>
 </div>
