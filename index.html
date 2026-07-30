@@ -176,6 +176,68 @@
     background: var(--coral);
     color: var(--danger);
   }
+  
+  /* Quick sync (⬆⬇) - siempre visibles, indican estado */
+  .quick-sync {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .quick-sync-btn.disabled {
+    opacity: 0.45;
+    background: var(--line);
+    border-color: var(--line-hi);
+    color: var(--ink-mute);
+  }
+  .quick-sync-btn.disabled.download,
+  .quick-sync-btn.disabled.upload {
+    background: var(--line);
+    border-color: var(--line-hi);
+    color: var(--ink-mute);
+  }
+  .quick-sync-btn {
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    transition: all 0.15s;
+  }
+  .quick-sync-btn:active { transform: scale(0.97); }
+  .quick-sync-btn.download {
+    background: var(--sky);
+    border-color: var(--sky);
+    color: #4A6F8A;
+  }
+  .quick-sync-btn.download:active {
+    background: var(--sky-deep, #B0C5D6);
+  }
+  .quick-sync-btn.upload {
+    background: var(--mint);
+    border-color: var(--mint);
+    color: var(--gain);
+  }
+  .quick-sync-btn.upload:active {
+    background: var(--mint-deep, #B8D4A7);
+  }
+  .quick-sync-icon {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .quick-sync-label {
+    font-size: 13px;
+  }
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
@@ -1383,6 +1445,18 @@
       <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" aria-label="Cambiar tema">◐</button>
       <div class="date-badge" id="currentDate"></div>
     </div>
+  </div>
+  
+  <!-- Quick sync buttons -->
+  <div class="quick-sync" id="quickSync">
+    <button class="quick-sync-btn download disabled" id="btnBajar" onclick="bajarAhora()" aria-label="Bajar de Drive">
+      <span class="quick-sync-icon">⬇</span>
+      <span class="quick-sync-label">Bajar</span>
+    </button>
+    <button class="quick-sync-btn upload disabled" id="btnSubir" onclick="subirAhora()" aria-label="Subir a Drive">
+      <span class="quick-sync-icon">⬆</span>
+      <span class="quick-sync-label">Subir</span>
+    </button>
   </div>
   
   <!-- Hero -->
@@ -2853,16 +2927,25 @@
   
   function updateSyncUI(estado) {
     const badge = document.getElementById('syncBadge');
-    if (!badge) return;
-    const configs = {
-      off:      { icon: '○', text: 'Sin sync',       cls: 'off' },
-      syncing:  { icon: '↻', text: 'Sincronizando',  cls: 'syncing' },
-      ok:       { icon: '●', text: 'Sincronizado',   cls: 'ok' },
-      error:    { icon: '!', text: 'Error de sync',  cls: 'error' }
-    };
-    const c = configs[estado] || configs.off;
-    badge.className = 'sync-badge ' + c.cls;
-    badge.innerHTML = `<span class="sync-dot">${c.icon}</span><span>${c.text}</span>`;
+    if (badge) {
+      const configs = {
+        off:      { icon: '○', text: 'Sin sync',       cls: 'off' },
+        syncing:  { icon: '↻', text: 'Sincronizando',  cls: 'syncing' },
+        ok:       { icon: '●', text: 'Sincronizado',   cls: 'ok' },
+        error:    { icon: '!', text: 'Error de sync',  cls: 'error' }
+      };
+      const c = configs[estado] || configs.off;
+      badge.className = 'sync-badge ' + c.cls;
+      badge.innerHTML = `<span class="sync-dot">${c.icon}</span><span>${c.text}</span>`;
+    }
+    // Habilitar/deshabilitar botones quick sync
+    const btnBajar = document.getElementById('btnBajar');
+    const btnSubir = document.getElementById('btnSubir');
+    if (btnBajar && btnSubir) {
+      const disabled = !accessToken;
+      btnBajar.classList.toggle('disabled', disabled);
+      btnSubir.classList.toggle('disabled', disabled);
+    }
   }
   
   function openDriveSync() {
@@ -2930,11 +3013,15 @@
   }
   
   async function subirAhora() {
-    if (!accessToken) { toast('No conectado a Drive', true); return; }
+    if (!accessToken) {
+      toast('Conecta Drive primero', true);
+      openDriveSync();
+      return;
+    }
     closeModal();
     updateSyncUI('syncing');
     try {
-      driveFileId = null; // forzar re-búsqueda por si el archivo cambió
+      driveFileId = null;
       const file = await findDriveFile();
       if (file) driveFileId = file.id;
       await uploadToDrive();
@@ -2948,7 +3035,11 @@
   }
   
   async function bajarAhora() {
-    if (!accessToken) { toast('No conectado a Drive', true); return; }
+    if (!accessToken) {
+      toast('Conecta Drive primero', true);
+      openDriveSync();
+      return;
+    }
     closeModal();
     updateSyncUI('syncing');
     try {
@@ -2967,10 +3058,8 @@
       if (res.status === 401) { handleTokenExpired(); return; }
       if (!res.ok) throw new Error('download ' + res.status);
       const remoteState = await res.json();
-      // Preservar preferencias locales (modo oscuro es por dispositivo)
       const localDarkMode = state.darkMode;
       state = { ...remoteState, darkMode: localDarkMode };
-      // Marcar como más reciente que lo remoto para que el auto-upload no dispare
       state.lastModified = Date.now();
       try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e){}
       applyTheme();
