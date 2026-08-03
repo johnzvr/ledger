@@ -1604,6 +1604,98 @@
     line-height: 1.5;
   }
   
+  /* Switch toggle */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: var(--line-hi);
+    border-radius: 24px;
+    transition: 0.2s;
+  }
+  .switch-slider::before {
+    content: '';
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: var(--bg);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .switch-slider {
+    background: var(--ink);
+  }
+  .switch input:checked + .switch-slider::before {
+    transform: translateX(18px);
+    background: var(--cream);
+  }
+  
+  /* Manual ranges box (dentro de Ajustes) */
+  .manual-ranges-box {
+    background: var(--lavender);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 14px 0;
+  }
+  .manual-ranges-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .manual-ranges-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    margin-bottom: 3px;
+  }
+  .manual-ranges-sub {
+    font-size: 11px;
+    color: var(--ink-dim);
+    line-height: 1.4;
+  }
+  
+  /* Rangos list (modal dedicado) */
+  .rangos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .rango-block {
+    background: var(--bg);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+  }
+  .rango-block-label {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    margin-bottom: 10px;
+  }
+  .rango-block-dates {
+    display: flex;
+    gap: 10px;
+  }
+  
   /* Rollover breakdown */
   .rollover-breakdown {
     background: var(--bg);
@@ -1920,13 +2012,14 @@
     gastoTotal: 6374.94,
     presupuestoInicial: 1759.06,
     fechaInicioCiclo: null, // se setea la primera vez
+    modoManualSemanas: false, // true = el usuario define los rangos manualmente
     cicloAnterior: null,
     darkMode: false,
     tcCache: { rate: null, fetchedAt: null }, // último USD→PEN conocido
     semanas: [
-      { label: 'Semana actual', presupuesto: 328.59, isCurrent: true },
-      { label: 'Semana +1', presupuesto: 715.24, isCurrent: false },
-      { label: 'Semana +2', presupuesto: 715.24, isCurrent: false }
+      { label: 'Semana actual', presupuesto: 328.59, isCurrent: true, fechaInicioManual: null, fechaFinManual: null },
+      { label: 'Semana +1', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null },
+      { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
     tarjeta: { diaCierre: 24, diaPago: 20 },
     log: []
@@ -1988,6 +2081,25 @@
   
   // Retorna array con {inicio, fin, dias} para cada semana calendario del ciclo
   function calcularRangoSemanas() {
+    // ===== MODO MANUAL: usar las fechas que el usuario definió =====
+    if (state.modoManualSemanas) {
+      const rangos = [];
+      for (let i = 0; i < state.semanas.length; i++) {
+        const sem = state.semanas[i];
+        if (sem.fechaInicioManual && sem.fechaFinManual) {
+          const inicio = new Date(sem.fechaInicioManual + 'T00:00:00');
+          const fin = new Date(sem.fechaFinManual + 'T23:59:59');
+          const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+          rangos.push({ inicio, fin, dias });
+        } else {
+          // Bloque sin fechas definidas todavía
+          rangos.push({ inicio: null, fin: null, dias: 0 });
+        }
+      }
+      return rangos;
+    }
+    
+    // ===== MODO AUTOMÁTICO: calendario real lunes-domingo =====
     if (!state.fechaInicioCiclo) return [];
     const inicio = new Date(state.fechaInicioCiclo);
     inicio.setHours(0,0,0,0);
@@ -2030,26 +2142,32 @@
     hoy.setHours(12,0,0,0); // mediodía para evitar edge cases
     
     for (let i = 0; i < rangos.length; i++) {
+      if (!rangos[i].inicio) continue; // bloque manual sin fechas aún
       if (hoy >= rangos[i].inicio && hoy <= rangos[i].fin) {
         return i;
       }
     }
-    // Ya pasó el ciclo entero
-    if (hoy > rangos[rangos.length-1].fin) return rangos.length;
+    // Si no cayó en ningún rango, buscar el último rango válido con fecha
+    const validos = rangos.map((r, i) => ({ r, i })).filter(x => x.r.inicio);
+    if (validos.length === 0) return 0;
+    const ultimo = validos[validos.length - 1];
+    if (hoy > ultimo.r.fin) return ultimo.i + 1;
+    const primero = validos[0];
+    if (hoy < primero.r.inicio) return primero.i;
     return 0;
   }
   
   function diasEnCiclo() {
-    if (!state.fechaInicioCiclo) return 0;
-    const inicio = new Date(state.fechaInicioCiclo);
-    inicio.setHours(0,0,0,0);
+    const rangos = calcularRangoSemanas();
+    const primero = rangos.find(r => r.inicio);
+    if (!primero) return 0;
     const hoy = new Date();
     hoy.setHours(0,0,0,0);
-    return Math.floor((hoy - inicio) / (1000 * 60 * 60 * 24)) + 1;
+    return Math.floor((hoy - primero.inicio) / (1000 * 60 * 60 * 24)) + 1;
   }
   
   function diasTotalesCiclo() {
-    const rangos = calcularRangoSemanas();
+    const rangos = calcularRangoSemanas().filter(r => r.inicio);
     if (rangos.length === 0) return 0;
     const inicio = rangos[0].inicio;
     const fin = rangos[rangos.length-1].fin;
@@ -2093,6 +2211,7 @@
   }
   
   function formatRangoCorto(r) {
+    if (!r || !r.inicio) return 'sin fecha';
     const opts = { day: 'numeric', month: 'short' };
     const i = r.inicio.toLocaleDateString('es-PE', opts);
     const f = r.fin.toLocaleDateString('es-PE', opts);
@@ -2172,7 +2291,7 @@
       const label = sem.isCurrent ? 'Actual' : 'S+' + i;
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
-      const diasTxt = rango && rango.dias < 7 ? ` · ${rango.dias}d` : '';
+      const diasTxt = rango && rango.inicio && rango.dias < 7 ? ` · ${rango.dias}d` : '';
       div.innerHTML = `
         <span class="wk-label">${label}</span>
         <div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>
@@ -2187,7 +2306,13 @@
     const pctCiclo = totalDias > 0 ? Math.min(100, (diaActual / totalDias) * 100) : 0;
     const cycleInfoEl = document.getElementById('cycleInfo');
     
-    if (cicloTerminado()) {
+    if (state.modoManualSemanas && totalDias === 0) {
+      cycleInfoEl.innerHTML = `
+        <div class="cycle-ended-warn" style="width:100%;background:var(--lavender);">
+          📅 Define las fechas de tus bloques en Ajustes → "Rangos de semanas".
+        </div>
+      `;
+    } else if (cicloTerminado()) {
       cycleInfoEl.innerHTML = `
         <div class="cycle-ended-warn" style="width:100%;">
           ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Nuevo ciclo" para empezar.
@@ -2904,7 +3029,7 @@
       </div>
       <div class="modal-field">
         <label>Fecha inicio del ciclo</label>
-        <input type="date" id="setFechaInicio" value="${state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).toISOString().slice(0,10) : ''}">
+        <input type="date" id="setFechaInicio" value="${state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).toISOString().slice(0,10) : ''}" ${state.modoManualSemanas ? 'disabled style="opacity:0.4;"' : ''}>
       </div>
       <div class="modal-field">
         <label>Número de semanas</label>
@@ -2914,12 +3039,43 @@
         <label>Presupuesto por semana <span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">(editable)</span></label>
         <input type="text" id="setPresSem" value="${state.semanas.map(s => s.presupuesto.toFixed(2)).join(', ')}">
       </div>
+      
+      <div class="manual-ranges-box">
+        <div class="manual-ranges-row">
+          <div>
+            <div class="manual-ranges-title">Rangos manuales</div>
+            <div class="manual-ranges-sub">Define tú mismo qué días componen cada bloque, en vez del calendario automático.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="setModoManual" ${state.modoManualSemanas ? 'checked' : ''} onchange="onToggleModoManual()">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <button class="tc-btn" id="btnEditarRangos" style="margin-top:10px;width:100%;padding:10px;${state.modoManualSemanas ? '' : 'opacity:0.4;pointer-events:none;'}" onclick="saveSettings(); openRangosSemanas();">
+          Editar rangos de semanas →
+        </button>
+      </div>
+      
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-danger" onclick="resetAll()">Reset</button>
         <button class="btn-primary" onclick="saveSettings()">Guardar</button>
       </div>
     `);
+  }
+  
+  function onToggleModoManual() {
+    const checked = document.getElementById('setModoManual').checked;
+    const btn = document.getElementById('btnEditarRangos');
+    const fechaInput = document.getElementById('setFechaInicio');
+    if (btn) {
+      btn.style.opacity = checked ? '1' : '0.4';
+      btn.style.pointerEvents = checked ? 'auto' : 'none';
+    }
+    if (fechaInput) {
+      fechaInput.disabled = checked;
+      fechaInput.style.opacity = checked ? '0.4' : '1';
+    }
   }
   
   function autoRecalcPresupuesto() {
@@ -2944,6 +3100,7 @@
     const numSem = parseInt(document.getElementById('setNumSem').value);
     const presStr = document.getElementById('setPresSem').value;
     const fechaInicio = document.getElementById('setFechaInicio').value;
+    const modoManualEl = document.getElementById('setModoManual');
     
     if (!isNaN(disp)) { state.totalDisponible = disp; state.presupuestoInicial = disp; }
     if (!isNaN(meta)) state.metaResidual = Math.max(0, meta);
@@ -2951,7 +3108,8 @@
     if (!isNaN(deuda)) state.deudaActual = deuda;
     if (!isNaN(gastoS)) state.gastoNoAdeudado = gastoS;
     if (!isNaN(gastoT)) state.gastoTotal = gastoT;
-    if (fechaInicio) {
+    if (modoManualEl) state.modoManualSemanas = modoManualEl.checked;
+    if (fechaInicio && !state.modoManualSemanas) {
       const nuevaFecha = new Date(fechaInicio + 'T00:00:00');
       if (!isNaN(nuevaFecha.getTime())) {
         state.fechaInicioCiclo = nuevaFecha.toISOString();
@@ -2963,10 +3121,14 @@
       const presArr = presStr.split(',').map(v => parseFloat(v.trim()));
       const newSem = [];
       for (let i = 0; i < numSem; i++) {
+        // Preservar fechas manuales existentes si esa posición ya tenía semana
+        const existente = state.semanas[i];
         newSem.push({
           label: i === 0 ? 'Semana actual' : 'Semana +' + i,
           presupuesto: !isNaN(presArr[i]) ? presArr[i] : 0,
-          isCurrent: i === 0
+          isCurrent: i === 0,
+          fechaInicioManual: existente ? (existente.fechaInicioManual || null) : null,
+          fechaFinManual: existente ? (existente.fechaFinManual || null) : null
         });
       }
       state.semanas = newSem;
@@ -2984,6 +3146,99 @@
       toast('Reseteado');
       render();
     }
+  }
+  
+  // ============ RANGOS MANUALES DE SEMANAS ============
+  function openRangosSemanas() {
+    if (!state.modoManualSemanas) {
+      toast('Activa "Rangos manuales" primero', true);
+      openSettings();
+      return;
+    }
+    
+    const camposHtml = state.semanas.map((sem, i) => {
+      const label = i === 0 ? 'Semana actual (Bloque 1)' : `Bloque ${i + 1}`;
+      return `
+        <div class="rango-block">
+          <div class="rango-block-label">${label}</div>
+          <div class="rango-block-dates">
+            <div class="modal-field" style="margin-bottom:0;flex:1;">
+              <label>Desde</label>
+              <input type="date" id="rangoInicio${i}" value="${sem.fechaInicioManual || ''}" onchange="autoRellenarSiguiente(${i})">
+            </div>
+            <div class="modal-field" style="margin-bottom:0;flex:1;">
+              <label>Hasta</label>
+              <input type="date" id="rangoFin${i}" value="${sem.fechaFinManual || ''}">
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    openModal(`
+      <h2>Rangos de <span class="accent">semanas</span></h2>
+      <p class="modal-sub">
+        Define exactamente qué días componen cada bloque de gasto. Útil si tu ciclo no sigue semanas de calendario (lunes a domingo).
+      </p>
+      
+      <div class="rangos-list">
+        ${camposHtml}
+      </div>
+      
+      <p class="modal-sub" style="font-size:11px;margin-top:12px;">
+        💡 Al llenar el "Hasta" de un bloque, el "Desde" del siguiente se rellena solo con el día después. Puedes cambiarlo si quieres.
+      </p>
+      
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="openSettings()">Volver</button>
+        <button class="btn-primary" onclick="saveRangosSemanas()">Guardar rangos</button>
+      </div>
+    `);
+  }
+  
+  function autoRellenarSiguiente(idx) {
+    const finEl = document.getElementById('rangoFin' + idx);
+    const siguienteInicioEl = document.getElementById('rangoInicio' + (idx + 1));
+    if (finEl && finEl.value && siguienteInicioEl && !siguienteInicioEl.value) {
+      const fin = new Date(finEl.value + 'T00:00:00');
+      fin.setDate(fin.getDate() + 1);
+      siguienteInicioEl.value = fin.toISOString().slice(0, 10);
+    }
+  }
+  
+  function saveRangosSemanas() {
+    let huboError = false;
+    const nuevasFechas = [];
+    
+    for (let i = 0; i < state.semanas.length; i++) {
+      const inicioEl = document.getElementById('rangoInicio' + i);
+      const finEl = document.getElementById('rangoFin' + i);
+      const inicio = inicioEl ? inicioEl.value : '';
+      const fin = finEl ? finEl.value : '';
+      
+      if (inicio && fin) {
+        const dIni = new Date(inicio + 'T00:00:00');
+        const dFin = new Date(fin + 'T00:00:00');
+        if (dFin < dIni) {
+          toast(`Bloque ${i + 1}: "Hasta" no puede ser antes de "Desde"`, true);
+          huboError = true;
+          break;
+        }
+      }
+      nuevasFechas.push({ inicio: inicio || null, fin: fin || null });
+    }
+    
+    if (huboError) return;
+    
+    nuevasFechas.forEach((f, i) => {
+      state.semanas[i].fechaInicioManual = f.inicio;
+      state.semanas[i].fechaFinManual = f.fin;
+    });
+    
+    state.ultimaSemanaVista = null; // evitar toast falso de "avanzó de semana"
+    closeModal();
+    toast('Rangos guardados');
+    render();
   }
   
   function openCCConfig() {
