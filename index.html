@@ -1578,6 +1578,21 @@
     font-weight: 500;
   }
   .log-undo:active { color: var(--danger); }
+  .log-edit-btn {
+    min-height: 30px;
+    border: none;
+    border-radius: 9px;
+    padding: 4px 9px;
+    background: var(--line);
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .log-edit-btn:active { background: var(--line-hi); color: var(--ink); }
   
   .empty {
     text-align: center;
@@ -1847,6 +1862,52 @@
     font-weight: 500;
   }
   .modal-field input:focus { border-color: var(--ink); }
+  .edit-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .edit-type-option {
+    position: relative;
+    cursor: pointer;
+  }
+  .edit-type-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .edit-type-option span {
+    min-height: 46px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-dim);
+    font-size: 12px;
+    font-weight: 650;
+  }
+  .edit-type-option input:checked + span {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+  }
+  .edit-sem-row {
+    min-height: 46px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 12px;
+    padding: 10px 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 550;
+    cursor: pointer;
+  }
+  .edit-sem-row input { width: 18px; height: 18px; accent-color: var(--ink); }
   
   .modal-buttons {
     display: flex;
@@ -3088,6 +3149,15 @@
     try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v2') === '1'; }
     catch(e) { return true; }
   })();
+
+  function getEditableMovementIndices() {
+    const indices = [];
+    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
+      const mov = state.log[i];
+      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot) indices.unshift(i);
+    }
+    return indices;
+  }
   
   function renderLog() {
     const logEl = document.getElementById('logContainer');
@@ -3112,6 +3182,7 @@
     }
     
     logEl.innerHTML = '';
+    const editableIndices = new Set(getEditableMovementIndices());
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
@@ -3138,6 +3209,7 @@
         </div>
         <div class="log-right">
           <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+          ${editableIndices.has(idx) ? `<button class="log-edit-btn" onclick="openEditMovement(${idx})">Editar</button>` : ''}
           ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
         </div>
         </div>
@@ -3194,6 +3266,7 @@
 
       item.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.target.closest('button')) return;
         closeOtherRows();
         item.style.transform = 'translateX(0)';
         row.classList.remove('open', 'undo-armed');
@@ -3291,6 +3364,219 @@
       && JSON.stringify(state.semanas) === JSON.stringify(snapshot.semanas);
   }
 
+  function cloneMovementSnapshot(snapshot) {
+    if (!snapshot || !Array.isArray(snapshot.semanas)) return null;
+    return {
+      totalDisponible: Number(snapshot.totalDisponible) || 0,
+      metaResidual: Number(snapshot.metaResidual) || 0,
+      deudaActual: Number(snapshot.deudaActual) || 0,
+      gastoNoAdeudado: Number(snapshot.gastoNoAdeudado) || 0,
+      gastoTotal: Number(snapshot.gastoTotal) || 0,
+      semanas: JSON.parse(JSON.stringify(snapshot.semanas))
+    };
+  }
+
+  function applyMovementToSnapshot(snapshot, mov) {
+    const next = cloneMovementSnapshot(snapshot);
+    const monto = Number(mov?.monto);
+    if (!next || !Number.isFinite(monto) || monto <= 0 || !['S', 'DS'].includes(mov?.tipo) || mov?.etiqueta === 'recalcula') {
+      throw new Error('Movimiento no editable');
+    }
+
+    next.totalDisponible -= monto;
+    next.gastoTotal += monto;
+    if (mov.tipo === 'S') next.gastoNoAdeudado += monto;
+    if (mov.tipo === 'DS') next.deudaActual += monto;
+
+    if (mov.etiqueta === 'sem') {
+      if (next.semanas.length === 0) throw new Error('Sin semanas');
+      const porSemana = monto / next.semanas.length;
+      next.semanas.forEach(sem => { sem.presupuesto = (Number(sem.presupuesto) || 0) - porSemana; });
+      return next;
+    }
+
+    let restante = monto;
+    const actualIdx = next.semanas.findIndex(sem => sem.isCurrent);
+    if (actualIdx >= 0) {
+      for (let i = actualIdx; i < next.semanas.length && restante > 0; i++) {
+        const disponible = Number(next.semanas[i].presupuesto) || 0;
+        if (disponible >= restante) {
+          next.semanas[i].presupuesto = disponible - restante;
+          restante = 0;
+        } else {
+          restante -= disponible;
+          next.semanas[i].presupuesto = 0;
+        }
+      }
+    }
+    return next;
+  }
+
+  function applyRecalculationToSnapshot(snapshot) {
+    const next = cloneMovementSnapshot(snapshot);
+    if (!next || next.semanas.length === 0) throw new Error('Sin semanas');
+    let currentIdx = next.semanas.findIndex(sem => sem.isCurrent);
+    if (currentIdx < 0) currentIdx = 0;
+    const restantes = Math.max(1, next.semanas.length - currentIdx);
+    const gastable = Math.max(0, next.totalDisponible - (next.metaResidual || 0));
+    const nuevoPresupuesto = gastable / restantes;
+    for (let i = currentIdx; i < next.semanas.length; i++) {
+      next.semanas[i].presupuesto = nuevoPresupuesto;
+    }
+    return { snapshot: next, monto: nuevoPresupuesto, restantes };
+  }
+
+  function applySnapshotTransition(current, before, after) {
+    const result = cloneMovementSnapshot(current);
+    const from = cloneMovementSnapshot(before);
+    const to = cloneMovementSnapshot(after);
+    if (!result || !from || !to || result.semanas.length !== from.semanas.length || from.semanas.length !== to.semanas.length) {
+      throw new Error('Historial incompatible');
+    }
+
+    ['totalDisponible', 'metaResidual', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
+      result[key] += to[key] - from[key];
+    });
+    result.semanas = result.semanas.map((sem, i) => ({
+      ...sem,
+      label: to.semanas[i].label,
+      isCurrent: !!to.semanas[i].isCurrent,
+      fechaInicioManual: to.semanas[i].fechaInicioManual || null,
+      fechaFinManual: to.semanas[i].fechaFinManual || null,
+      presupuesto: (Number(sem.presupuesto) || 0)
+        + (Number(to.semanas[i].presupuesto) || 0)
+        - (Number(from.semanas[i].presupuesto) || 0)
+    }));
+    return result;
+  }
+
+  function openEditMovement(idx) {
+    if (!getEditableMovementIndices().includes(idx)) {
+      toast('Solo puedes editar las últimas 10 entradas', true);
+      return;
+    }
+    const mov = state.log[idx];
+    if (!mov?.snapshot || mov.etiqueta === 'recalcula') {
+      toast('Este movimiento no se puede editar', true);
+      return;
+    }
+    openModal(`
+      <h2>Editar <span class="accent">movimiento</span></h2>
+      <p class="modal-sub">Se conservará la fecha ${escapeHtml(mov.fecha || '')}. Ledger recalculará los movimientos posteriores.</p>
+      <div class="modal-field">
+        <label>Monto en soles</label>
+        <input type="number" id="editMovementAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(mov.monto).toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Tipo</label>
+        <div class="edit-type-grid">
+          <label class="edit-type-option">
+            <input type="radio" name="editMovementType" value="S" ${mov.tipo === 'S' ? 'checked' : ''}>
+            <span>S · Contado</span>
+          </label>
+          <label class="edit-type-option">
+            <input type="radio" name="editMovementType" value="DS" ${mov.tipo === 'DS' ? 'checked' : ''}>
+            <span>DS · Tarjeta</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Detalle</label>
+        <input type="text" id="editMovementDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
+      </div>
+      <label class="edit-sem-row">
+        <span>Repartir entre todas las semanas</span>
+        <input type="checkbox" id="editMovementSem" ${mov.etiqueta === 'sem' ? 'checked' : ''}>
+      </label>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMovementEdit(${idx})">Guardar cambios</button>
+      </div>
+    `);
+  }
+
+  function saveMovementEdit(idx) {
+    if (!getEditableMovementIndices().includes(idx)) {
+      closeModal();
+      toast('Este movimiento ya no está entre los últimos 10', true);
+      return;
+    }
+    const monto = parseFloat(document.getElementById('editMovementAmount')?.value);
+    const tipo = document.querySelector('input[name="editMovementType"]:checked')?.value;
+    const detalle = document.getElementById('editMovementDetail')?.value.trim() || '';
+    const etiqueta = document.getElementById('editMovementSem')?.checked ? 'sem' : null;
+    if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS'].includes(tipo)) {
+      toast('Revisa el monto y el tipo', true);
+      return;
+    }
+
+    try {
+      const originalLog = JSON.parse(JSON.stringify(state.log));
+      const originalCurrent = captureMovementState();
+      const originalMov = originalLog[idx];
+      const targetBefore = cloneMovementSnapshot(originalMov.snapshot);
+      const actualTargetAfter = idx + 1 < originalLog.length
+        ? cloneMovementSnapshot(originalLog[idx + 1].snapshot)
+        : cloneMovementSnapshot(originalCurrent);
+      if (!targetBefore || !actualTargetAfter) throw new Error('Sin historial');
+
+      const editedMov = {
+        ...originalMov,
+        monto,
+        tipo,
+        etiqueta,
+        detalle,
+        snapshot: cloneMovementSnapshot(targetBefore)
+      };
+
+      const expectedOriginalAfter = applyMovementToSnapshot(targetBefore, originalMov);
+      let rebuiltState = applyMovementToSnapshot(targetBefore, editedMov);
+      // Conserva cualquier ajuste que ocurrió entre este movimiento y el siguiente.
+      rebuiltState = applySnapshotTransition(rebuiltState, expectedOriginalAfter, actualTargetAfter);
+
+      const rebuiltLog = originalLog.slice(0, idx);
+      rebuiltLog.push(editedMov);
+      for (let i = idx + 1; i < originalLog.length; i++) {
+        const originalBefore = cloneMovementSnapshot(originalLog[i].snapshot);
+        const originalAfter = i + 1 < originalLog.length
+          ? cloneMovementSnapshot(originalLog[i + 1].snapshot)
+          : cloneMovementSnapshot(originalCurrent);
+        if (!originalBefore || !originalAfter) throw new Error('Historial incompleto');
+        const replayedMov = {
+          ...originalLog[i],
+          snapshot: cloneMovementSnapshot(rebuiltState)
+        };
+        let expectedOriginalAfter;
+        let expectedRebuiltAfter;
+        if (originalLog[i].etiqueta === 'recalcula') {
+          const originalRecalc = applyRecalculationToSnapshot(originalBefore);
+          const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState);
+          expectedOriginalAfter = originalRecalc.snapshot;
+          expectedRebuiltAfter = rebuiltRecalc.snapshot;
+          replayedMov.monto = rebuiltRecalc.monto;
+          replayedMov.detalle = rebuiltState.metaResidual > 0
+            ? `Redistribución (${rebuiltRecalc.restantes} sem · meta S/ ${fmt(rebuiltState.metaResidual)} protegida)`
+            : `Redistribución en ${rebuiltRecalc.restantes} sem restantes`;
+        } else {
+          expectedOriginalAfter = applyMovementToSnapshot(originalBefore, originalLog[i]);
+          expectedRebuiltAfter = applyMovementToSnapshot(rebuiltState, originalLog[i]);
+        }
+        rebuiltLog.push(replayedMov);
+        // Reaplica el movimiento y conserva cualquier ajuste manual ocurrido después.
+        rebuiltState = applySnapshotTransition(expectedRebuiltAfter, expectedOriginalAfter, originalAfter);
+      }
+
+      restoreMovementState(rebuiltState);
+      state.log = rebuiltLog;
+      state.redoMovement = null;
+      closeModal();
+      toast('Movimiento actualizado');
+      render();
+    } catch(e) {
+      toast('No se pudo recalcular este movimiento', true);
+    }
+  }
+
   function undoLast() {
     if (state.log.length === 0) {
       toast('No hay movimientos que deshacer', true);
@@ -3357,6 +3643,7 @@
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const count = soloGastos.length;
     
+    const editableIndices = new Set(getEditableMovementIndices());
     let listaHTML = '';
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
@@ -3381,6 +3668,7 @@
             </div>
             <div class="log-right">
               <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+              ${editableIndices.has(originalIdx) ? `<button class="log-edit-btn" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
               ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
             </div>
           </div>
@@ -4153,6 +4441,13 @@
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
         <div class="help-item-desc">Mantén presionado el movimiento más reciente hasta que se marque en rojo y, sin soltar, deslízalo hacia la izquierda. Un swipe normal cambia de ventana.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip MOD">✎</span>
+          <span class="help-item-title">Editar entradas recientes</span>
+        </div>
+        <div class="help-item-desc">Toca “Editar” en cualquiera de las últimas 10 entradas para cambiar monto, tipo, detalle o reparto semanal.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
