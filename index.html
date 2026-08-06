@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#FAF8F3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -202,6 +202,7 @@
     color: var(--ink);
     font-family: 'Bricolage Grotesque', system-ui, sans-serif;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     font-optical-sizing: auto;
@@ -213,8 +214,82 @@
   .app {
     max-width: 460px;
     margin: 0 auto;
-    padding: 20px 16px 220px;
+    padding: 20px 16px calc(220px + env(safe-area-inset-bottom));
     position: relative;
+  }
+
+  .ui-icon {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+  }
+
+  /* Ventanas horizontales */
+  .view-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    background: var(--line);
+    position: sticky;
+    top: 8px;
+    z-index: 80;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  }
+  .view-tab {
+    min-height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.15s;
+  }
+  .view-tab:active { transform: scale(0.97); }
+  .view-tab.active {
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  body.dark .view-tab.active { background: #222226; }
+  .views-shell {
+    overflow: hidden;
+    transition: height 0.28s ease;
+    touch-action: pan-y;
+  }
+  .views-track {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    transition: transform 0.32s cubic-bezier(.22,.8,.3,1);
+    will-change: transform;
+  }
+  .views-track.dragging { transition: none; }
+  .app-view {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .view-section-head { margin-top: 6px; }
+  .view-empty {
+    text-align: center;
+    padding: 34px 20px;
+    border: 1.5px dashed var(--line-hi);
+    border-radius: 18px;
+    color: var(--ink-mute);
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-size: 16px;
   }
   
   /* Header */
@@ -249,8 +324,8 @@
     background: transparent;
     border: 1.5px solid var(--line-hi);
     color: var(--ink);
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     cursor: pointer;
     font-size: 14px;
@@ -328,6 +403,7 @@
     transition: all 0.15s;
     -webkit-user-select: none;
     user-select: none;
+    min-height: 44px;
   }
   .sync-mini:active { transform: scale(0.97); }
   .sync-mini.download:not(.disabled) {
@@ -347,8 +423,8 @@
   
   /* Sync square (Subir compacto) */
   .sync-square {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
@@ -378,8 +454,8 @@
   
   /* Sync connect square button */
   .sync-connect {
-    width: 38px;
-    height: 38px;
+    width: 44px;
+    height: 44px;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
@@ -747,6 +823,67 @@
     padding: 4px 18px;
     margin-bottom: 12px;
   }
+  .comparison-content.collapsed { display: none; }
+  .cycle-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cycle-history-card {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 16px;
+    padding: 14px 15px;
+    color: var(--ink);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .cycle-history-card:active { transform: scale(0.985); }
+  .cycle-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .cycle-history-date {
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: -0.02em;
+  }
+  .cycle-history-arrow { color: var(--ink-mute); }
+  .cycle-history-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .cycle-history-stat {
+    background: var(--line);
+    border-radius: 10px;
+    padding: 8px;
+  }
+  .cycle-history-stat span {
+    display: block;
+    color: var(--ink-mute);
+    font-size: 8px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .cycle-history-stat strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink);
+  }
+  .cycle-summary-only {
+    margin-top: 9px;
+    font-size: 10px;
+    color: var(--ink-mute);
+    font-style: italic;
+  }
   .comparison-row {
     display: flex;
     justify-content: space-between;
@@ -814,10 +951,33 @@
     font-weight: 400;
     margin-left: 4px;
   }
+  .section-toggle-btn {
+    margin-left: auto;
+    background: rgba(255,255,255,0.55);
+    color: var(--ink);
+    border: none;
+    padding: 7px 11px;
+    border-radius: 14px;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 650;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  body.dark .section-toggle-btn {
+    background: rgba(255,255,255,0.06);
+    color: var(--ink);
+  }
   .weeks-grid {
     display: flex;
     gap: 8px;
   }
+  .weeks-grid.collapsed .week-chip:not(.current) { display: none; }
+  .weeks-grid.collapsed .week-chip.current { flex: 1 1 100%; }
   .week-chip {
     flex: 1;
     background: rgba(255,255,255,0.55);
@@ -871,6 +1031,15 @@
     letter-spacing: 0.02em;
     line-height: 1;
   }
+  .wk-daily {
+    font-size: 9px;
+    margin-top: 7px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--ink-dim);
+  }
+  .week-chip.current .wk-daily { color: rgba(250,248,243,0.78); }
+  body.dark .week-chip.current .wk-daily { color: rgba(10,10,11,0.7); }
   .week-chip.current .wk-range { color: rgba(250,248,243,0.55); }
   
   /* Tarjeta */
@@ -890,6 +1059,43 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+  .tc-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tc-body { display: block; }
+  .tc-body.collapsed { display: none; }
+  .tc-deadline {
+    background: rgba(255,255,255,0.58);
+    border-radius: 16px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  body.dark .tc-deadline {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .tc-deadline-label {
+    font-size: 9px;
+    color: var(--ink-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 650;
+    margin-bottom: 4px;
+  }
+  .tc-deadline-value {
+    font-size: 19px;
+    font-weight: 750;
+    color: var(--ink);
+    letter-spacing: -0.025em;
+  }
+  .tc-deadline-sub {
+    font-size: 10px;
+    color: var(--ink-dim);
+    margin-top: 3px;
+    font-weight: 500;
   }
   .tc-icon {
     width: 30px;
@@ -919,6 +1125,10 @@
     font-family: inherit;
     font-weight: 600;
     text-transform: uppercase;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .tc-btn:active { background: rgba(255,255,255,0.9); }
   .tc-dates {
@@ -1064,6 +1274,10 @@
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .action-btn:active { background: var(--line); }
   .action-btn.primary {
@@ -1198,6 +1412,51 @@
     border-bottom: 1px solid var(--line);
   }
   .log-item:last-child { border-bottom: none; }
+  .log-swipe {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+  }
+  .log-swipe:last-child { border-bottom: none; }
+  .log-swipe .log-item {
+    position: relative;
+    z-index: 2;
+    border-bottom: none;
+    background: var(--bg);
+    transform: translateX(0);
+    transition: transform 0.22s ease;
+    touch-action: pan-y;
+  }
+  .log-swipe.swipe-enabled .log-item { cursor: grab; }
+  .log-swipe.dragging .log-item { transition: none; cursor: grabbing; }
+  .swipe-action {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 94px;
+    border: none;
+    background: var(--danger);
+    color: white;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .swipe-hint {
+    color: var(--ink-mute);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  @keyframes swipePeek {
+    0%, 100% { transform: translateX(0); }
+    35%, 65% { transform: translateX(-34px); }
+  }
+  .log-swipe.swipe-onboarding .log-item {
+    animation: swipePeek 1.05s ease-in-out;
+  }
   .log-left {
     display: flex;
     align-items: center;
@@ -1298,7 +1557,7 @@
     left: 0;
     right: 0;
     background: linear-gradient(180deg, transparent 0%, var(--bg) 40%);
-    padding: 40px 12px 20px;
+    padding: 40px 12px calc(20px + env(safe-area-inset-bottom));
     z-index: 100;
   }
   .input-inner {
@@ -1445,6 +1704,7 @@
     -webkit-user-select: none;
     user-select: none;
     transition: all 0.15s;
+    min-height: 44px;
   }
   .chip:active { transform: scale(0.96); }
   
@@ -1564,6 +1824,7 @@
     cursor: pointer;
     font-family: inherit;
     font-size: 13px;
+    min-height: 44px;
   }
   .btn-primary { background: var(--ink); color: var(--bg); }
   .btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line-hi) !important; }
@@ -1761,7 +2022,7 @@
   /* Toast */
   .toast {
     position: fixed;
-    bottom: 140px;
+    bottom: calc(150px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     background: var(--ink);
@@ -1782,9 +2043,68 @@
     transform: translateX(-50%) translateY(0);
   }
   .toast.error { background: var(--danger); }
+
+  body.keyboard-open .input-bar {
+    padding-top: 10px;
+    background: var(--bg);
+  }
+  body.keyboard-open .input-inner { padding: 8px; gap: 6px; }
+  body.keyboard-open .sync-mini { padding-top: 7px; padding-bottom: 7px; }
+  body.keyboard-open .sync-square,
+  body.keyboard-open .sync-connect { width: 38px; height: 38px; }
+  body.keyboard-open .app {
+    padding-bottom: calc(205px + env(safe-area-inset-bottom));
+  }
+
+  @media (max-width: 390px) {
+    .hero-card { min-height: 190px; padding: 20px; }
+    .hero-label { margin-top: 72px; }
+    .hero-amount { font-size: 46px; }
+    .tc-deadline-value { font-size: 18px; }
+  }
+
+  @media (max-width: 360px) {
+    .weeks-header { gap: 6px; }
+    .weeks-header-icon { display: none; }
+    .weeks-header-title { flex: 1; min-width: 96px; }
+    .weeks-header-title .aside { display: none; }
+    .section-toggle-btn { padding-left: 9px; padding-right: 9px; }
+    .tc-header-actions { gap: 4px; }
+  }
 </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+  <symbol id="icon-wallet" viewBox="0 0 24 24">
+    <path d="M4 6.5h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h13"/>
+    <path d="M16 12h5v4h-5a2 2 0 0 1 0-4Z"/>
+  </symbol>
+  <symbol id="icon-card" viewBox="0 0 24 24">
+    <rect x="2" y="5" width="20" height="14" rx="2"/>
+    <path d="M2 10h20M6 15h4"/>
+  </symbol>
+  <symbol id="icon-shield" viewBox="0 0 24 24">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+    <path d="m9 12 2 2 4-4"/>
+  </symbol>
+  <symbol id="icon-cash" viewBox="0 0 24 24">
+    <rect x="2" y="6" width="20" height="12" rx="2"/>
+    <circle cx="12" cy="12" r="2.5"/>
+    <path d="M6 9.5h.01M18 14.5h.01"/>
+  </symbol>
+  <symbol id="icon-chart" viewBox="0 0 24 24">
+    <path d="M4 20V4M4 20h16M7 16l4-5 4 3 5-8"/>
+  </symbol>
+  <symbol id="icon-calendar" viewBox="0 0 24 24">
+    <rect x="3" y="5" width="18" height="16" rx="2"/>
+    <path d="M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01"/>
+  </symbol>
+  <symbol id="icon-settings" viewBox="0 0 24 24">
+    <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/>
+    <circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>
+  </symbol>
+</svg>
 
 <div class="app">
   <div class="header">
@@ -1800,11 +2120,21 @@
       <div class="date-badge" id="currentDate"></div>
     </div>
   </div>
+
+  <div class="view-tabs" role="tablist" aria-label="Secciones de Ledger">
+    <button class="view-tab active" data-view="0" onclick="goToView(0)" role="tab" aria-selected="true">Inicio</button>
+    <button class="view-tab" data-view="1" onclick="goToView(1)" role="tab" aria-selected="false">Movimientos</button>
+    <button class="view-tab" data-view="2" onclick="goToView(2)" role="tab" aria-selected="false">Ciclos</button>
+  </div>
+
+  <div class="views-shell" id="viewsShell">
+    <div class="views-track" id="viewsTrack">
+      <section class="app-view active" data-view-index="0" aria-label="Inicio">
   
   <!-- Hero -->
   <div class="hero-card" id="heroCard">
-    <div class="hero-badge">◆</div>
-    <button class="hero-arrow" onclick="openSettings()">↗</button>
+    <div class="hero-badge"><svg class="ui-icon"><use href="#icon-wallet"></use></svg></div>
+    <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
     <div class="hero-label" id="heroLabel">Total disponible</div>
     <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
     <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
@@ -1824,7 +2154,7 @@
   <div class="bento">
     <div class="bento-card coral">
       <div>
-        <div class="bento-icon">↓</div>
+        <div class="bento-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
         <div class="bento-label">Deuda actual</div>
       </div>
       <div>
@@ -1834,7 +2164,7 @@
     </div>
     <div class="bento-card sky">
       <div>
-        <div class="bento-icon">◈</div>
+        <div class="bento-icon"><svg class="ui-icon"><use href="#icon-shield"></use></svg></div>
         <div class="bento-label">Monto intocable</div>
       </div>
       <div>
@@ -1844,7 +2174,7 @@
     </div>
     <div class="bento-card mint">
       <div>
-        <div class="bento-icon">✓</div>
+        <div class="bento-icon"><svg class="ui-icon"><use href="#icon-cash"></use></svg></div>
         <div class="bento-label">No adeudado</div>
       </div>
       <div>
@@ -1854,7 +2184,7 @@
     </div>
     <div class="bento-card sage">
       <div>
-        <div class="bento-icon">Σ</div>
+        <div class="bento-icon"><svg class="ui-icon"><use href="#icon-chart"></use></svg></div>
         <div class="bento-label">Gasto total</div>
       </div>
       <div>
@@ -1867,13 +2197,14 @@
   <!-- Semanas -->
   <div class="weeks-strip">
     <div class="weeks-header">
-      <div class="weeks-header-icon">◷</div>
+      <div class="weeks-header-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></div>
       <div class="weeks-header-title">
         Presupuesto semanal<span class="aside" id="semanasInfo"></span>
       </div>
-      <button class="tc-btn" onclick="confirmarNuevoCiclo()" style="margin-left:auto;">Nuevo ciclo</button>
+      <button class="section-toggle-btn" id="btnToggleWeeks" onclick="toggleSection('weeks')">Ver todas</button>
+      <button class="tc-btn" onclick="confirmarNuevoCiclo()">Nuevo ciclo</button>
     </div>
-    <div class="weeks-grid" id="weeksContainer"></div>
+    <div class="weeks-grid collapsed" id="weeksContainer"></div>
     <div class="cycle-info" id="cycleInfo"></div>
   </div>
   
@@ -1881,84 +2212,111 @@
   <div class="tc-card">
     <div class="tc-header">
       <div class="tc-header-left">
-        <div class="tc-icon">▭</div>
+        <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
         <div class="tc-title">Calendario tarjeta</div>
       </div>
-      <button class="tc-btn" onclick="openCCConfig()">Editar</button>
-    </div>
-    <div class="tc-dates">
-      <div class="tc-date-card">
-        <div class="tc-date-label">Cierre</div>
-        <div class="tc-date-value" id="ccProxCierre">—</div>
-        <div class="tc-date-sub" id="ccCierreSub">—</div>
-      </div>
-      <div class="tc-date-card">
-        <div class="tc-date-label">Pago</div>
-        <div class="tc-date-value" id="ccProxPago">—</div>
-        <div class="tc-date-sub" id="ccPagoSub">—</div>
+      <div class="tc-header-actions">
+        <button class="section-toggle-btn" id="btnToggleCard" onclick="toggleSection('card')">Ver detalles</button>
+        <button class="tc-btn" onclick="openCCConfig()">Editar</button>
       </div>
     </div>
-    <div class="tc-signal" id="ccSignal">
-      <div class="tc-signal-dot" id="signalDot">—</div>
-      <div class="tc-signal-content">
-        <div class="tc-signal-title" id="signalTitle">—</div>
-        <div class="tc-signal-sub" id="signalSub">—</div>
-      </div>
+    <div class="tc-deadline">
+      <div class="tc-deadline-label">Si compras hoy</div>
+      <div class="tc-deadline-value" id="ccCompraPago">—</div>
+      <div class="tc-deadline-sub" id="ccCompraPagoSub">—</div>
     </div>
-  </div>
-  
-  <!-- Comparación con ciclo anterior -->
-  <div id="comparisonSection" style="display:none;">
-    <div class="section-head">
-      <h2>Vs ciclo <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">anterior</span></h2>
-    </div>
-    <div class="comparison-card">
-      <div class="comparison-row">
-        <div class="comparison-label">Gasto total</div>
-        <div class="comparison-values">
-          <span class="comp-prev" id="compPrevTotal">S/ 0</span>
-          <span class="comp-arrow" id="compArrowTotal">→</span>
-          <span class="comp-now" id="compNowTotal">S/ 0</span>
-          <span class="comp-delta" id="compDeltaTotal">—</span>
+    <div class="tc-body collapsed" id="tcBody">
+      <div class="tc-dates">
+        <div class="tc-date-card">
+          <div class="tc-date-label">Próximo cierre</div>
+          <div class="tc-date-value" id="ccProxCierre">—</div>
+          <div class="tc-date-sub" id="ccCierreSub">—</div>
+        </div>
+        <div class="tc-date-card">
+          <div class="tc-date-label">Próximo pago</div>
+          <div class="tc-date-value" id="ccProxPago">—</div>
+          <div class="tc-date-sub" id="ccPagoSub">—</div>
         </div>
       </div>
-      <div class="comparison-row">
-        <div class="comparison-label">Solo S</div>
-        <div class="comparison-values">
-          <span class="comp-prev" id="compPrevS">S/ 0</span>
-          <span class="comp-arrow">→</span>
-          <span class="comp-now" id="compNowS">S/ 0</span>
-        </div>
-      </div>
-      <div class="comparison-row">
-        <div class="comparison-label">Solo DS</div>
-        <div class="comparison-values">
-          <span class="comp-prev" id="compPrevDS">S/ 0</span>
-          <span class="comp-arrow">→</span>
-          <span class="comp-now" id="compNowDS">S/ 0</span>
-        </div>
-      </div>
-      <div class="comparison-row">
-        <div class="comparison-label">Movimientos</div>
-        <div class="comparison-values">
-          <span class="comp-prev" id="compPrevMov">0</span>
-          <span class="comp-arrow">→</span>
-          <span class="comp-now" id="compNowMov">0</span>
+      <div class="tc-signal" id="ccSignal">
+        <div class="tc-signal-dot" id="signalDot">—</div>
+        <div class="tc-signal-content">
+          <div class="tc-signal-title" id="signalTitle">—</div>
+          <div class="tc-signal-sub" id="signalSub">—</div>
         </div>
       </div>
     </div>
   </div>
   
-  <!-- Movimientos -->
-  <div class="section-head stack">
-    <div class="section-actions">
-      <button class="action-btn primary" onclick="undoLast()" id="btnUndo">↶ Deshacer</button>
-      <button class="action-btn" onclick="showAllMovements()">Ver todos</button>
-      <button class="action-btn" onclick="showHelp()">Ayuda</button>
+      </section>
+
+      <!-- Ventana Movimientos -->
+      <section class="app-view" data-view-index="1" aria-label="Movimientos">
+        <div class="section-head stack view-section-head">
+          <div class="section-actions">
+            <button class="action-btn primary" onclick="undoLast()" id="btnUndo">↶ Deshacer</button>
+            <button class="action-btn" onclick="showAllMovements()">Ver todos</button>
+            <button class="action-btn" onclick="showHelp()">Ayuda</button>
+          </div>
+          <h2>Movimientos <span class="aside" id="movCount"></span></h2>
+        </div>
+        <div id="logContainer"></div>
+      </section>
+
+      <!-- Ventana Ciclos -->
+      <section class="app-view" data-view-index="2" aria-label="Ciclos">
+        <div class="section-head view-section-head">
+          <h2>Ciclos <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">anteriores</span></h2>
+        </div>
+        <div id="cycleHistoryInline"></div>
+
+        <!-- Comparación con ciclo anterior -->
+        <div id="comparisonSection" style="display:none;">
+          <div class="section-head">
+            <h2>Vs ciclo <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">anterior</span></h2>
+            <button class="action-btn" id="btnToggleComparison" onclick="toggleSection('comparison')">Ver comparación</button>
+          </div>
+          <div class="comparison-content collapsed" id="comparisonContent">
+            <div class="comparison-card">
+              <div class="comparison-row">
+                <div class="comparison-label">Gasto total</div>
+                <div class="comparison-values">
+                  <span class="comp-prev" id="compPrevTotal">S/ 0</span>
+                  <span class="comp-arrow" id="compArrowTotal">→</span>
+                  <span class="comp-now" id="compNowTotal">S/ 0</span>
+                  <span class="comp-delta" id="compDeltaTotal">—</span>
+                </div>
+              </div>
+              <div class="comparison-row">
+                <div class="comparison-label">Solo S</div>
+                <div class="comparison-values">
+                  <span class="comp-prev" id="compPrevS">S/ 0</span>
+                  <span class="comp-arrow">→</span>
+                  <span class="comp-now" id="compNowS">S/ 0</span>
+                </div>
+              </div>
+              <div class="comparison-row">
+                <div class="comparison-label">Solo DS</div>
+                <div class="comparison-values">
+                  <span class="comp-prev" id="compPrevDS">S/ 0</span>
+                  <span class="comp-arrow">→</span>
+                  <span class="comp-now" id="compNowDS">S/ 0</span>
+                </div>
+              </div>
+              <div class="comparison-row">
+                <div class="comparison-label">Movimientos</div>
+                <div class="comparison-values">
+                  <span class="comp-prev" id="compPrevMov">0</span>
+                  <span class="comp-arrow">→</span>
+                  <span class="comp-now" id="compNowMov">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-    <h2>Movimientos <span class="aside" id="movCount"></span></h2>
   </div>
-  <div id="logContainer"></div>
 </div>
 
 <!-- Input bar -->
@@ -2014,6 +2372,7 @@
     fechaInicioCiclo: null, // se setea la primera vez
     modoManualSemanas: false, // true = el usuario define los rangos manualmente
     cicloAnterior: null,
+    historialCiclos: [], // máximo 2 ciclos cerrados, con movimientos compactos
     darkMode: false,
     tcCache: { rate: null, fetchedAt: null }, // último USD→PEN conocido
     semanas: [
@@ -2026,6 +2385,142 @@
   };
   
   let state = loadState();
+  // Limpia el respaldo temporal usado por una versión anterior.
+  try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
+  let uiSections = loadUiSections();
+  let currentView = Math.max(0, Math.min(2, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
+  let viewsInitialized = false;
+
+  function goToView(index, options = {}) {
+    currentView = Math.max(0, Math.min(2, Number(index) || 0));
+    const track = document.getElementById('viewsTrack');
+    if (track) {
+      track.classList.remove('dragging');
+      track.style.transform = `translateX(-${currentView * 100}%)`;
+    }
+    document.querySelectorAll('.view-tab').forEach((tab, i) => {
+      const active = i === currentView;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('.app-view').forEach((view, i) => {
+      view.classList.toggle('active', i === currentView);
+      view.setAttribute('aria-hidden', i === currentView ? 'false' : 'true');
+    });
+    try { localStorage.setItem('ledger-active-view-v1', String(currentView)); } catch(e) {}
+    requestAnimationFrame(updateViewHeight);
+    if (currentView === 1) requestAnimationFrame(() => runSwipeOnboarding(document.getElementById('logContainer')));
+
+    if (options.focusTabs) {
+      const tabs = document.querySelector('.view-tabs');
+      if (tabs && tabs.getBoundingClientRect().top < 0) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function updateViewHeight() {
+    const shell = document.getElementById('viewsShell');
+    const active = document.querySelector(`.app-view[data-view-index="${currentView}"]`);
+    if (shell && active) shell.style.height = active.scrollHeight + 'px';
+  }
+
+  function initViews() {
+    if (viewsInitialized) {
+      goToView(currentView);
+      return;
+    }
+    viewsInitialized = true;
+    const shell = document.getElementById('viewsShell');
+    const track = document.getElementById('viewsTrack');
+    if (!shell || !track) return;
+
+    let startX = 0;
+    let startY = 0;
+    let startAt = 0;
+    let dragging = false;
+    let horizontal = false;
+
+    shell.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.target.closest('button, input, textarea, .log-swipe, .all-list')) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      startAt = Date.now();
+      dragging = true;
+      horizontal = false;
+      try { shell.setPointerCapture(e.pointerId); } catch(err) {}
+    });
+
+    shell.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (!horizontal && Math.abs(dx) > 10) horizontal = Math.abs(dx) > Math.abs(dy);
+      if (!horizontal) return;
+      const atFirst = currentView === 0 && dx > 0;
+      const atLast = currentView === 2 && dx < 0;
+      const resisted = (atFirst || atLast) ? dx * 0.22 : dx;
+      track.classList.add('dragging');
+      track.style.transform = `translateX(calc(-${currentView * 100}% + ${resisted}px))`;
+    });
+
+    const finish = e => {
+      if (!dragging) return;
+      dragging = false;
+      const dx = e.clientX - startX;
+      const elapsed = Math.max(1, Date.now() - startAt);
+      const velocity = Math.abs(dx) / elapsed;
+      const shouldMove = horizontal && (Math.abs(dx) > 54 || (Math.abs(dx) > 28 && velocity > 0.45));
+      let next = currentView;
+      if (shouldMove && dx < 0) next++;
+      if (shouldMove && dx > 0) next--;
+      goToView(next, { focusTabs: shouldMove });
+      try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
+    };
+
+    shell.addEventListener('pointerup', finish);
+    shell.addEventListener('pointercancel', finish);
+    window.addEventListener('resize', updateViewHeight);
+    if ('ResizeObserver' in window) {
+      const observer = new ResizeObserver(() => requestAnimationFrame(updateViewHeight));
+      document.querySelectorAll('.app-view').forEach(view => observer.observe(view));
+    }
+    goToView(currentView);
+  }
+
+  function loadUiSections() {
+    try {
+      return { weeks: false, card: false, comparison: false, ...JSON.parse(localStorage.getItem('ledger-ui-sections-v1') || '{}') };
+    } catch(e) {
+      return { weeks: false, card: false, comparison: false };
+    }
+  }
+
+  function saveUiSections() {
+    try { localStorage.setItem('ledger-ui-sections-v1', JSON.stringify(uiSections)); } catch(e) {}
+  }
+
+  function toggleSection(section) {
+    uiSections[section] = !uiSections[section];
+    saveUiSections();
+    applySectionState();
+    requestAnimationFrame(updateViewHeight);
+  }
+
+  function applySectionState() {
+    const weeks = document.getElementById('weeksContainer');
+    const card = document.getElementById('tcBody');
+    const comparison = document.getElementById('comparisonContent');
+    if (weeks) weeks.classList.toggle('collapsed', !uiSections.weeks);
+    if (card) card.classList.toggle('collapsed', !uiSections.card);
+    if (comparison) comparison.classList.toggle('collapsed', !uiSections.comparison);
+
+    const weeksBtn = document.getElementById('btnToggleWeeks');
+    const cardBtn = document.getElementById('btnToggleCard');
+    const comparisonBtn = document.getElementById('btnToggleComparison');
+    if (weeksBtn) weeksBtn.textContent = uiSections.weeks ? 'Ocultar' : 'Ver todas';
+    if (cardBtn) cardBtn.textContent = uiSections.card ? 'Ocultar' : 'Ver detalles';
+    if (comparisonBtn) comparisonBtn.textContent = uiSections.comparison ? 'Ocultar' : 'Ver comparación';
+  }
   
   function loadState() {
     try {
@@ -2049,26 +2544,61 @@
   function fmtInt(n) {
     return Math.round(Number(n) || 0).toLocaleString('es-PE');
   }
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    })[ch]);
+  }
   function formatFecha(d) {
     return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+  }
+
+  function formatFechaCompleta(d) {
+    return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function fechaParaInput(d = new Date()) {
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function fechaConDiaSeguro(year, month, day) {
+    const ultimoDia = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(day, ultimoDia), 12, 0, 0, 0);
   }
   
   function proxCierre() {
     const hoy = new Date();
-    const cierre = new Date(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaCierre);
-    if (hoy.getDate() > state.tarjeta.diaCierre) cierre.setMonth(cierre.getMonth() + 1);
+    hoy.setHours(12,0,0,0);
+    let cierre = fechaConDiaSeguro(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaCierre);
+    if (hoy > cierre) cierre = fechaConDiaSeguro(hoy.getFullYear(), hoy.getMonth() + 1, state.tarjeta.diaCierre);
     return cierre;
   }
   function proxPago() {
     const hoy = new Date();
-    const pago = new Date(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaPago);
-    if (hoy.getDate() > state.tarjeta.diaPago) pago.setMonth(pago.getMonth() + 1);
+    hoy.setHours(12,0,0,0);
+    let pago = fechaConDiaSeguro(hoy.getFullYear(), hoy.getMonth(), state.tarjeta.diaPago);
+    if (hoy > pago) pago = fechaConDiaSeguro(hoy.getFullYear(), hoy.getMonth() + 1, state.tarjeta.diaPago);
     return pago;
+  }
+
+  // Fecha de pago correspondiente al estado de cuenta donde entraría una compra hecha hoy.
+  function fechaPagoCompraHoy() {
+    const cierreCompra = proxCierre();
+    const sumaMes = state.tarjeta.diaPago <= state.tarjeta.diaCierre ? 1 : 0;
+    const pagoCompra = fechaConDiaSeguro(
+      cierreCompra.getFullYear(),
+      cierreCompra.getMonth() + sumaMes,
+      state.tarjeta.diaPago
+    );
+    return { cierre: cierreCompra, pago: pagoCompra };
   }
   function diasHasta(fecha) {
     const hoy = new Date();
     hoy.setHours(0,0,0,0);
-    return Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+    const objetivo = new Date(fecha);
+    objetivo.setHours(0,0,0,0);
+    return Math.ceil((objetivo - hoy) / (1000 * 60 * 60 * 24));
   }
   
   // ============ AUTO-DETECCIÓN DE SEMANA (CALENDARIO REAL) ============
@@ -2222,8 +2752,20 @@
   function cicloTerminado() {
     return calcularSemanaActualIdx() >= state.semanas.length;
   }
+
+  function diasRestantesEnRango(rango) {
+    if (!rango || !rango.inicio || !rango.fin) return 0;
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    const fin = new Date(rango.fin);
+    fin.setHours(0,0,0,0);
+    if (hoy > fin) return 0;
+    return Math.floor((fin - hoy) / (1000 * 60 * 60 * 24)) + 1;
+  }
   
   function render() {
+    if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
+    if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     initFechaCiclo();
     detectarCambioSemana();
     actualizarSemanaActual();
@@ -2292,10 +2834,15 @@
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
       const diasTxt = rango && rango.inicio && rango.dias < 7 ? ` · ${rango.dias}d` : '';
+      const diasRestantes = sem.isCurrent ? diasRestantesEnRango(rango) : 0;
+      const diarioTxt = sem.isCurrent && diasRestantes > 0
+        ? `<div class="wk-daily">S/ ${fmt(sem.presupuesto / diasRestantes)} por día · ${diasRestantes}d</div>`
+        : '';
       div.innerHTML = `
         <span class="wk-label">${label}</span>
         <div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>
         <div class="wk-range">${rangoTxt}${diasTxt}</div>
+        ${diarioTxt}
       `;
       weeksEl.appendChild(div);
     });
@@ -2328,46 +2875,48 @@
     
     const cierre = proxCierre();
     const pago = proxPago();
+    const compraHoy = fechaPagoCompraHoy();
     const diasCierre = diasHasta(cierre);
     const diasPago = diasHasta(pago);
+    const diasPagoCompra = diasHasta(compraHoy.pago);
     document.getElementById('ccProxCierre').textContent = formatFecha(cierre);
     document.getElementById('ccProxPago').textContent = formatFecha(pago);
-    document.getElementById('ccCierreSub').textContent = 'en ' + diasCierre + ' días';
-    document.getElementById('ccPagoSub').textContent = 'en ' + diasPago + ' días';
+    document.getElementById('ccCierreSub').textContent = diasCierre === 0 ? 'hoy' : 'en ' + diasCierre + ' días';
+    document.getElementById('ccPagoSub').textContent = diasPago === 0 ? 'hoy' : 'en ' + diasPago + ' días';
+    document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(compraHoy.pago);
+    document.getElementById('ccCompraPagoSub').textContent = `Cierra el ${formatFecha(compraHoy.cierre)} · ${diasPagoCompra === 0 ? 'vence hoy' : diasPagoCompra + ' días para pagar'}`;
     
     // Semáforo estratégico
     // Días de gracia si compras hoy = días hasta próximo cierre + días desde próximo cierre hasta próximo pago
     // Simplificación: diasCierre + (diaPago - diaCierre) si pago > cierre, sino + (30 - cierre + pago)
-    let diasEntreCierrePago = state.tarjeta.diaPago - state.tarjeta.diaCierre;
-    if (diasEntreCierrePago <= 0) diasEntreCierrePago += 30;
-    const diasGracia = diasCierre + diasEntreCierrePago;
+    const diasGracia = diasPagoCompra;
     
     let signalClass, signalTitle, signalSub, signalIcon;
     
-    if (diasPago <= 3 && diasPago > 0) {
+    if (diasPago <= 3 && diasPago >= 0) {
       // Prioridad máxima: pago inminente
       signalClass = 'bad';
       signalIcon = '!';
-      signalTitle = `Pago en ${diasPago} día${diasPago === 1 ? '' : 's'}`;
+      signalTitle = diasPago === 0 ? 'Pago hoy' : `Pago en ${diasPago} día${diasPago === 1 ? '' : 's'}`;
       signalSub = `No olvides transferir antes del ${state.tarjeta.diaPago}. Compras nuevas: espera.`;
     } else if (diasCierre <= 4) {
       // Cerca del cierre: mala compra
       signalClass = 'bad';
       signalIcon = '×';
       signalTitle = `Mal día para tarjeta`;
-      signalSub = `Cierre en ${diasCierre} d. Si compras ahora, la pagas en solo ${diasGracia} días. Mejor espera ${diasCierre + 1} días.`;
+      signalSub = `Cierre en ${diasCierre} d. Si compras ahora, pagas hasta el ${formatFecha(compraHoy.pago)}. Mejor espera ${diasCierre + 1} días.`;
     } else if (diasCierre <= 10) {
       // Media tabla
       signalClass = 'mid';
       signalIcon = '~';
       signalTitle = `Día regular`;
-      signalSub = `Cierre en ${diasCierre} d. Si compras hoy tienes ${diasGracia} días para pagar. OK pero no ideal.`;
+      signalSub = `Cierre en ${diasCierre} d. Si compras hoy, tienes hasta el ${formatFecha(compraHoy.pago)} (${diasGracia} días).`;
     } else {
       // Buen día: recién pasó el cierre
       signalClass = 'good';
       signalIcon = '✓';
       signalTitle = `Buen día para tarjeta`;
-      signalSub = `Cierre en ${diasCierre} d. Lo que compres hoy lo pagas en ~${diasGracia} días. Máximo financiamiento gratis.`;
+      signalSub = `Lo que compres hoy se paga hasta el ${formatFecha(compraHoy.pago)}: ${diasGracia} días de financiamiento.`;
     }
     
     const dot = document.getElementById('signalDot');
@@ -2378,6 +2927,10 @@
     
     renderLog();
     renderComparison();
+    renderCycleHistoryInline();
+    applySectionState();
+    initViews();
+    requestAnimationFrame(updateViewHeight);
     saveState();
   }
   
@@ -2422,6 +2975,11 @@
       deltaEl.className = 'comp-delta down';
     }
   }
+
+  let swipeHintSeen = (() => {
+    try { return localStorage.getItem('ledger-swipe-hint-seen-v1') === '1'; }
+    catch(e) { return true; }
+  })();
   
   function renderLog() {
     const logEl = document.getElementById('logContainer');
@@ -2430,6 +2988,8 @@
     // Estado del botón Deshacer
     const btnUndo = document.getElementById('btnUndo');
     if (btnUndo) btnUndo.disabled = state.log.length === 0;
+    const btnHistory = document.getElementById('btnCycleHistory');
+    if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
     if (state.log.length === 0) {
       logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
@@ -2441,7 +3001,8 @@
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
       const div = document.createElement('div');
-      div.className = 'log-item';
+      const canUndo = idx === state.log.length - 1;
+      div.className = 'log-swipe' + (canUndo ? ' swipe-enabled' : '');
       
       let dotType = mov.tipo;
       let dotLabel = mov.tipo;
@@ -2451,19 +3012,93 @@
       if (mov.etiqueta === 'sem') badge = '<span class="badge">SEM</span>';
       
       div.innerHTML = `
+        ${canUndo ? `<button class="swipe-action" onclick="confirmDelete(${idx})">Deshacer</button>` : ''}
+        <div class="log-item" ${canUndo ? `data-swipe-index="${idx}"` : ''}>
         <div class="log-left">
           <div class="log-dot ${dotType}">${dotLabel}</div>
           <div class="log-info">
-            <div class="log-detail">${mov.detalle || 'Sin detalle'}</div>
-            <div class="log-meta">${badge}<span>${mov.fecha}</span></div>
+            <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+            <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha)}</span></div>
           </div>
         </div>
         <div class="log-right">
           <div class="log-amount">S/ ${fmt(mov.monto)}</div>
-          <button class="log-undo" onclick="confirmDelete(${idx})">deshacer</button>
+          ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">← desliza para deshacer</span>' : ''}
+        </div>
         </div>
       `;
       logEl.appendChild(div);
+    });
+    initSwipeRows(logEl);
+  }
+
+  function runSwipeOnboarding(root) {
+    if (swipeHintSeen || !root) return;
+    const row = root.querySelector('.log-swipe.swipe-enabled');
+    if (!row) return;
+    swipeHintSeen = true;
+    try { localStorage.setItem('ledger-swipe-hint-seen-v1', '1'); } catch(e) {}
+    row.classList.add('swipe-onboarding');
+    row.addEventListener('animationend', () => {
+      row.classList.remove('swipe-onboarding');
+      const hint = row.querySelector('.swipe-hint');
+      if (hint) hint.style.display = 'none';
+    }, { once: true });
+  }
+
+  function initSwipeRows(root = document) {
+    root.querySelectorAll('.swipe-enabled .log-item[data-swipe-index]').forEach(item => {
+      if (item.dataset.swipeReady === '1') return;
+      item.dataset.swipeReady = '1';
+      const row = item.closest('.log-swipe');
+      let startX = 0;
+      let startY = 0;
+      let dragging = false;
+      let horizontal = false;
+
+      const closeOtherRows = () => {
+        document.querySelectorAll('.log-swipe.open .log-item').forEach(other => {
+          if (other !== item) {
+            other.style.transform = 'translateX(0)';
+            other.closest('.log-swipe').classList.remove('open');
+          }
+        });
+      };
+
+      item.addEventListener('pointerdown', e => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        closeOtherRows();
+        startX = e.clientX;
+        startY = e.clientY;
+        dragging = true;
+        horizontal = false;
+        row.classList.add('dragging');
+        try { item.setPointerCapture(e.pointerId); } catch(err) {}
+      });
+
+      item.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (!horizontal && Math.abs(dx) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
+        if (!horizontal) return;
+        const offset = Math.max(-94, Math.min(0, dx));
+        item.style.transform = `translateX(${offset}px)`;
+      });
+
+      const finishSwipe = e => {
+        if (!dragging) return;
+        dragging = false;
+        row.classList.remove('dragging');
+        const dx = e.clientX - startX;
+        const open = horizontal && dx < -42;
+        item.style.transform = open ? 'translateX(-94px)' : 'translateX(0)';
+        row.classList.toggle('open', open);
+        try { item.releasePointerCapture(e.pointerId); } catch(err) {}
+      };
+
+      item.addEventListener('pointerup', finishSwipe);
+      item.addEventListener('pointercancel', finishSwipe);
     });
   }
   
@@ -2480,8 +3115,8 @@
       <h2>Deshacer <span class="accent">último gasto</span></h2>
       <p class="modal-sub">
         <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
-        ${mov.detalle || 'Sin detalle'}<br>
-        <span style="color:var(--ink-mute);font-size:11px;">${mov.fecha}</span>
+        ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
+        <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
       <p class="modal-sub" style="font-size:11px;">
         Todos los montos volverán a como estaban antes de este movimiento.
@@ -2515,27 +3150,31 @@
     
     let listaHTML = '';
     if (filtrados.length === 0) {
-      listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + searchQuery + '»' : 'Sin movimientos aún'}</div>`;
+      listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
     } else {
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
+        const canUndo = originalIdx === state.log.length - 1;
         let dotType = mov.tipo;
         let dotLabel = mov.tipo;
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         listaHTML += `
-          <div class="log-item">
+          <div class="log-swipe${canUndo ? ' swipe-enabled' : ''}">
+          ${canUndo ? `<button class="swipe-action" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
+          <div class="log-item" ${canUndo ? `data-swipe-index="${originalIdx}"` : ''}>
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
-                <div class="log-detail">${mov.detalle || 'Sin detalle'}</div>
-                <div class="log-meta">${badge}<span>${mov.fecha}</span></div>
+                <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+                <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
               <div class="log-amount">S/ ${fmt(mov.monto)}</div>
-              <button class="log-undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">deshacer</button>
+              ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">← desliza para deshacer</span>' : ''}
             </div>
+          </div>
           </div>
         `;
       });
@@ -2555,7 +3194,7 @@
           id="searchInput" 
           class="search-input" 
           placeholder="Buscar por detalle..." 
-          value="${searchQuery}"
+          value="${escapeHtml(searchQuery)}"
           oninput="onSearchInput(this.value)"
         >
         ${q ? '<button class="search-clear" onclick="clearSearch()">×</button>' : ''}
@@ -2583,6 +3222,7 @@
     // Foco no destructivo
     setTimeout(() => {
       const inp = document.getElementById('searchInput');
+      initSwipeRows(document.getElementById('modalContent'));
       if (inp && q) {
         inp.focus();
         inp.setSelectionRange(inp.value.length, inp.value.length);
@@ -2599,6 +3239,166 @@
     searchQuery = '';
     renderAllMovements();
   }
+
+  // ============ HISTORIAL DE CICLOS (MÁXIMO 2) ============
+  function getArchivedCycles() {
+    const guardados = Array.isArray(state.historialCiclos) ? state.historialCiclos.slice(0, 2) : [];
+    if (guardados.length > 0) return guardados;
+
+    // Compatibilidad: versiones anteriores solo conservaban un resumen.
+    if (state.cicloAnterior) {
+      return [{
+        id: 'legacy-' + (state.cicloAnterior.fechaFin || 'anterior'),
+        ...state.cicloAnterior,
+        movimientos: [],
+        detalleDisponible: false
+      }];
+    }
+    return [];
+  }
+
+  function formatCycleDate(value) {
+    if (!value) return 'Sin fecha';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return 'Sin fecha';
+    return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function formatCycleRange(ciclo) {
+    return `${formatCycleDate(ciclo.fechaInicio)} — ${formatCycleDate(ciclo.fechaFin)}`;
+  }
+
+  function buildCycleHistoryCard(ciclo, i) {
+    return `
+      <button class="cycle-history-card" onclick="showArchivedCycle(${i})">
+        <div class="cycle-history-head">
+          <div class="cycle-history-date">${formatCycleRange(ciclo)}</div>
+          <span class="cycle-history-arrow">→</span>
+        </div>
+        <div class="cycle-history-stats">
+          <div class="cycle-history-stat"><span>Total</span><strong>S/ ${fmt(ciclo.totalGastado)}</strong></div>
+          <div class="cycle-history-stat"><span>DS</span><strong>S/ ${fmt(ciclo.totalDS)}</strong></div>
+          <div class="cycle-history-stat"><span>Mov.</span><strong>${ciclo.numMovimientos || 0}</strong></div>
+        </div>
+        ${ciclo.detalleDisponible === false ? '<div class="cycle-summary-only">Este ciclo proviene de una versión anterior y solo conserva el resumen.</div>' : ''}
+      </button>
+    `;
+  }
+
+  function renderCycleHistoryInline() {
+    const container = document.getElementById('cycleHistoryInline');
+    if (!container) return;
+    const ciclos = getArchivedCycles();
+    container.innerHTML = ciclos.length
+      ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div><p class="modal-sub" style="font-size:10px;margin:10px 2px 18px;">Se conservan como máximo los 2 ciclos más recientes.</p>`
+      : '<div class="view-empty">Cuando cierres tu primer ciclo, aparecerá aquí.</div>';
+  }
+
+  function showCycleHistory() {
+    const ciclos = getArchivedCycles();
+    if (ciclos.length === 0) {
+      toast('Todavía no hay ciclos anteriores', true);
+      return;
+    }
+
+    const cards = ciclos.map(buildCycleHistoryCard).join('');
+
+    openModal(`
+      <h2>Ciclos <span class="accent">anteriores</span></h2>
+      <p class="modal-sub">Ledger conserva automáticamente los últimos 2 ciclos cerrados.</p>
+      <div class="cycle-history-list">${cards}</div>
+      <div class="modal-buttons">
+        <button class="btn-primary" onclick="closeModal()">Cerrar</button>
+      </div>
+    `);
+  }
+
+  function showArchivedCycle(index) {
+    const ciclo = getArchivedCycles()[index];
+    if (!ciclo) {
+      toast('Ciclo no disponible', true);
+      return;
+    }
+
+    const movimientos = Array.isArray(ciclo.movimientos) ? ciclo.movimientos : [];
+    let listaHTML = '';
+    if (movimientos.length === 0) {
+      listaHTML = `<div class="all-empty">${ciclo.detalleDisponible === false ? 'Esta versión solo conserva el resumen del ciclo.' : 'Este ciclo no tuvo movimientos.'}</div>`;
+    } else {
+      movimientos.slice().reverse().forEach(mov => {
+        let dotType = mov.tipo;
+        let dotLabel = mov.tipo;
+        if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
+        const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        listaHTML += `
+          <div class="log-item">
+            <div class="log-left">
+              <div class="log-dot ${dotType}">${dotLabel}</div>
+              <div class="log-info">
+                <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+                <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha || '')}</span></div>
+              </div>
+            </div>
+            <div class="log-right"><div class="log-amount">S/ ${fmt(mov.monto)}</div></div>
+          </div>
+        `;
+      });
+    }
+
+    openModal(`
+      <h2>Detalle del <span class="accent">ciclo</span></h2>
+      <p class="modal-sub">${formatCycleRange(ciclo)} · ${ciclo.numMovimientos || 0} movimientos</p>
+      <div class="all-summary">
+        <div class="all-sum-item S">
+          <div class="all-sum-label">No adeudado (S)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalS)}</div>
+        </div>
+        <div class="all-sum-item DS">
+          <div class="all-sum-label">Deuda (DS)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalDS)}</div>
+        </div>
+      </div>
+      <div class="rollover-breakdown" style="margin-bottom:14px;">
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Gasto total</span>
+          <span class="rollover-amount">S/ ${fmt(ciclo.totalGastado)}</span>
+        </div>
+      </div>
+      <div class="all-list">${listaHTML}</div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Volver</button>
+        ${movimientos.length ? `<button class="btn-primary" onclick="exportArchivedCycleCSV(${index})">Exportar CSV</button>` : ''}
+      </div>
+    `);
+  }
+
+  function exportArchivedCycleCSV(index) {
+    const ciclo = getArchivedCycles()[index];
+    const movimientos = ciclo && Array.isArray(ciclo.movimientos) ? ciclo.movimientos : [];
+    if (!ciclo || movimientos.length === 0) {
+      toast('Este ciclo no tiene movimientos para exportar', true);
+      return;
+    }
+    const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
+    const rows = movimientos.map(m => [
+      m.fecha || '',
+      m.tipo || '',
+      m.etiqueta || '',
+      (m.detalle || '').replace(/"/g, '""'),
+      Number(m.monto || 0).toFixed(2)
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Ciclo exportado en CSV');
+  }
   
   // ============ NUEVO CICLO ============
   function confirmarNuevoCiclo() {
@@ -2606,13 +3406,10 @@
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalGastado = totalS + totalDS;
-    
+
     openModal(`
-      <h2>Nuevo <span class="accent">ciclo</span></h2>
-      <p class="modal-sub">
-        Se guardará el ciclo actual como histórico para comparar con el próximo, y se reinicia el contador de semanas.
-      </p>
-      
+      <h2>Cerrar <span class="accent">ciclo actual</span></h2>
+      <p class="modal-sub">Paso 1 de 2 · Revisa el resumen antes de preparar el siguiente ciclo.</p>
       <div class="rollover-breakdown">
         <div class="rollover-row">
           <span class="rollover-week">Movimientos</span>
@@ -2631,41 +3428,176 @@
           <span class="rollover-amount">S/ ${fmt(totalGastado)}</span>
         </div>
       </div>
-      
+
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        Los montos (disponible, deuda, intocable, meta) se mantienen. Solo se resetea el log y el conteo de días. Ideal cuando cae tu sueldo.
+        Este ciclo se guardará en “Ciclos” con todos sus movimientos. Ledger conservará como máximo los 2 ciclos anteriores.
       </p>
-      
+
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick="ejecutarNuevoCiclo()">Empezar nuevo ciclo</button>
+        <button class="btn-primary" onclick="openNewCycleSetup()">Configurar siguiente →</button>
       </div>
     `);
   }
+
+  function openNewCycleSetup() {
+    openModal(`
+      <h2>Preparar <span class="accent">nuevo ciclo</span></h2>
+      <p class="modal-sub">Paso 2 de 2 · Define los montos y la distribución con la que quieres empezar.</p>
+
+      <div class="modal-field">
+        <label>Total disponible del nuevo ciclo</label>
+        <input type="number" step="0.01" id="newDisponible" value="${state.totalDisponible.toFixed(2)}" oninput="previewNuevoCiclo()">
+      </div>
+      <div class="modal-field">
+        <label>Meta de ahorro</label>
+        <input type="number" step="0.01" id="newMeta" value="${(state.metaResidual || 0).toFixed(2)}" oninput="previewNuevoCiclo()">
+      </div>
+      <div class="modal-field">
+        <label>Monto intocable</label>
+        <input type="number" step="0.01" id="newIntocable" value="${state.montoIntocable.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Deuda que continúa</label>
+        <input type="number" step="0.01" id="newDeuda" value="${state.deudaActual.toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Fecha de inicio</label>
+        <input type="date" id="newFechaInicio" value="${fechaParaInput()}">
+      </div>
+      <div class="modal-field">
+        <label>Número de semanas</label>
+        <input type="number" min="1" max="6" id="newNumSem" value="${state.semanas.length}" oninput="previewNuevoCiclo()">
+      </div>
+
+      <div class="rollover-breakdown">
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Gastable por semana</span>
+          <span class="rollover-amount" id="newPresupuestoPreview">—</span>
+        </div>
+      </div>
+
+      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+        El gasto acumulado del nuevo ciclo empezará en cero. La deuda puede continuar con el monto que indiques arriba.
+      </p>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="confirmarNuevoCiclo()">← Volver</button>
+        <button class="btn-primary" onclick="ejecutarNuevoCiclo()">Cerrar e iniciar</button>
+      </div>
+    `);
+    previewNuevoCiclo();
+  }
+
+  function previewNuevoCiclo() {
+    const disp = parseFloat(document.getElementById('newDisponible')?.value);
+    const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
+    const numSem = parseInt(document.getElementById('newNumSem')?.value);
+    const preview = document.getElementById('newPresupuestoPreview');
+    if (!preview) return;
+    if (isNaN(disp) || isNaN(numSem) || numSem < 1 || numSem > 6) {
+      preview.textContent = 'Revisa los datos';
+      return;
+    }
+    preview.textContent = 'S/ ' + fmt(Math.max(0, disp - meta) / numSem);
+  }
   
   function ejecutarNuevoCiclo() {
+    const disponible = parseFloat(document.getElementById('newDisponible')?.value);
+    const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
+    const intocable = parseFloat(document.getElementById('newIntocable')?.value);
+    const deuda = parseFloat(document.getElementById('newDeuda')?.value);
+    const fechaInicio = document.getElementById('newFechaInicio')?.value;
+    const numSem = parseInt(document.getElementById('newNumSem')?.value);
+
+    if (isNaN(disponible) || disponible < 0 || isNaN(numSem) || numSem < 1 || numSem > 6 || !fechaInicio) {
+      toast('Revisa los datos del nuevo ciclo', true);
+      return;
+    }
+
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
-    
-    // Snapshot del ciclo actual
-    state.cicloAnterior = {
+    const rangosAnteriores = calcularRangoSemanas();
+    const fechaFinCiclo = new Date().toISOString();
+
+    // Archivar el ciclo completo sin snapshots de Deshacer.
+    const cicloCerrado = {
+      id: 'ciclo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       fechaInicio: state.fechaInicioCiclo,
-      fechaFin: new Date().toISOString(),
+      fechaFin: fechaFinCiclo,
       totalS,
       totalDS,
       totalGastado: totalS + totalDS,
       numMovimientos: soloGastos.length,
-      dias: diasEnCiclo()
+      dias: diasEnCiclo(),
+      detalleDisponible: true,
+      movimientos: state.log.map(m => ({
+        monto: Number(m.monto) || 0,
+        tipo: m.tipo,
+        etiqueta: m.etiqueta || null,
+        detalle: m.detalle || '',
+        fecha: m.fecha || ''
+      }))
+    };
+
+    const anteriores = getArchivedCycles();
+    state.historialCiclos = [
+      cicloCerrado,
+      ...anteriores.filter(c => c.id !== cicloCerrado.id)
+    ].slice(0, 2);
+
+    // Resumen usado por la comparación del ciclo actual.
+    state.cicloAnterior = {
+      fechaInicio: cicloCerrado.fechaInicio,
+      fechaFin: cicloCerrado.fechaFin,
+      totalS: cicloCerrado.totalS,
+      totalDS: cicloCerrado.totalDS,
+      totalGastado: cicloCerrado.totalGastado,
+      numMovimientos: cicloCerrado.numMovimientos,
+      dias: cicloCerrado.dias
     };
     
-    // Reset
+    // Valores del nuevo ciclo
+    state.totalDisponible = disponible;
+    state.presupuestoInicial = disponible;
+    state.metaResidual = Math.max(0, meta);
+    if (!isNaN(intocable)) state.montoIntocable = intocable;
+    if (!isNaN(deuda)) state.deudaActual = deuda;
+    state.gastoNoAdeudado = 0;
+    state.gastoTotal = 0;
     state.log = [];
-    state.fechaInicioCiclo = new Date().toISOString();
-    state.semanas.forEach((s, i) => s.isCurrent = i === 0);
+    state.fechaInicioCiclo = new Date(fechaInicio + 'T00:00:00').toISOString();
+    state.ultimaSemanaVista = null;
+
+    const porSemana = Math.max(0, disponible - state.metaResidual) / numSem;
+    let cursorManual = new Date(fechaInicio + 'T00:00:00');
+    state.semanas = Array.from({ length: numSem }, (_, i) => {
+      let fechaInicioManual = null;
+      let fechaFinManual = null;
+      if (state.modoManualSemanas) {
+        const duracion = Math.max(1, rangosAnteriores[i]?.dias || 7);
+        fechaInicioManual = fechaParaInput(cursorManual);
+        const fin = new Date(cursorManual);
+        fin.setDate(fin.getDate() + duracion - 1);
+        fechaFinManual = fechaParaInput(fin);
+        cursorManual = new Date(fin);
+        cursorManual.setDate(cursorManual.getDate() + 1);
+      }
+      return {
+        label: i === 0 ? 'Semana actual' : 'Semana +' + i,
+        presupuesto: porSemana,
+        isCurrent: i === 0,
+        fechaInicioManual,
+        fechaFinManual
+      };
+    });
+
+    uiSections.comparison = false;
+    saveUiSections();
     
     closeModal();
-    toast('Nuevo ciclo iniciado');
+    toast(`Nuevo ciclo · S/ ${fmt(porSemana)} por semana`);
     render();
   }
   
@@ -2929,14 +3861,18 @@
   }
   
   function confirmDelete(idx) {
+    if (idx !== state.log.length - 1) {
+      toast('Solo puedes deshacer el último movimiento', true);
+      return;
+    }
     const mov = state.log[idx];
     if (!mov) return;
     openModal(`
       <h2>Deshacer <span class="accent">movimiento</span></h2>
       <p class="modal-sub">
         <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
-        ${mov.detalle || 'Sin detalle'}<br>
-        <span style="color:var(--ink-mute);font-size:11px;">${mov.fecha}</span>
+        ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
+        <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
       <p class="modal-sub" style="font-size:11px;">Se restaura el estado exacto anterior al movimiento.</p>
       <div class="modal-buttons">
@@ -2947,6 +3883,11 @@
   }
   
   function doDelete(idx) {
+    if (idx !== state.log.length - 1) {
+      closeModal();
+      toast('Solo puedes deshacer el último movimiento', true);
+      return;
+    }
     const mov = state.log[idx];
     if (!mov || !mov.snapshot) { closeModal(); return; }
     state.totalDisponible = mov.snapshot.totalDisponible;
@@ -2991,7 +3932,14 @@
           <span class="help-item-chip MOD">recalc</span>
           <span class="help-item-title">Redistribuir</span>
         </div>
-        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible actual por igual entre todas las semanas.</div>
+        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible actual entre la semana actual y las futuras.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip MOD">←</span>
+          <span class="help-item-title">Deshacer último movimiento</span>
+        </div>
+        <div class="help-item-desc">Desliza el movimiento más reciente hacia la izquierda. Solo el último puede deshacerse para mantener tus cifras consistentes.</div>
       </div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Entendido</button>
@@ -3299,6 +4247,32 @@
   document.getElementById('inputDetalle').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') processStructuredCommand();
   });
+
+  function initKeyboardHandling() {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let maxHeight = viewport.height;
+
+    const updateKeyboard = () => {
+      if (viewport.height > maxHeight) maxHeight = viewport.height;
+      const keyboardOpen = viewport.height < maxHeight * 0.78;
+      document.body.classList.toggle('keyboard-open', keyboardOpen);
+      requestAnimationFrame(updateViewHeight);
+    };
+
+    viewport.addEventListener('resize', updateKeyboard);
+    viewport.addEventListener('scroll', updateKeyboard);
+    ['inputAmount', 'inputDetalle'].forEach(id => {
+      const input = document.getElementById(id);
+      if (!input) return;
+      input.addEventListener('focus', () => {
+        setTimeout(() => {
+          updateKeyboard();
+          input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }, 180);
+      });
+    });
+  }
   
   // ============ GOOGLE DRIVE SYNC ============
   const GOOGLE_CLIENT_ID = '944900044688-t8qsle009qmfm0vck5o2otl9gij30pq4.apps.googleusercontent.com';
@@ -3310,6 +4284,8 @@
   let driveFileId = null;
   let gisReady = false;
   let syncInProgress = false;
+  let pauseAutoUpload = false;
+  let pendingRemoteState = null;
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -3429,7 +4405,7 @@
   }
   
   function scheduleSyncUpload() {
-    if (!accessToken) return;
+    if (!accessToken || pauseAutoUpload) return;
     clearTimeout(syncTimer);
     updateSyncUI('syncing');
     syncTimer = setTimeout(async () => {
@@ -3553,7 +4529,14 @@
       );
     }
   }
-  
+
+  function formatSyncTimestamp(timestamp) {
+    if (!timestamp) return 'Sin fecha registrada';
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return 'Sin fecha registrada';
+    return d.toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
   function openDriveSync() {
     const conectado = !!accessToken;
     const lastMod = state.lastModified 
@@ -3596,6 +4579,7 @@
               <div class="sync-action-sub">Trae los datos de Drive · pisa lo local</div>
             </div>
           </button>
+
         </div>
         
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
@@ -3664,19 +4648,66 @@
       if (res.status === 401) { handleTokenExpired(); return; }
       if (!res.ok) throw new Error('download ' + res.status);
       const remoteState = await res.json();
-      const localDarkMode = state.darkMode;
-      state = { ...remoteState, darkMode: localDarkMode };
-      state.lastModified = Date.now();
-      try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e){}
-      applyTheme();
-      render();
+      pendingRemoteState = remoteState;
       updateSyncUI('ok');
-      toast('↓ Datos traídos de Drive');
+
+      const localTime = state.lastModified || null;
+      const remoteTime = remoteState.lastModified || null;
+      let freshness = 'Revisa las fechas antes de continuar.';
+      if (localTime && remoteTime) {
+        freshness = remoteTime > localTime
+          ? 'La versión de Drive parece más reciente.'
+          : remoteTime < localTime
+            ? 'Tu versión local parece más reciente. Bajar podría reemplazar cambios nuevos.'
+            : 'Ambas versiones tienen la misma fecha de edición.';
+      }
+
+      openModal(`
+        <h2>¿Bajar desde <span class="accent">Drive</span>?</h2>
+        <p class="modal-sub">Esto reemplazará los datos que tienes abiertos en este dispositivo.</p>
+        <div class="rollover-breakdown">
+          <div class="rollover-row">
+            <span class="rollover-week">Versión local</span>
+            <span class="rollover-amount" style="font-size:11px;">${formatSyncTimestamp(localTime)}</span>
+          </div>
+          <div class="rollover-row highlight">
+            <span class="rollover-week">Versión en Drive</span>
+            <span class="rollover-amount" style="font-size:11px;">${formatSyncTimestamp(remoteTime)}</span>
+          </div>
+        </div>
+        <p class="modal-sub" style="font-size:11px;margin-top:12px;">${freshness}</p>
+        <div class="modal-buttons">
+          <button class="btn-secondary" onclick="pendingRemoteState=null; closeModal();">Cancelar</button>
+          <button class="btn-primary" onclick="confirmarBajadaDrive()">Bajar y reemplazar</button>
+        </div>
+      `);
     } catch (e) {
       console.error(e);
       updateSyncUI('error');
       toast('Error al bajar', true);
     }
+  }
+
+  function confirmarBajadaDrive() {
+    if (!pendingRemoteState) {
+      closeModal();
+      toast('La descarga ya no está disponible', true);
+      return;
+    }
+    const remoteState = pendingRemoteState;
+    const remoteModified = remoteState.lastModified || Date.now();
+    const localDarkMode = state.darkMode;
+    pauseAutoUpload = true;
+    state = { ...remoteState, darkMode: localDarkMode };
+    closeModal();
+    applyTheme();
+    render();
+    state.lastModified = remoteModified;
+    try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e) {}
+    pauseAutoUpload = false;
+    pendingRemoteState = null;
+    updateSyncUI('ok');
+    toast('↓ Datos traídos de Drive');
   }
   
   // ============ MODO OSCURO ============
@@ -3856,6 +4887,7 @@
   // ============ INIT ============
   applyTheme();
   render();
+  initKeyboardHandling();
   initGoogleSync();
   // Precargar TC en background (silencioso, solo si es viejo)
   const cacheAge = getTcAgeHours();
