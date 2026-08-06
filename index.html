@@ -141,14 +141,14 @@
   body.dark .tc-date-card {
     background: rgba(255,255,255,0.04);
   }
-  body.dark .tc-hint,
-  body.dark .tc-signal {
+  body.dark .tc-hint {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.05);
   }
-  body.dark .tc-signal-dot.good { background: #7EE8A0; color: #0A0A0B; }
-  body.dark .tc-signal-dot.mid { background: #F5D06F; color: #0A0A0B; }
-  body.dark .tc-signal-dot.bad { background: #FF9B7F; color: #0A0A0B; }
+  body.dark .tc-status-track { background: rgba(255,255,255,0.08); }
+  body.dark .tc-status-fill.good { background: #7EE8A0; }
+  body.dark .tc-status-fill.mid { background: #F5D06F; }
+  body.dark .tc-status-fill.bad { background: #FF9B7F; }
   
   /* === Progress bars === */
   body.dark .cycle-info .cycle-progress-bar {
@@ -606,6 +606,36 @@
     background: transparent;
   }
   .hero-arrow:active { background: rgba(0,0,0,0.05); }
+  .hero-actions {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    gap: 8px;
+    z-index: 2;
+  }
+  .hero-actions .hero-arrow {
+    position: static;
+    top: auto;
+    right: auto;
+  }
+  .hero-privacy {
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    cursor: pointer;
+    background: transparent;
+  }
+  .hero-privacy:active { background: rgba(0,0,0,0.05); }
+  body.dark .hero-privacy {
+    border-color: rgba(245,245,247,0.3);
+    color: #F5F5F7;
+  }
   .hero-label {
     font-size: 11px;
     color: var(--ink-dim);
@@ -1173,60 +1203,24 @@
     font-weight: 500;
   }
   
-  /* Semáforo estratégico */
-  .tc-signal {
-    margin-top: 12px;
-    background: rgba(255,255,255,0.55);
-    border-radius: 16px;
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  /* Barra estratégica siempre visible */
+  .tc-status-track {
+    width: 100%;
+    height: 4px;
+    margin-top: 11px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.08);
   }
-  .tc-signal-dot {
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-weight: 700;
-    font-size: 17px;
-    color: var(--ink);
-    flex-shrink: 0;
-    letter-spacing: -0.02em;
-    position: relative;
+  .tc-status-fill {
+    height: 100%;
+    min-width: 4px;
+    border-radius: inherit;
+    transition: width 0.4s ease, background-color 0.4s ease;
   }
-  .tc-signal-dot.good { background: #A8CC8F; }
-  .tc-signal-dot.mid { background: #F0D48A; }
-  .tc-signal-dot.bad { background: #E8A090; }
-  .tc-signal-dot::after {
-    content: '';
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(0,0,0,0.08);
-  }
-  .tc-signal-content {
-    flex: 1;
-    min-width: 0;
-  }
-  .tc-signal-title {
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    color: var(--ink);
-    letter-spacing: -0.02em;
-    line-height: 1.15;
-  }
-  .tc-signal-sub {
-    font-size: 11px;
-    color: var(--ink-dim);
-    margin-top: 3px;
-    line-height: 1.4;
-    font-weight: 500;
-  }
+  .tc-status-fill.good { background: #A8CC8F; }
+  .tc-status-fill.mid { background: #F0D48A; }
+  .tc-status-fill.bad { background: #E8A090; }
   
   /* Sección */
   .section-head {
@@ -1428,6 +1422,19 @@
     touch-action: pan-y;
   }
   .log-swipe.swipe-enabled .log-item { cursor: grab; }
+  .log-swipe.swipe-enabled .log-item {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .log-swipe.undo-armed .log-item {
+    background: var(--cream);
+    box-shadow: inset 0 0 0 1.5px var(--lavender-deep);
+  }
+  body.dark .log-swipe.undo-armed .log-item {
+    background: #1A1A1E;
+    box-shadow: inset 0 0 0 1.5px #B48CDC;
+  }
   .log-swipe.dragging .log-item { transition: none; cursor: grabbing; }
   .swipe-action {
     position: absolute;
@@ -1453,6 +1460,14 @@
   @keyframes swipePeek {
     0%, 100% { transform: translateX(0); }
     35%, 65% { transform: translateX(-34px); }
+  }
+  @keyframes holdPulse {
+    0% { transform: scale(1); }
+    65% { transform: scale(0.985); }
+    100% { transform: scale(1); }
+  }
+  .log-swipe.hold-onboarding .log-item {
+    animation: holdPulse 0.38s ease;
   }
   .log-swipe.swipe-onboarding .log-item {
     animation: swipePeek 1.05s ease-in-out;
@@ -2104,6 +2119,13 @@
     <path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/>
     <circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/>
   </symbol>
+  <symbol id="icon-eye" viewBox="0 0 24 24">
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
+    <circle cx="12" cy="12" r="2.5"/>
+  </symbol>
+  <symbol id="icon-eye-off" viewBox="0 0 24 24">
+    <path d="m3 3 18 18M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3 3.8M6.2 6.2C3.5 8 2 12 2 12s3.5 6 10 6c1.4 0 2.6-.3 3.7-.7M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+  </symbol>
 </svg>
 
 <div class="app">
@@ -2134,7 +2156,12 @@
   <!-- Hero -->
   <div class="hero-card" id="heroCard">
     <div class="hero-badge"><svg class="ui-icon"><use href="#icon-wallet"></use></svg></div>
-    <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
+    <div class="hero-actions">
+      <button class="hero-privacy" id="heroPrivacyBtn" onclick="toggleBalancePrivacy()" aria-label="Ocultar monto disponible">
+        <svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg>
+      </button>
+      <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
+    </div>
     <div class="hero-label" id="heroLabel">Total disponible</div>
     <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
     <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
@@ -2224,6 +2251,9 @@
       <div class="tc-deadline-label">Si compras hoy</div>
       <div class="tc-deadline-value" id="ccCompraPago">—</div>
       <div class="tc-deadline-sub" id="ccCompraPagoSub">—</div>
+      <div class="tc-status-track" id="signalTrack" role="img" aria-label="Momento para usar la tarjeta">
+        <div class="tc-status-fill" id="signalBar"></div>
+      </div>
     </div>
     <div class="tc-body collapsed" id="tcBody">
       <div class="tc-dates">
@@ -2236,13 +2266,6 @@
           <div class="tc-date-label">Próximo pago</div>
           <div class="tc-date-value" id="ccProxPago">—</div>
           <div class="tc-date-sub" id="ccPagoSub">—</div>
-        </div>
-      </div>
-      <div class="tc-signal" id="ccSignal">
-        <div class="tc-signal-dot" id="signalDot">—</div>
-        <div class="tc-signal-content">
-          <div class="tc-signal-title" id="signalTitle">—</div>
-          <div class="tc-signal-sub" id="signalSub">—</div>
         </div>
       </div>
     </div>
@@ -2390,6 +2413,34 @@
   let uiSections = loadUiSections();
   let currentView = Math.max(0, Math.min(2, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
   let viewsInitialized = false;
+  let undoGestureActive = false;
+  let balanceHidden = (() => {
+    try { return localStorage.getItem('ledger-balance-hidden-v1') === '1'; }
+    catch(e) { return false; }
+  })();
+
+  function toggleBalancePrivacy() {
+    balanceHidden = !balanceHidden;
+    try { localStorage.setItem('ledger-balance-hidden-v1', balanceHidden ? '1' : '0'); } catch(e) {}
+    applyBalancePrivacy();
+  }
+
+  function applyBalancePrivacy() {
+    const amountEl = document.getElementById('totalDisponible');
+    const totalRefEl = document.getElementById('heroTotalRef');
+    const button = document.getElementById('heroPrivacyBtn');
+    const icon = document.getElementById('heroPrivacyIcon');
+    const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
+
+    if (amountEl) amountEl.textContent = balanceHidden
+      ? '••••••'
+      : fmt((state.metaResidual || 0) > 0 ? gastable : state.totalDisponible);
+    if (totalRefEl) totalRefEl.textContent = balanceHidden
+      ? 'S/ ••••••'
+      : 'S/ ' + fmt(state.totalDisponible);
+    if (button) button.setAttribute('aria-label', balanceHidden ? 'Mostrar monto disponible' : 'Ocultar monto disponible');
+    if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
+  }
 
   function goToView(index, options = {}) {
     currentView = Math.max(0, Math.min(2, Number(index) || 0));
@@ -2441,17 +2492,24 @@
 
     shell.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      if (e.target.closest('button, input, textarea, .log-swipe, .all-list')) return;
+      if (e.target.closest('button, input, textarea, .all-list')) return;
       startX = e.clientX;
       startY = e.clientY;
       startAt = Date.now();
       dragging = true;
       horizontal = false;
-      try { shell.setPointerCapture(e.pointerId); } catch(err) {}
+      if (!e.target.closest('.log-swipe')) {
+        try { shell.setPointerCapture(e.pointerId); } catch(err) {}
+      }
     });
 
     shell.addEventListener('pointermove', e => {
       if (!dragging) return;
+      if (undoGestureActive) {
+        track.classList.remove('dragging');
+        track.style.transform = `translateX(-${currentView * 100}%)`;
+        return;
+      }
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       if (!horizontal && Math.abs(dx) > 10) horizontal = Math.abs(dx) > Math.abs(dy);
@@ -2466,6 +2524,11 @@
     const finish = e => {
       if (!dragging) return;
       dragging = false;
+      if (undoGestureActive) {
+        goToView(currentView);
+        try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
+        return;
+      }
       const dx = e.clientX - startX;
       const elapsed = Math.max(1, Date.now() - startAt);
       const velocity = Math.abs(dx) / elapsed;
@@ -2886,45 +2949,37 @@
     document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(compraHoy.pago);
     document.getElementById('ccCompraPagoSub').textContent = `Cierra el ${formatFecha(compraHoy.cierre)} · ${diasPagoCompra === 0 ? 'vence hoy' : diasPagoCompra + ' días para pagar'}`;
     
-    // Semáforo estratégico
-    // Días de gracia si compras hoy = días hasta próximo cierre + días desde próximo cierre hasta próximo pago
-    // Simplificación: diasCierre + (diaPago - diaCierre) si pago > cierre, sino + (30 - cierre + pago)
-    const diasGracia = diasPagoCompra;
+    // Barra estratégica: avanza desde el cierre anterior hasta el próximo cierre
+    const cierreAnterior = fechaConDiaSeguro(cierre.getFullYear(), cierre.getMonth() - 1, state.tarjeta.diaCierre);
+    const hoyTarjeta = new Date();
+    hoyTarjeta.setHours(12, 0, 0, 0);
+    const duracionCicloTarjeta = Math.max(1, Math.round((cierre - cierreAnterior) / (1000 * 60 * 60 * 24)));
+    const diasTranscurridosTarjeta = Math.max(0, Math.round((hoyTarjeta - cierreAnterior) / (1000 * 60 * 60 * 24)));
+    const progresoTarjeta = Math.min(100, Math.max(0, (diasTranscurridosTarjeta / duracionCicloTarjeta) * 100));
+    let signalClass, signalTitle;
     
-    let signalClass, signalTitle, signalSub, signalIcon;
-    
-    if (diasPago <= 3 && diasPago >= 0) {
-      // Prioridad máxima: pago inminente
-      signalClass = 'bad';
-      signalIcon = '!';
-      signalTitle = diasPago === 0 ? 'Pago hoy' : `Pago en ${diasPago} día${diasPago === 1 ? '' : 's'}`;
-      signalSub = `No olvides transferir antes del ${state.tarjeta.diaPago}. Compras nuevas: espera.`;
-    } else if (diasCierre <= 4) {
+    if (diasCierre <= 4) {
       // Cerca del cierre: mala compra
       signalClass = 'bad';
-      signalIcon = '×';
       signalTitle = `Mal día para tarjeta`;
-      signalSub = `Cierre en ${diasCierre} d. Si compras ahora, pagas hasta el ${formatFecha(compraHoy.pago)}. Mejor espera ${diasCierre + 1} días.`;
     } else if (diasCierre <= 10) {
       // Media tabla
       signalClass = 'mid';
-      signalIcon = '~';
       signalTitle = `Día regular`;
-      signalSub = `Cierre en ${diasCierre} d. Si compras hoy, tienes hasta el ${formatFecha(compraHoy.pago)} (${diasGracia} días).`;
     } else {
       // Buen día: recién pasó el cierre
       signalClass = 'good';
-      signalIcon = '✓';
       signalTitle = `Buen día para tarjeta`;
-      signalSub = `Lo que compres hoy se paga hasta el ${formatFecha(compraHoy.pago)}: ${diasGracia} días de financiamiento.`;
     }
     
-    const dot = document.getElementById('signalDot');
-    dot.className = 'tc-signal-dot ' + signalClass;
-    dot.textContent = signalIcon;
-    document.getElementById('signalTitle').textContent = signalTitle;
-    document.getElementById('signalSub').textContent = signalSub;
-    
+    const signalBar = document.getElementById('signalBar');
+    const signalTrack = document.getElementById('signalTrack');
+    signalBar.className = 'tc-status-fill ' + signalClass;
+    signalBar.style.width = progresoTarjeta + '%';
+    signalTrack.setAttribute('aria-label', `${signalTitle}. Faltan ${diasCierre} día${diasCierre === 1 ? '' : 's'} para el cierre.`);
+    signalTrack.title = signalTitle;
+
+    applyBalancePrivacy();
     renderLog();
     renderComparison();
     renderCycleHistoryInline();
@@ -2977,7 +3032,7 @@
   }
 
   let swipeHintSeen = (() => {
-    try { return localStorage.getItem('ledger-swipe-hint-seen-v1') === '1'; }
+    try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v2') === '1'; }
     catch(e) { return true; }
   })();
   
@@ -3023,7 +3078,7 @@
         </div>
         <div class="log-right">
           <div class="log-amount">S/ ${fmt(mov.monto)}</div>
-          ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">← desliza para deshacer</span>' : ''}
+          ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
         </div>
         </div>
       `;
@@ -3037,13 +3092,17 @@
     const row = root.querySelector('.log-swipe.swipe-enabled');
     if (!row) return;
     swipeHintSeen = true;
-    try { localStorage.setItem('ledger-swipe-hint-seen-v1', '1'); } catch(e) {}
-    row.classList.add('swipe-onboarding');
-    row.addEventListener('animationend', () => {
-      row.classList.remove('swipe-onboarding');
+    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v2', '1'); } catch(e) {}
+    row.classList.add('hold-onboarding');
+    setTimeout(() => {
+      row.classList.remove('hold-onboarding');
+      row.classList.add('undo-armed', 'swipe-onboarding');
+    }, 390);
+    setTimeout(() => {
+      row.classList.remove('undo-armed', 'swipe-onboarding');
       const hint = row.querySelector('.swipe-hint');
       if (hint) hint.style.display = 'none';
-    }, { once: true });
+    }, 1500);
   }
 
   function initSwipeRows(root = document) {
@@ -3053,8 +3112,16 @@
       const row = item.closest('.log-swipe');
       let startX = 0;
       let startY = 0;
+      let lastX = 0;
       let dragging = false;
       let horizontal = false;
+      let armed = false;
+      let holdTimer = null;
+
+      const cancelHold = () => {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+      };
 
       const closeOtherRows = () => {
         document.querySelectorAll('.log-swipe.open .log-item').forEach(other => {
@@ -3068,18 +3135,41 @@
       item.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         closeOtherRows();
+        item.style.transform = 'translateX(0)';
+        row.classList.remove('open', 'undo-armed');
         startX = e.clientX;
         startY = e.clientY;
+        lastX = e.clientX;
         dragging = true;
         horizontal = false;
-        row.classList.add('dragging');
-        try { item.setPointerCapture(e.pointerId); } catch(err) {}
+        armed = false;
+        cancelHold();
+        holdTimer = setTimeout(() => {
+          if (!dragging) return;
+          armed = true;
+          undoGestureActive = true;
+          row.classList.add('undo-armed', 'dragging');
+          const track = document.getElementById('viewsTrack');
+          if (track) {
+            track.classList.remove('dragging');
+            track.style.transform = `translateX(-${currentView * 100}%)`;
+          }
+          try { item.setPointerCapture(e.pointerId); } catch(err) {}
+          if (navigator.vibrate) {
+            try { navigator.vibrate(18); } catch(err) {}
+          }
+        }, 360);
       });
 
       item.addEventListener('pointermove', e => {
         if (!dragging) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
+        lastX = e.clientX;
+        if (!armed) {
+          if (Math.hypot(dx, dy) > 8) cancelHold();
+          return;
+        }
         if (!horizontal && Math.abs(dx) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
         if (!horizontal) return;
         const offset = Math.max(-94, Math.min(0, dx));
@@ -3088,17 +3178,24 @@
 
       const finishSwipe = e => {
         if (!dragging) return;
+        cancelHold();
         dragging = false;
-        row.classList.remove('dragging');
-        const dx = e.clientX - startX;
-        const open = horizontal && dx < -42;
-        item.style.transform = open ? 'translateX(-94px)' : 'translateX(0)';
-        row.classList.toggle('open', open);
+        const wasArmed = armed;
+        const dx = (Number.isFinite(e.clientX) ? e.clientX : lastX) - startX;
+        const open = wasArmed && horizontal && dx < -42;
+        if (wasArmed) {
+          item.style.transform = open ? 'translateX(-94px)' : 'translateX(0)';
+          row.classList.toggle('open', open);
+        }
+        row.classList.remove('dragging', 'undo-armed');
+        armed = false;
         try { item.releasePointerCapture(e.pointerId); } catch(err) {}
+        if (wasArmed) setTimeout(() => { undoGestureActive = false; }, 0);
       };
 
       item.addEventListener('pointerup', finishSwipe);
       item.addEventListener('pointercancel', finishSwipe);
+      item.addEventListener('contextmenu', e => e.preventDefault());
     });
   }
   
@@ -3172,7 +3269,7 @@
             </div>
             <div class="log-right">
               <div class="log-amount">S/ ${fmt(mov.monto)}</div>
-              ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">← desliza para deshacer</span>' : ''}
+              ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
             </div>
           </div>
           </div>
@@ -3939,7 +4036,7 @@
           <span class="help-item-chip MOD">←</span>
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
-        <div class="help-item-desc">Desliza el movimiento más reciente hacia la izquierda. Solo el último puede deshacerse para mantener tus cifras consistentes.</div>
+        <div class="help-item-desc">Mantén presionado el movimiento más reciente hasta que se ilumine y, sin soltar, deslízalo hacia la izquierda. Un swipe normal cambia de ventana.</div>
       </div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Entendido</button>
