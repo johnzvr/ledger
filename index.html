@@ -275,7 +275,6 @@
     will-change: transform;
   }
   .views-track.dragging { transition: none; }
-  .views-track.no-transition { transition: none; }
   .app-view {
     flex: 0 0 100%;
     width: 100%;
@@ -2416,7 +2415,6 @@
   let uiSections = loadUiSections();
   let currentView = Math.max(0, Math.min(2, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
   let viewsInitialized = false;
-  let wrappingView = false;
   let undoGestureActive = false;
   let balanceHidden = (() => {
     try { return localStorage.getItem('ledger-balance-hidden-v1') === '1'; }
@@ -2446,34 +2444,12 @@
     if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
   }
 
-  function refreshLoopClone() {
-    const track = document.getElementById('viewsTrack');
-    const firstView = track?.querySelector('.app-view[data-view-index="0"]');
-    if (!track || !firstView) return;
-    track.querySelector('.loop-clone')?.remove();
-    const clone = firstView.cloneNode(true);
-    clone.classList.remove('active');
-    clone.classList.add('loop-clone');
-    clone.removeAttribute('data-view-index');
-    clone.setAttribute('aria-hidden', 'true');
-    clone.setAttribute('inert', '');
-    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-    clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-    clone.querySelectorAll('button, input, textarea, select, a').forEach(el => el.setAttribute('tabindex', '-1'));
-    track.appendChild(clone);
-  }
-
   function goToView(index, options = {}) {
     currentView = Math.max(0, Math.min(2, Number(index) || 0));
     const track = document.getElementById('viewsTrack');
     if (track) {
       track.classList.remove('dragging');
-      track.classList.toggle('no-transition', !!options.instant);
       track.style.transform = `translateX(-${currentView * 100}%)`;
-      if (options.instant) {
-        void track.offsetWidth;
-        requestAnimationFrame(() => track.classList.remove('no-transition'));
-      }
     }
     document.querySelectorAll('.view-tab').forEach((tab, i) => {
       const active = i === currentView;
@@ -2502,7 +2478,6 @@
 
   function initViews() {
     if (viewsInitialized) {
-      refreshLoopClone();
       goToView(currentView);
       return;
     }
@@ -2510,7 +2485,6 @@
     const shell = document.getElementById('viewsShell');
     const track = document.getElementById('viewsTrack');
     if (!shell || !track) return;
-    refreshLoopClone();
 
     let startX = 0;
     let startY = 0;
@@ -2520,7 +2494,6 @@
     let suppressNextClick = false;
 
     shell.addEventListener('pointerdown', e => {
-      if (wrappingView) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       const interactive = e.target.closest('button, input, textarea, .all-list');
       const cycleCard = e.target.closest('.cycle-history-card');
@@ -2546,8 +2519,9 @@
       const dy = e.clientY - startY;
       if (!horizontal && Math.abs(dx) > 10) horizontal = Math.abs(dx) > Math.abs(dy);
       if (!horizontal) return;
-      const atFirst = currentView === 0 && dx > 0;
-      const resisted = atFirst ? dx * 0.22 : dx;
+      const navigationDx = currentView === 2 ? Math.abs(dx) : dx;
+      const atFirst = currentView === 0 && navigationDx > 0;
+      const resisted = atFirst ? navigationDx * 0.22 : navigationDx;
       track.classList.add('dragging');
       track.style.transform = `translateX(calc(-${currentView * 100}% + ${resisted}px))`;
     });
@@ -2568,14 +2542,8 @@
         suppressNextClick = true;
         setTimeout(() => { suppressNextClick = false; }, 400);
       }
-      if (shouldMove && dx < 0 && currentView === 2) {
-        wrappingView = true;
-        track.classList.remove('dragging', 'no-transition');
-        track.style.transform = 'translateX(-300%)';
-        setTimeout(() => {
-          goToView(0, { focusTabs: true, instant: true });
-          wrappingView = false;
-        }, 320);
+      if (shouldMove && currentView === 2) {
+        goToView(1, { focusTabs: true });
         try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
         return;
       }
