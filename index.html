@@ -689,6 +689,28 @@
     top: 0;
     opacity: 0.8;
   }
+  .hero-cycle-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+  }
+  .hero-cycle-btn {
+    min-height: 44px;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 14px;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .hero-cycle-btn:active { transform: scale(0.97); }
   
   .hero-meta-info {
     margin-top: 14px;
@@ -2176,6 +2198,9 @@
       <div class="hero-progress-fill" id="progressFill" style="width: 100%"></div>
       <div class="hero-progress-meta" id="progressMeta" style="width: 0%"></div>
     </div>
+    <div class="hero-cycle-row">
+      <button class="hero-cycle-btn" onclick="confirmarNuevoCiclo()">Cerrar ciclo</button>
+    </div>
   </div>
   
   <!-- Bento -->
@@ -2230,7 +2255,6 @@
         Presupuesto semanal<span class="aside" id="semanasInfo"></span>
       </div>
       <button class="section-toggle-btn" id="btnToggleWeeks" onclick="toggleSection('weeks')">Ver todas</button>
-      <button class="tc-btn" onclick="confirmarNuevoCiclo()">Nuevo ciclo</button>
     </div>
     <div class="weeks-grid collapsed" id="weeksContainer"></div>
     <div class="cycle-info" id="cycleInfo"></div>
@@ -2954,7 +2978,7 @@
     } else if (cicloTerminado()) {
       cycleInfoEl.innerHTML = `
         <div class="cycle-ended-warn" style="width:100%;">
-          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Nuevo ciclo" para empezar.
+          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Cerrar ciclo" en el monto total para empezar el siguiente.
         </div>
       `;
     } else {
