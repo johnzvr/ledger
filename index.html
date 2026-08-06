@@ -2517,11 +2517,14 @@
     let startAt = 0;
     let dragging = false;
     let horizontal = false;
+    let suppressNextClick = false;
 
     shell.addEventListener('pointerdown', e => {
       if (wrappingView) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      if (e.target.closest('button, input, textarea, .all-list')) return;
+      const interactive = e.target.closest('button, input, textarea, .all-list');
+      const cycleCard = e.target.closest('.cycle-history-card');
+      if (interactive && !cycleCard) return;
       startX = e.clientX;
       startY = e.clientY;
       startAt = Date.now();
@@ -2561,6 +2564,10 @@
       const elapsed = Math.max(1, Date.now() - startAt);
       const velocity = Math.abs(dx) / elapsed;
       const shouldMove = horizontal && (Math.abs(dx) > 54 || (Math.abs(dx) > 28 && velocity > 0.45));
+      if (shouldMove) {
+        suppressNextClick = true;
+        setTimeout(() => { suppressNextClick = false; }, 400);
+      }
       if (shouldMove && dx < 0 && currentView === 2) {
         wrappingView = true;
         track.classList.remove('dragging', 'no-transition');
@@ -2581,6 +2588,12 @@
 
     shell.addEventListener('pointerup', finish);
     shell.addEventListener('pointercancel', finish);
+    shell.addEventListener('click', e => {
+      if (!suppressNextClick) return;
+      suppressNextClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     window.addEventListener('resize', updateViewHeight);
     if ('ResizeObserver' in window) {
       const observer = new ResizeObserver(() => requestAnimationFrame(updateViewHeight));
