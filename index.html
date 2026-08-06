@@ -275,6 +275,7 @@
     will-change: transform;
   }
   .views-track.dragging { transition: none; }
+  .views-track.no-transition { transition: none; }
   .app-view {
     flex: 0 0 100%;
     width: 100%;
@@ -1428,12 +1429,12 @@
     -webkit-touch-callout: none;
   }
   .log-swipe.undo-armed .log-item {
-    background: var(--cream);
-    box-shadow: inset 0 0 0 1.5px var(--lavender-deep);
+    background: rgba(196,85,59,0.10);
+    box-shadow: inset 0 0 0 1.5px var(--danger);
   }
   body.dark .log-swipe.undo-armed .log-item {
-    background: #1A1A1E;
-    box-shadow: inset 0 0 0 1.5px #B48CDC;
+    background: #2A1512;
+    box-shadow: inset 0 0 0 1.5px var(--danger);
   }
   .log-swipe.dragging .log-item { transition: none; cursor: grabbing; }
   .swipe-action {
@@ -2278,6 +2279,7 @@
         <div class="section-head stack view-section-head">
           <div class="section-actions">
             <button class="action-btn primary" onclick="undoLast()" id="btnUndo">↶ Deshacer</button>
+            <button class="action-btn" onclick="redoLast()" id="btnRedo">↷ Rehacer</button>
             <button class="action-btn" onclick="showAllMovements()">Ver todos</button>
             <button class="action-btn" onclick="showHelp()">Ayuda</button>
           </div>
@@ -2404,7 +2406,8 @@
       { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
     tarjeta: { diaCierre: 24, diaPago: 20 },
-    log: []
+    log: [],
+    redoMovement: null
   };
   
   let state = loadState();
@@ -2413,6 +2416,7 @@
   let uiSections = loadUiSections();
   let currentView = Math.max(0, Math.min(2, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
   let viewsInitialized = false;
+  let wrappingView = false;
   let undoGestureActive = false;
   let balanceHidden = (() => {
     try { return localStorage.getItem('ledger-balance-hidden-v1') === '1'; }
@@ -2442,12 +2446,34 @@
     if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
   }
 
+  function refreshLoopClone() {
+    const track = document.getElementById('viewsTrack');
+    const firstView = track?.querySelector('.app-view[data-view-index="0"]');
+    if (!track || !firstView) return;
+    track.querySelector('.loop-clone')?.remove();
+    const clone = firstView.cloneNode(true);
+    clone.classList.remove('active');
+    clone.classList.add('loop-clone');
+    clone.removeAttribute('data-view-index');
+    clone.setAttribute('aria-hidden', 'true');
+    clone.setAttribute('inert', '');
+    clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+    clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+    clone.querySelectorAll('button, input, textarea, select, a').forEach(el => el.setAttribute('tabindex', '-1'));
+    track.appendChild(clone);
+  }
+
   function goToView(index, options = {}) {
     currentView = Math.max(0, Math.min(2, Number(index) || 0));
     const track = document.getElementById('viewsTrack');
     if (track) {
       track.classList.remove('dragging');
+      track.classList.toggle('no-transition', !!options.instant);
       track.style.transform = `translateX(-${currentView * 100}%)`;
+      if (options.instant) {
+        void track.offsetWidth;
+        requestAnimationFrame(() => track.classList.remove('no-transition'));
+      }
     }
     document.querySelectorAll('.view-tab').forEach((tab, i) => {
       const active = i === currentView;
@@ -2476,6 +2502,7 @@
 
   function initViews() {
     if (viewsInitialized) {
+      refreshLoopClone();
       goToView(currentView);
       return;
     }
@@ -2483,6 +2510,7 @@
     const shell = document.getElementById('viewsShell');
     const track = document.getElementById('viewsTrack');
     if (!shell || !track) return;
+    refreshLoopClone();
 
     let startX = 0;
     let startY = 0;
@@ -2491,6 +2519,7 @@
     let horizontal = false;
 
     shell.addEventListener('pointerdown', e => {
+      if (wrappingView) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (e.target.closest('button, input, textarea, .all-list')) return;
       startX = e.clientX;
@@ -2515,8 +2544,7 @@
       if (!horizontal && Math.abs(dx) > 10) horizontal = Math.abs(dx) > Math.abs(dy);
       if (!horizontal) return;
       const atFirst = currentView === 0 && dx > 0;
-      const atLast = currentView === 2 && dx < 0;
-      const resisted = (atFirst || atLast) ? dx * 0.22 : dx;
+      const resisted = atFirst ? dx * 0.22 : dx;
       track.classList.add('dragging');
       track.style.transform = `translateX(calc(-${currentView * 100}% + ${resisted}px))`;
     });
@@ -2533,6 +2561,17 @@
       const elapsed = Math.max(1, Date.now() - startAt);
       const velocity = Math.abs(dx) / elapsed;
       const shouldMove = horizontal && (Math.abs(dx) > 54 || (Math.abs(dx) > 28 && velocity > 0.45));
+      if (shouldMove && dx < 0 && currentView === 2) {
+        wrappingView = true;
+        track.classList.remove('dragging', 'no-transition');
+        track.style.transform = 'translateX(-300%)';
+        setTimeout(() => {
+          goToView(0, { focusTabs: true, instant: true });
+          wrappingView = false;
+        }, 320);
+        try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
+        return;
+      }
       let next = currentView;
       if (shouldMove && dx < 0) next++;
       if (shouldMove && dx > 0) next--;
@@ -3039,10 +3078,17 @@
   function renderLog() {
     const logEl = document.getElementById('logContainer');
     document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
+    if (state.redoMovement) {
+      const redo = state.redoMovement;
+      const stillValid = state.log.length === redo.logLength && currentStateMatchesSnapshot(redo.movement?.snapshot);
+      if (!stillValid) state.redoMovement = null;
+    }
     
-    // Estado del botón Deshacer
+    // Estado de Deshacer y Rehacer
     const btnUndo = document.getElementById('btnUndo');
     if (btnUndo) btnUndo.disabled = state.log.length === 0;
+    const btnRedo = document.getElementById('btnRedo');
+    if (btnRedo) btnRedo.disabled = !state.redoMovement;
     const btnHistory = document.getElementById('btnCycleHistory');
     if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
@@ -3200,6 +3246,37 @@
   }
   
   // ============ DESHACER ÚLTIMO ============
+  function captureMovementState() {
+    return {
+      totalDisponible: state.totalDisponible,
+      metaResidual: state.metaResidual || 0,
+      deudaActual: state.deudaActual,
+      gastoNoAdeudado: state.gastoNoAdeudado,
+      gastoTotal: state.gastoTotal,
+      semanas: JSON.parse(JSON.stringify(state.semanas))
+    };
+  }
+
+  function restoreMovementState(snapshot) {
+    state.totalDisponible = snapshot.totalDisponible;
+    state.metaResidual = snapshot.metaResidual || 0;
+    state.deudaActual = snapshot.deudaActual;
+    state.gastoNoAdeudado = snapshot.gastoNoAdeudado;
+    state.gastoTotal = snapshot.gastoTotal;
+    state.semanas = JSON.parse(JSON.stringify(snapshot.semanas));
+  }
+
+  function currentStateMatchesSnapshot(snapshot) {
+    if (!snapshot) return false;
+    const sameNumber = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.005;
+    return sameNumber(state.totalDisponible, snapshot.totalDisponible)
+      && sameNumber(state.metaResidual || 0, snapshot.metaResidual || 0)
+      && sameNumber(state.deudaActual, snapshot.deudaActual)
+      && sameNumber(state.gastoNoAdeudado, snapshot.gastoNoAdeudado)
+      && sameNumber(state.gastoTotal, snapshot.gastoTotal)
+      && JSON.stringify(state.semanas) === JSON.stringify(snapshot.semanas);
+  }
+
   function undoLast() {
     if (state.log.length === 0) {
       toast('No hay movimientos que deshacer', true);
@@ -3223,6 +3300,27 @@
         <button class="btn-danger" onclick="doDelete(${lastIdx})">Sí, deshacer</button>
       </div>
     `);
+  }
+
+  function redoLast() {
+    const redo = state.redoMovement;
+    if (!redo?.movement || !redo?.afterSnapshot) {
+      toast('No hay movimientos que rehacer', true);
+      return;
+    }
+    const beforeSnapshot = redo.movement.snapshot;
+    const safeToRedo = state.log.length === redo.logLength && currentStateMatchesSnapshot(beforeSnapshot);
+    if (!safeToRedo) {
+      state.redoMovement = null;
+      toast('Ya hubo otros cambios; no se puede rehacer', true);
+      render();
+      return;
+    }
+    restoreMovementState(redo.afterSnapshot);
+    state.log.push(JSON.parse(JSON.stringify(redo.movement)));
+    state.redoMovement = null;
+    toast('Movimiento recuperado');
+    render();
   }
   
   // ============ VER TODOS ============
@@ -3664,6 +3762,7 @@
     state.gastoNoAdeudado = 0;
     state.gastoTotal = 0;
     state.log = [];
+    state.redoMovement = null;
     state.fechaInicioCiclo = new Date(fechaInicio + 'T00:00:00').toISOString();
     state.ultimaSemanaVista = null;
 
@@ -3757,6 +3856,7 @@
     const restantes = Math.max(1, state.semanas.length - currentIdx);
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const nuevoPresupuesto = gastable / restantes;
+    state.redoMovement = null;
     const snapshot = {
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
@@ -3897,6 +3997,7 @@
   }
   
   function aplicarMovimiento(monto, tipo, etiqueta, detalle) {
+    state.redoMovement = null;
     const mov = {
       monto, tipo, etiqueta, detalle,
       fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
@@ -3987,13 +4088,14 @@
     }
     const mov = state.log[idx];
     if (!mov || !mov.snapshot) { closeModal(); return; }
-    state.totalDisponible = mov.snapshot.totalDisponible;
-    if (mov.snapshot.metaResidual !== undefined) state.metaResidual = mov.snapshot.metaResidual;
-    state.deudaActual = mov.snapshot.deudaActual;
-    state.gastoNoAdeudado = mov.snapshot.gastoNoAdeudado;
-    state.gastoTotal = mov.snapshot.gastoTotal;
-    state.semanas = mov.snapshot.semanas;
+    const afterSnapshot = captureMovementState();
+    restoreMovementState(mov.snapshot);
     state.log.splice(idx, 1);
+    state.redoMovement = {
+      movement: JSON.parse(JSON.stringify(mov)),
+      afterSnapshot,
+      logLength: state.log.length
+    };
     closeModal();
     toast('Movimiento deshecho');
     render();
@@ -4036,7 +4138,14 @@
           <span class="help-item-chip MOD">←</span>
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
-        <div class="help-item-desc">Mantén presionado el movimiento más reciente hasta que se ilumine y, sin soltar, deslízalo hacia la izquierda. Un swipe normal cambia de ventana.</div>
+        <div class="help-item-desc">Mantén presionado el movimiento más reciente hasta que se marque en rojo y, sin soltar, deslízalo hacia la izquierda. Un swipe normal cambia de ventana.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip MOD">↷</span>
+          <span class="help-item-title">Rehacer movimiento</span>
+        </div>
+        <div class="help-item-desc">Recupera el último movimiento deshecho. Deja de estar disponible si registras otro movimiento o cambias los montos.</div>
       </div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Entendido</button>
@@ -4147,6 +4256,7 @@
     const fechaInicio = document.getElementById('setFechaInicio').value;
     const modoManualEl = document.getElementById('setModoManual');
     
+    state.redoMovement = null;
     if (!isNaN(disp)) { state.totalDisponible = disp; state.presupuestoInicial = disp; }
     if (!isNaN(meta)) state.metaResidual = Math.max(0, meta);
     if (!isNaN(intoc)) state.montoIntocable = intoc;
@@ -4279,6 +4389,7 @@
       state.semanas[i].fechaInicioManual = f.inicio;
       state.semanas[i].fechaFinManual = f.fin;
     });
+    state.redoMovement = null;
     
     state.ultimaSemanaVista = null; // evitar toast falso de "avanzó de semana"
     closeModal();
