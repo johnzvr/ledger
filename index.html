@@ -207,6 +207,7 @@
     -webkit-font-smoothing: antialiased;
     font-optical-sizing: auto;
   }
+  body { touch-action: pan-y pinch-zoom; }
   
   .num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
   .serif-italic { font-family: 'Instrument Serif', serif; font-style: italic; }
@@ -2473,7 +2474,12 @@
   function updateViewHeight() {
     const shell = document.getElementById('viewsShell');
     const active = document.querySelector(`.app-view[data-view-index="${currentView}"]`);
-    if (shell && active) shell.style.height = active.scrollHeight + 'px';
+    if (!shell || !active) return;
+    const app = shell.closest('.app');
+    const viewportHeight = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight;
+    const appPaddingBottom = app ? (parseFloat(getComputedStyle(app).paddingBottom) || 0) : 0;
+    const availableHeight = Math.max(0, viewportHeight - shell.offsetTop - appPaddingBottom);
+    shell.style.height = Math.max(active.scrollHeight, availableHeight) + 'px';
   }
 
   function initViews() {
@@ -2485,6 +2491,7 @@
     const shell = document.getElementById('viewsShell');
     const track = document.getElementById('viewsTrack');
     if (!shell || !track) return;
+    const gestureSurface = document;
 
     let startX = 0;
     let startY = 0;
@@ -2493,22 +2500,26 @@
     let horizontal = false;
     let suppressNextClick = false;
 
-    shell.addEventListener('pointerdown', e => {
+    gestureSurface.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      const interactive = e.target.closest('button, input, textarea, .all-list');
-      const cycleCard = e.target.closest('.cycle-history-card');
+      const target = e.target instanceof Element ? e.target : null;
+      if (!target || target.closest('.input-bar, .modal-overlay.active')) return;
+      const tabs = document.querySelector('.view-tabs');
+      const inputBar = document.querySelector('.input-bar');
+      const areaTop = tabs?.getBoundingClientRect().bottom || 0;
+      const areaBottom = inputBar?.getBoundingClientRect().top || (window.visualViewport?.height || window.innerHeight);
+      if (e.clientY < areaTop || e.clientY >= areaBottom) return;
+      const interactive = target.closest('button, input, textarea, .all-list');
+      const cycleCard = target.closest('.cycle-history-card');
       if (interactive && !cycleCard) return;
       startX = e.clientX;
       startY = e.clientY;
       startAt = Date.now();
       dragging = true;
       horizontal = false;
-      if (!e.target.closest('.log-swipe')) {
-        try { shell.setPointerCapture(e.pointerId); } catch(err) {}
-      }
     });
 
-    shell.addEventListener('pointermove', e => {
+    gestureSurface.addEventListener('pointermove', e => {
       if (!dragging) return;
       if (undoGestureActive) {
         track.classList.remove('dragging');
@@ -2531,10 +2542,10 @@
       dragging = false;
       if (undoGestureActive) {
         goToView(currentView);
-        try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
         return;
       }
-      const dx = e.clientX - startX;
+      const endX = Number.isFinite(e.clientX) ? e.clientX : startX;
+      const dx = endX - startX;
       const elapsed = Math.max(1, Date.now() - startAt);
       const velocity = Math.abs(dx) / elapsed;
       const shouldMove = horizontal && (Math.abs(dx) > 54 || (Math.abs(dx) > 28 && velocity > 0.45));
@@ -2544,19 +2555,17 @@
       }
       if (shouldMove && currentView === 2) {
         goToView(1, { focusTabs: true });
-        try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
         return;
       }
       let next = currentView;
       if (shouldMove && dx < 0) next++;
       if (shouldMove && dx > 0) next--;
       goToView(next, { focusTabs: shouldMove });
-      try { shell.releasePointerCapture(e.pointerId); } catch(err) {}
     };
 
-    shell.addEventListener('pointerup', finish);
-    shell.addEventListener('pointercancel', finish);
-    shell.addEventListener('click', e => {
+    gestureSurface.addEventListener('pointerup', finish);
+    gestureSurface.addEventListener('pointercancel', finish);
+    gestureSurface.addEventListener('click', e => {
       if (!suppressNextClick) return;
       suppressNextClick = false;
       e.preventDefault();
