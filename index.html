@@ -141,6 +141,12 @@
   body.dark .tc-date-card {
     background: rgba(255,255,255,0.04);
   }
+  body.dark .tc-simulate-btn,
+  body.dark .purchase-impact,
+  body.dark .purchase-sim-card {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+  }
   body.dark .tc-hint {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.05);
@@ -689,28 +695,25 @@
     top: 0;
     opacity: 0.8;
   }
-  .hero-cycle-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 12px;
-  }
   .hero-cycle-btn {
-    min-height: 44px;
-    padding: 8px 15px;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    padding: 0;
     border: none;
-    border-radius: 14px;
-    background: var(--ink);
-    color: var(--bg);
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 650;
-    letter-spacing: 0.02em;
+    border-radius: 50%;
+    background: #1A1A1A;
+    color: #FAF8F3;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
   }
   .hero-cycle-btn:active { transform: scale(0.97); }
+  body.dark .hero-cycle-btn {
+    background: #F5F5F7;
+    color: #0A0A0B;
+  }
   
   .hero-meta-info {
     margin-top: 14px;
@@ -1184,6 +1187,24 @@
     justify-content: center;
   }
   .tc-btn:active { background: rgba(255,255,255,0.9); }
+  .tc-simulate-btn {
+    width: 100%;
+    min-height: 46px;
+    border: 1.5px solid rgba(0,0,0,0.1);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.42);
+    color: var(--ink);
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .tc-simulate-btn:active { transform: scale(0.985); }
   .tc-dates {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1244,6 +1265,291 @@
   .tc-status-fill.good { background: #A8CC8F; }
   .tc-status-fill.mid { background: #F0D48A; }
   .tc-status-fill.bad { background: #E8A090; }
+
+  /* Simulador de compra */
+  .purchase-sim-actions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: end;
+  }
+  .purchase-sim-actions .modal-field { margin-bottom: 0; }
+  .purchase-analyze-btn {
+    min-height: 44px;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 15px;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .purchase-impact {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 14px;
+    background: #E5EDF2;
+  }
+  body.dark .purchase-impact { background: rgba(127,184,224,0.12); }
+  .purchase-impact-label {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .purchase-impact strong {
+    display: block;
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .purchase-impact.warning strong { color: var(--danger); }
+  .purchase-capacity-card {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    background: var(--bg);
+  }
+  body.dark .purchase-capacity-card {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+  }
+  .purchase-capacity-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .purchase-capacity-title {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .purchase-capacity-copy {
+    color: var(--ink-dim);
+    font-size: 11px;
+    line-height: 1.5;
+    margin-top: 4px;
+  }
+  .purchase-capacity-meta {
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.45;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid var(--line);
+  }
+  .purchase-sim-badge.neutral {
+    background: var(--line-hi);
+    color: var(--ink-dim);
+  }
+  .purchase-section-label {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-style: normal;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    word-spacing: normal;
+    font-kerning: auto;
+    margin: 18px 2px 0;
+  }
+  .purchase-result-heading {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-style: normal;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    word-spacing: normal;
+    font-kerning: auto;
+  }
+  .purchase-sim-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .purchase-sim-card {
+    border: none;
+    border-radius: 20px;
+    padding: 16px;
+    background: #F0EAF4;
+  }
+  .purchase-sim-card.wait { background: #EAF1E6; }
+  body.dark .purchase-sim-card,
+  body.dark .purchase-sim-card.wait {
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .purchase-option-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .purchase-option-icon {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.62);
+    color: var(--ink);
+  }
+  .purchase-option-icon .ui-icon { width: 17px; height: 17px; }
+  body.dark .purchase-option-icon { background: rgba(255,255,255,0.08); }
+  .purchase-option-content { flex: 1; min-width: 0; }
+  .purchase-option-line {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .purchase-option-line > .purchase-sim-badge {
+    margin-left: auto;
+  }
+  .purchase-option-title {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-style: normal;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    word-spacing: normal;
+    font-kerning: auto;
+    line-height: 1;
+  }
+  .purchase-option-caption {
+    color: var(--ink-dim);
+    font-size: 10px;
+    font-weight: 550;
+    margin-top: 3px;
+  }
+  .purchase-sim-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-bottom: 5px;
+  }
+  .purchase-sim-kicker {
+    color: var(--ink-dim);
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .purchase-sim-deadline {
+    margin: 12px 0 10px;
+    padding: 12px 13px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.56);
+  }
+  body.dark .purchase-sim-deadline { background: rgba(255,255,255,0.05); }
+  .purchase-sim-deadline-label {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .purchase-sim-title {
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .purchase-sim-badge {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 5px 8px;
+    color: #1A1A1A;
+    font-size: 9px;
+    font-weight: 750;
+  }
+  .purchase-sim-badge.good { background: #A8CC8F; }
+  .purchase-sim-badge.mid { background: #D8C7E4; }
+  .purchase-sim-badge.bad { background: #E8A090; }
+  .purchase-sim-payment {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 650;
+    margin-bottom: 4px;
+  }
+  .purchase-sim-details {
+    display: grid;
+    grid-template-columns: minmax(78px, 0.75fr) minmax(0, 1.6fr);
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .purchase-sim-detail {
+    min-width: 0;
+    padding: 9px 10px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.34);
+  }
+  body.dark .purchase-sim-detail { background: rgba(255,255,255,0.035); }
+  .purchase-sim-detail span {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .purchase-sim-detail strong {
+    display: block;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+  .purchase-sim-copy,
+  .purchase-sim-plan {
+    color: var(--ink-dim);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .purchase-sim-plan {
+    margin-top: 12px;
+    padding: 11px 12px 12px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.62);
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+  }
+  body.dark .purchase-sim-plan {
+    background: rgba(255,255,255,0.06);
+  }
+  .purchase-sim-plan-label {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
   
   /* Sección */
   .section-head {
@@ -1831,6 +2137,15 @@
     font-weight: 400;
     color: var(--ink-dim);
   }
+  .modal h2.purchase-modal-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-style: normal;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    word-spacing: normal;
+    font-kerning: auto;
+  }
   .modal-sub {
     font-size: 13px;
     color: var(--ink-dim);
@@ -2187,6 +2502,9 @@
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
     <path d="m9 12 2 2 4-4"/>
   </symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24">
+    <path d="m5 12 4 4L19 6"/>
+  </symbol>
   <symbol id="icon-cash" viewBox="0 0 24 24">
     <rect x="2" y="6" width="20" height="12" rx="2"/>
     <circle cx="12" cy="12" r="2.5"/>
@@ -2245,6 +2563,7 @@
         <svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg>
       </button>
       <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
+      <button class="hero-cycle-btn" onclick="confirmarNuevoCiclo()" aria-label="Cerrar ciclo" title="Cerrar ciclo"><svg class="ui-icon"><use href="#icon-check"></use></svg></button>
     </div>
     <div class="hero-label" id="heroLabel">Total disponible</div>
     <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
@@ -2258,9 +2577,6 @@
     <div class="hero-progress" id="heroProgress">
       <div class="hero-progress-fill" id="progressFill" style="width: 100%"></div>
       <div class="hero-progress-meta" id="progressMeta" style="width: 0%"></div>
-    </div>
-    <div class="hero-cycle-row">
-      <button class="hero-cycle-btn" onclick="confirmarNuevoCiclo()">Cerrar ciclo</button>
     </div>
   </div>
   
@@ -2341,6 +2657,10 @@
         <div class="tc-status-fill" id="signalBar"></div>
       </div>
     </div>
+    <button class="tc-simulate-btn" onclick="openPurchaseSimulator()">
+      <span>Simular compra</span>
+      <span aria-hidden="true">→</span>
+    </button>
     <div class="tc-body collapsed" id="tcBody">
       <div class="tc-dates">
         <div class="tc-date-card">
@@ -2490,7 +2810,7 @@
       { label: 'Semana +1', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null },
       { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
-    tarjeta: { diaCierre: 24, diaPago: 20 },
+    tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 },
     log: [],
     redoMovement: null
   };
@@ -2718,6 +3038,10 @@
   function fmt(n) {
     return (Number(n) || 0).toLocaleString('es-PE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
+  function fmtSim(n) {
+    const redondeado = Math.round(Number(n) || 0);
+    return (Object.is(redondeado, -0) ? 0 : redondeado).toLocaleString('es-PE');
+  }
   function fmtInt(n) {
     return Math.round(Number(n) || 0).toLocaleString('es-PE');
   }
@@ -2759,9 +3083,14 @@
     return pago;
   }
 
-  // Fecha de pago correspondiente al estado de cuenta donde entraría una compra hecha hoy.
-  function fechaPagoCompraHoy() {
-    const cierreCompra = proxCierre();
+  // Cierre y pago del estado de cuenta donde entraría una compra en una fecha dada.
+  function fechaPagoParaCompra(fechaCompra = new Date()) {
+    const compra = new Date(fechaCompra);
+    compra.setHours(12, 0, 0, 0);
+    let cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth(), state.tarjeta.diaCierre);
+    if (compra > cierreCompra) {
+      cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth() + 1, state.tarjeta.diaCierre);
+    }
     const sumaMes = state.tarjeta.diaPago <= state.tarjeta.diaCierre ? 1 : 0;
     const pagoCompra = fechaConDiaSeguro(
       cierreCompra.getFullYear(),
@@ -2769,6 +3098,38 @@
       state.tarjeta.diaPago
     );
     return { cierre: cierreCompra, pago: pagoCompra };
+  }
+  function fechaPagoCompraHoy() {
+    return fechaPagoParaCompra(new Date());
+  }
+
+  function diaSueldoConfigurado() {
+    const dia = parseInt(state.tarjeta && state.tarjeta.diaSueldo);
+    return dia >= 1 && dia <= 31 ? dia : 1;
+  }
+
+  // Fechas de sueldo posteriores a "desde" y hasta el día de pago inclusive.
+  function fechasSueldoEntre(desde, hasta) {
+    const inicio = new Date(desde);
+    const fin = new Date(hasta);
+    inicio.setHours(12, 0, 0, 0);
+    fin.setHours(12, 0, 0, 0);
+    const fechas = [];
+    let cursor = fechaConDiaSeguro(inicio.getFullYear(), inicio.getMonth(), diaSueldoConfigurado());
+    if (cursor <= inicio) {
+      cursor = fechaConDiaSeguro(inicio.getFullYear(), inicio.getMonth() + 1, diaSueldoConfigurado());
+    }
+    for (let i = 0; i < 24 && cursor <= fin; i++) {
+      fechas.push(new Date(cursor));
+      cursor = fechaConDiaSeguro(cursor.getFullYear(), cursor.getMonth() + 1, diaSueldoConfigurado());
+    }
+    return fechas;
+  }
+
+  function unirFechasCortas(fechas) {
+    const textos = fechas.map(fecha => formatFecha(fecha).replace(/\.$/, ''));
+    if (textos.length <= 1) return textos[0] || '';
+    return textos.slice(0, -1).join(', ') + ' y ' + textos[textos.length - 1];
   }
   function diasHasta(fecha) {
     const hoy = new Date();
@@ -4709,7 +5070,7 @@
   function openCCConfig() {
     openModal(`
       <h2>Calendario <span class="accent">tarjeta</span></h2>
-      <p class="modal-sub">Los días clave de tu ciclo. Solo referenciales — tus gastos se siguen registrando como DS.</p>
+      <p class="modal-sub">Los días clave de tu ciclo y de tu sueldo. Solo referenciales — tus gastos se siguen registrando como DS.</p>
       <div class="modal-field">
         <label>Día de cierre</label>
         <input type="number" min="1" max="31" id="setCierre" value="${state.tarjeta.diaCierre}">
@@ -4717,6 +5078,10 @@
       <div class="modal-field">
         <label>Día de pago máximo</label>
         <input type="number" min="1" max="31" id="setPago" value="${state.tarjeta.diaPago}">
+      </div>
+      <div class="modal-field">
+        <label>Día de sueldo</label>
+        <input type="number" min="1" max="31" id="setSueldo" value="${diaSueldoConfigurado()}">
       </div>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -4728,11 +5093,261 @@
   function saveCCConfig() {
     const cierre = parseInt(document.getElementById('setCierre').value);
     const pago = parseInt(document.getElementById('setPago').value);
+    const sueldo = parseInt(document.getElementById('setSueldo').value);
     if (cierre >= 1 && cierre <= 31) state.tarjeta.diaCierre = cierre;
     if (pago >= 1 && pago <= 31) state.tarjeta.diaPago = pago;
+    if (sueldo >= 1 && sueldo <= 31) state.tarjeta.diaSueldo = sueldo;
     closeModal();
     toast('Calendario actualizado');
     render();
+  }
+
+  function openPurchaseSimulator() {
+    openModal(`
+      <h2 class="purchase-modal-title">Simular compra</h2>
+      <p class="modal-sub">
+        Revisa si el monto cabe según tu ritmo de gasto y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
+        <span style="font-size:11px;">Cálculo con sueldo el día ${diaSueldoConfigurado()}.</span>
+      </p>
+      <div class="purchase-sim-actions">
+        <div class="modal-field">
+          <label>Monto que planeas gastar</label>
+          <input type="number" min="0" step="0.01" inputmode="decimal" id="simPurchaseAmount" placeholder="0.00" onkeydown="if(event.key === 'Enter') calculatePurchaseSimulation()">
+        </div>
+        <button class="purchase-analyze-btn" onclick="calculatePurchaseSimulation()">Analizar</button>
+      </div>
+      <div id="purchaseSimulationResult"></div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="openCCConfig()">Editar fechas</button>
+        <button class="btn-primary" onclick="closeModal()">Cerrar</button>
+      </div>
+    `);
+    requestAnimationFrame(() => document.getElementById('simPurchaseAmount')?.focus());
+  }
+
+  function escenarioCompra(fechaCompra, monto, fechaPlan) {
+    const calendario = fechaPagoParaCompra(fechaCompra);
+    const sueldos = fechasSueldoEntre(fechaPlan, calendario.pago);
+    let nivel = 'bad';
+    let margen = 'Poco margen';
+    let explicacion = 'El pago vence antes de tu próximo abono.';
+
+    if (sueldos.length >= 2) {
+      nivel = 'good';
+      margen = 'Mayor margen';
+      explicacion = `Antes del pago ocurren tus abonos del ${unirFechasCortas(sueldos)}.`;
+    } else if (sueldos.length === 1) {
+      nivel = 'mid';
+      margen = 'Margen moderado';
+      explicacion = `Antes del pago solo ocurre tu abono del ${formatFecha(sueldos[0]).replace(/\.$/, '')}.`;
+    }
+
+    let plan;
+    if (sueldos.length === 0) {
+      plan = `Tendrías que reservar los S/ ${fmtSim(monto)} con tu disponible actual.`;
+    } else if (sueldos.length === 1) {
+      const montoRedondeado = Math.round(monto);
+      const primeraParte = Math.ceil(montoRedondeado / 2);
+      const segundaParte = montoRedondeado - primeraParte;
+      plan = `Podrías separar S/ ${fmtSim(primeraParte)} hoy y S/ ${fmtSim(segundaParte)} el ${formatFecha(sueldos[0]).replace(/\.$/, '')}.`;
+    } else {
+      const partes = sueldos.length + 1;
+      plan = `Podrías dividirlo en ${partes} reservas de aproximadamente S/ ${fmtSim(monto / partes)}: hoy y en cada fecha de sueldo.`;
+    }
+
+    return { calendario, sueldos, nivel, margen, explicacion, plan };
+  }
+
+  function analizarCapacidadCompra(monto) {
+    const totalDias = diasTotalesCiclo();
+    const diaActualCalculado = diasEnCiclo();
+    const diaActual = totalDias > 0
+      ? Math.max(1, Math.min(totalDias, diaActualCalculado))
+      : Math.max(0, diaActualCalculado);
+    const diasRestantes = totalDias > 0 ? Math.max(0, totalDias - diaActual) : 0;
+    const disponible = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
+    const disponibleDespues = disponible - monto;
+
+    const gastosLog = state.log
+      .filter(m => m.etiqueta !== 'recalcula' && ['S', 'DS'].includes(m.tipo))
+      .reduce((s, m) => s + (Number(m.monto) || 0), 0);
+    const gastoActual = gastosLog > 0 ? gastosLog : Math.max(0, Number(state.gastoTotal) || 0);
+    const promedios = [];
+    let incluyeActual = false;
+
+    // Evita proyectar todo el mes con uno o dos días atípicos.
+    // El ritmo del ciclo actual entra al promedio recién desde el día 7.
+    if (gastoActual > 0 && diaActual >= 7) {
+      promedios.push(gastoActual / diaActual);
+      incluyeActual = true;
+    }
+
+    const anterioresUsados = getArchivedCycles()
+      .filter(ciclo => (Number(ciclo.totalGastado) || 0) > 0 && (Number(ciclo.dias) || 0) > 0)
+      .slice(0, 2);
+    anterioresUsados.forEach(ciclo => {
+      promedios.push((Number(ciclo.totalGastado) || 0) / Math.max(1, Number(ciclo.dias) || 1));
+    });
+
+    const promedioDiario = promedios.length
+      ? promedios.reduce((s, valor) => s + valor, 0) / promedios.length
+      : 0;
+    const gastoProyectado = promedioDiario * diasRestantes;
+    const diferencia = disponibleDespues - gastoProyectado;
+    const fuentePartes = [];
+    if (incluyeActual) fuentePartes.push('ciclo actual');
+    if (anterioresUsados.length === 1) fuentePartes.push('1 ciclo anterior');
+    if (anterioresUsados.length === 2) fuentePartes.push('2 ciclos anteriores');
+    const fuente = fuentePartes.join(' + ');
+
+    let nivel = 'neutral';
+    let capacidad = 'Sin promedio';
+    let titulo = 'Aún no hay suficiente historial para estimarlo.';
+    let detalle = totalDias > 0
+      ? `La compra dejaría S/ ${fmtSim(disponibleDespues)}, pero todavía no hay gastos suficientes para proyectar los ${diasRestantes} días restantes.`
+      : 'Define las fechas del ciclo para poder calcular cuántos días faltan.';
+    let meta = 'La fecha de pago sí puede compararse normalmente.';
+
+    if (totalDias > 0 && diasRestantes === 0) {
+      nivel = disponibleDespues >= 0 ? 'good' : 'bad';
+      capacidad = disponibleDespues >= 0 ? 'Cómodo' : 'No recomendable';
+      titulo = disponibleDespues >= 0
+        ? 'El monto cabe en tu disponible al cierre del ciclo.'
+        : 'El monto supera tu disponible actual.';
+      detalle = disponibleDespues >= 0
+        ? `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)} y ya no quedan días por proyectar en este ciclo.`
+        : `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
+      meta = 'El ciclo actual ya llegó a su último día.';
+    } else if (totalDias > 0 && promedios.length > 0) {
+      const bufferComodo = Math.max(gastoProyectado * 0.1, promedioDiario * 2);
+      if (disponibleDespues < gastoProyectado) {
+        nivel = 'bad';
+        capacidad = 'No recomendable';
+        titulo = 'El monto podría dejarte corto antes del cierre.';
+        detalle = disponibleDespues < 0
+          ? `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}; además, tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}.`
+          : `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}, pero tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}. Faltarían aproximadamente S/ ${fmtSim(Math.abs(diferencia))}.`;
+      } else if (diferencia < bufferComodo) {
+        nivel = 'mid';
+        capacidad = 'Ajustado';
+        titulo = 'El monto cabe, pero te dejaría con poco margen.';
+        detalle = `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}. Tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}, dejando solo S/ ${fmtSim(Math.max(0, diferencia))} de margen.`;
+      } else {
+        nivel = 'good';
+        capacidad = 'Cómodo';
+        titulo = 'El monto cabe sin comprometer tu ritmo habitual.';
+        detalle = `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}. Tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}, dejando S/ ${fmtSim(diferencia)} de margen.`;
+      }
+      meta = `Promedio estimado: S/ ${fmtSim(promedioDiario)} al día · ${fuente}.`;
+    }
+
+    if (balanceHidden) {
+      detalle = `La evaluación usa tu disponible oculto, tu promedio diario y ${diasRestantes} día${diasRestantes === 1 ? '' : 's'} restantes. Muestra el saldo con el ojo para ver el detalle numérico.`;
+    }
+
+    return {
+      nivel,
+      capacidad,
+      titulo,
+      detalle,
+      meta,
+      promedioDiario,
+      gastoProyectado,
+      diasRestantes,
+      disponibleDespues,
+      fuentes: promedios.length
+    };
+  }
+
+  function tarjetaEscenarioCompra(etiqueta, escenario, variante = 'today') {
+    const esHoy = variante === 'today';
+    const tituloBase = esHoy ? 'Comprar' : 'Esperar al';
+    const tituloAcento = esHoy ? 'hoy' : etiqueta.replace(/^Si esperas al\s+/i, '');
+    const resumenAbonos = escenario.sueldos.length === 0
+      ? 'Ninguno antes del pago'
+      : `${escenario.sueldos.length} abono${escenario.sueldos.length === 1 ? '' : 's'} · ${unirFechasCortas(escenario.sueldos)}.`;
+    return `
+      <div class="purchase-sim-card ${esHoy ? 'today' : 'wait'}">
+        <div class="purchase-option-top">
+          <div class="purchase-option-icon" aria-hidden="true">
+            <svg class="ui-icon"><use href="${esHoy ? '#icon-card' : '#icon-calendar'}"></use></svg>
+          </div>
+          <div class="purchase-option-content">
+            <div class="purchase-option-line">
+              <div class="purchase-option-title">${escapeHtml(`${tituloBase} ${tituloAcento}`)}</div>
+              <span class="purchase-sim-badge ${escenario.nivel}">${escenario.margen}</span>
+            </div>
+            <div class="purchase-option-caption">${esHoy ? 'Esta compra entra en el ciclo actual' : 'Esta compra pasa al siguiente ciclo'}</div>
+          </div>
+        </div>
+        <div class="purchase-sim-deadline">
+          <span class="purchase-sim-deadline-label">Paga hasta</span>
+          <div class="purchase-sim-title">${formatFechaCompleta(escenario.calendario.pago)}</div>
+        </div>
+        <div class="purchase-sim-details">
+          <div class="purchase-sim-detail">
+            <span>Cierre</span>
+            <strong>${formatFecha(escenario.calendario.cierre)}</strong>
+          </div>
+          <div class="purchase-sim-detail">
+            <span>Antes del pago</span>
+            <strong>${resumenAbonos}</strong>
+          </div>
+        </div>
+        <div class="purchase-sim-plan">
+          <span class="purchase-sim-plan-label">Plan sugerido</span>
+          ${escenario.plan}
+        </div>
+      </div>
+    `;
+  }
+
+  function calculatePurchaseSimulation() {
+    const input = document.getElementById('simPurchaseAmount');
+    const resultado = document.getElementById('purchaseSimulationResult');
+    if (!input || !resultado) return;
+    const monto = parseFloat(String(input.value).replace(',', '.'));
+    if (!Number.isFinite(monto) || monto <= 0) {
+      toast('Escribe un monto mayor a cero', true);
+      input.focus();
+      return;
+    }
+
+    const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+    const compraHoy = escenarioCompra(hoy, monto, hoy);
+    const esperarHasta = new Date(compraHoy.calendario.cierre);
+    esperarHasta.setDate(esperarHasta.getDate() + 1);
+    const compraEsperando = escenarioCompra(esperarHasta, monto, hoy);
+
+    const disponibleReal = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
+    const disponibleDespues = disponibleReal - monto;
+    const deudaDespues = state.deudaActual + monto;
+    const capacidad = analizarCapacidadCompra(monto);
+    const impactoTexto = balanceHidden
+      ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
+      : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
+
+    resultado.innerHTML = `
+      <div class="purchase-capacity-card">
+        <div class="purchase-capacity-head">
+          <div class="purchase-result-heading">Capacidad actual</div>
+          <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
+        </div>
+        <div class="purchase-capacity-title">${capacidad.titulo}</div>
+        <div class="purchase-capacity-copy">${capacidad.detalle}</div>
+        <div class="purchase-capacity-meta">${capacidad.meta}</div>
+      </div>
+      <div class="purchase-impact ${disponibleDespues < 0 ? 'warning' : ''}">
+        <span class="purchase-impact-label">Si la registraras como DS</span>
+        <strong>${impactoTexto}</strong>
+      </div>
+      <div class="purchase-section-label">Margen de pago</div>
+      <div class="purchase-sim-list">
+        ${tarjetaEscenarioCompra('Si compras hoy', compraHoy, 'today')}
+        ${tarjetaEscenarioCompra(`Si esperas al ${formatFecha(esperarHasta)}`, compraEsperando, 'wait')}
+      </div>
+    `;
   }
   
   function openModal(html) {
