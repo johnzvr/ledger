@@ -1310,6 +1310,19 @@
     line-height: 1.45;
   }
   .purchase-impact.warning strong { color: var(--danger); }
+  .purchase-impact-weekly {
+    display: block;
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(26,26,26,0.1);
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+  body.dark .purchase-impact-weekly {
+    border-top-color: rgba(245,245,247,0.1);
+  }
   .purchase-capacity-card {
     margin-top: 14px;
     padding: 14px;
@@ -5327,6 +5340,19 @@
     const impactoTexto = balanceHidden
       ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
       : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
+    let ritmoSemanalTexto;
+    if (balanceHidden) {
+      ritmoSemanalTexto = 'Muestra el saldo con el ojo para ver la referencia semanal.';
+    } else if (disponibleDespues < 0) {
+      ritmoSemanalTexto = 'No quedaría disponible para repartir hasta el cierre.';
+    } else if (capacidad.diasRestantes === 0) {
+      ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} en el último día del ciclo.`;
+    } else if (capacidad.diasRestantes < 7) {
+      ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} para los ${capacidad.diasRestantes} días que faltan.`;
+    } else {
+      const disponibleSemanal = disponibleDespues * 7 / capacidad.diasRestantes;
+      ritmoSemanalTexto = `Te quedarían aprox. S/ ${fmtSim(disponibleSemanal)} por cada 7 días hasta el cierre.`;
+    }
 
     resultado.innerHTML = `
       <div class="purchase-capacity-card">
@@ -5341,6 +5367,7 @@
       <div class="purchase-impact ${disponibleDespues < 0 ? 'warning' : ''}">
         <span class="purchase-impact-label">Si la registraras como DS</span>
         <strong>${impactoTexto}</strong>
+        <span class="purchase-impact-weekly">${ritmoSemanalTexto}</span>
       </div>
       <div class="purchase-section-label">Margen de pago</div>
       <div class="purchase-sim-list">
