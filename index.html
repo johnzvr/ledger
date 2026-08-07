@@ -1274,6 +1274,82 @@
     align-items: end;
   }
   .purchase-sim-actions .modal-field { margin-bottom: 0; }
+  .purchase-sim-field-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .purchase-sim-field-head label {
+    color: var(--ink-mute);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .purchase-currency-switch {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 10px;
+    background: var(--line);
+  }
+  .purchase-currency-option {
+    min-width: 40px;
+    height: 28px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .purchase-currency-option.active {
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+  }
+  body.dark .purchase-currency-option.active { background: #2A2A2E; }
+  .purchase-conversion-preview {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 9px 11px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: rgba(207,222,232,0.28);
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    line-height: 1.35;
+  }
+  .purchase-conversion-preview.visible { display: flex; }
+  .purchase-conversion-preview strong { color: var(--ink); }
+  .purchase-conversion-preview .tc-action {
+    color: var(--gain);
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  body.dark .purchase-conversion-preview { background: rgba(127,184,224,0.1); }
+  .purchase-result-conversion {
+    margin-top: 14px;
+    padding: 9px 11px;
+    border-radius: 11px;
+    background: var(--line);
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .purchase-result-conversion strong { color: var(--ink); }
+  .purchase-result-conversion + .purchase-capacity-card { margin-top: 8px; }
   .purchase-analyze-btn {
     min-height: 44px;
     border: none;
@@ -5115,30 +5191,103 @@
     render();
   }
 
+  let purchaseSimulationCurrency = 'PEN';
+
+  function setPurchaseSimulationCurrency(currency) {
+    purchaseSimulationCurrency = currency === 'USD' ? 'USD' : 'PEN';
+    document.querySelectorAll('.purchase-currency-option').forEach(btn => {
+      const active = btn.dataset.currency === purchaseSimulationCurrency;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    const resultado = document.getElementById('purchaseSimulationResult');
+    if (resultado) resultado.innerHTML = '';
+    updatePurchaseSimulationConversion();
+    if (purchaseSimulationCurrency === 'USD') {
+      Promise.resolve(fetchExchangeRate()).finally(updatePurchaseSimulationConversion);
+    }
+  }
+
+  function onPurchaseSimulationInput() {
+    const resultado = document.getElementById('purchaseSimulationResult');
+    if (resultado) resultado.innerHTML = '';
+    updatePurchaseSimulationConversion();
+  }
+
+  function updatePurchaseSimulationConversion() {
+    const preview = document.getElementById('purchaseConversionPreview');
+    const input = document.getElementById('simPurchaseAmount');
+    if (!preview || !input) return;
+    if (purchaseSimulationCurrency !== 'USD') {
+      preview.classList.remove('visible');
+      preview.innerHTML = '';
+      return;
+    }
+
+    preview.classList.add('visible');
+    const amount = parseFloat(String(input.value).replace(',', '.')) || 0;
+    const rate = getExchangeRate();
+    if (!rate) {
+      preview.innerHTML = tcFetchInProgress
+        ? '<span>Consultando tipo de cambio...</span>'
+        : '<span>Sin TC disponible</span><span class="tc-action" onclick="promptPurchaseSimulationTc()">Ingresar manual →</span>';
+      return;
+    }
+
+    preview.innerHTML = `
+      <span>US$ ${fmtSim(amount)} ≈ <strong>S/ ${fmtSim(amount * rate)}</strong></span>
+      <span>TC ${rate.toFixed(3)}</span>
+    `;
+  }
+
+  function promptPurchaseSimulationTc() {
+    promptManualTc();
+    updatePurchaseSimulationConversion();
+  }
+
   function openPurchaseSimulator() {
+    purchaseSimulationCurrency = 'PEN';
     openModal(`
       <h2 class="purchase-modal-title">Simular compra</h2>
       <p class="modal-sub">
-        Revisa si el monto cabe según tu ritmo de gasto y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
+        Revisa cuánto cambia tu margen y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
         <span style="font-size:11px;">Cálculo con sueldo el día ${diaSueldoConfigurado()}.</span>
       </p>
+      <div class="purchase-sim-field-head">
+        <label for="simPurchaseAmount">Monto que planeas gastar</label>
+        <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
+          <button class="purchase-currency-option active" data-currency="PEN" aria-pressed="true" onclick="setPurchaseSimulationCurrency('PEN')">S/</button>
+          <button class="purchase-currency-option" data-currency="USD" aria-pressed="false" onclick="setPurchaseSimulationCurrency('USD')">US$</button>
+        </div>
+      </div>
       <div class="purchase-sim-actions">
         <div class="modal-field">
-          <label>Monto que planeas gastar</label>
-          <input type="number" min="0" step="0.01" inputmode="decimal" id="simPurchaseAmount" placeholder="0.00" onkeydown="if(event.key === 'Enter') calculatePurchaseSimulation()">
+          <input type="number" min="0" step="0.01" inputmode="decimal" id="simPurchaseAmount" placeholder="0.00" oninput="onPurchaseSimulationInput()" onkeydown="if(event.key === 'Enter') calculatePurchaseSimulation()">
         </div>
         <button class="purchase-analyze-btn" onclick="calculatePurchaseSimulation()">Analizar</button>
       </div>
+      <div class="purchase-conversion-preview" id="purchaseConversionPreview"></div>
       <div id="purchaseSimulationResult"></div>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="openCCConfig()">Editar fechas</button>
         <button class="btn-primary" onclick="closeModal()">Cerrar</button>
       </div>
     `);
-    requestAnimationFrame(() => document.getElementById('simPurchaseAmount')?.focus());
+    requestAnimationFrame(() => {
+      updatePurchaseSimulationConversion();
+      document.getElementById('simPurchaseAmount')?.focus();
+    });
   }
 
-  function escenarioCompra(fechaCompra, monto, fechaPlan) {
+  function formatPurchasePlanAmount(montoPen, currencyInfo, montoOriginal = null) {
+    if (currencyInfo?.currency === 'USD' && currencyInfo.rate) {
+      const montoUsd = montoOriginal === null ? montoPen / currencyInfo.rate : montoOriginal;
+      return `US$ ${fmtSim(montoUsd)} (S/ ${fmtSim(montoPen)})`;
+    }
+    return `S/ ${fmtSim(montoPen)}`;
+  }
+
+  function escenarioCompra(fechaCompra, monto, fechaPlan, currencyInfo = null) {
     const calendario = fechaPagoParaCompra(fechaCompra);
     const sueldos = fechasSueldoEntre(fechaPlan, calendario.pago);
     let nivel = 'bad';
@@ -5157,15 +5306,23 @@
 
     let plan;
     if (sueldos.length === 0) {
-      plan = `Tendrías que reservar los S/ ${fmtSim(monto)} con tu disponible actual.`;
+      plan = `Tendrías que reservar ${formatPurchasePlanAmount(monto, currencyInfo, currencyInfo?.original)} con tu disponible actual.`;
     } else if (sueldos.length === 1) {
-      const montoRedondeado = Math.round(monto);
-      const primeraParte = Math.ceil(montoRedondeado / 2);
-      const segundaParte = montoRedondeado - primeraParte;
-      plan = `Podrías separar S/ ${fmtSim(primeraParte)} hoy y S/ ${fmtSim(segundaParte)} el ${formatFecha(sueldos[0]).replace(/\.$/, '')}.`;
+      if (currencyInfo?.currency === 'USD' && currencyInfo.rate) {
+        const montoUsdRedondeado = Math.round(currencyInfo.original);
+        const primeraParteUsd = Math.ceil(montoUsdRedondeado / 2);
+        const segundaParteUsd = montoUsdRedondeado - primeraParteUsd;
+        plan = `Podrías separar ${formatPurchasePlanAmount(primeraParteUsd * currencyInfo.rate, currencyInfo, primeraParteUsd)} hoy y ${formatPurchasePlanAmount(segundaParteUsd * currencyInfo.rate, currencyInfo, segundaParteUsd)} el ${formatFecha(sueldos[0]).replace(/\.$/, '')}.`;
+      } else {
+        const montoRedondeado = Math.round(monto);
+        const primeraParte = Math.ceil(montoRedondeado / 2);
+        const segundaParte = montoRedondeado - primeraParte;
+        plan = `Podrías separar S/ ${fmtSim(primeraParte)} hoy y S/ ${fmtSim(segundaParte)} el ${formatFecha(sueldos[0]).replace(/\.$/, '')}.`;
+      }
     } else {
       const partes = sueldos.length + 1;
-      plan = `Podrías dividirlo en ${partes} reservas de aproximadamente S/ ${fmtSim(monto / partes)}: hoy y en cada fecha de sueldo.`;
+      const montoParteOriginal = currencyInfo?.currency === 'USD' ? currencyInfo.original / partes : null;
+      plan = `Podrías dividirlo en ${partes} reservas de aproximadamente ${formatPurchasePlanAmount(monto / partes, currencyInfo, montoParteOriginal)}: hoy y en cada fecha de sueldo.`;
     }
 
     return { calendario, sueldos, nivel, margen, explicacion, plan };
@@ -5285,19 +5442,36 @@
     const input = document.getElementById('simPurchaseAmount');
     const resultado = document.getElementById('purchaseSimulationResult');
     if (!input || !resultado) return;
-    const monto = parseFloat(String(input.value).replace(',', '.'));
-    if (!Number.isFinite(monto) || monto <= 0) {
+    const montoIngresado = parseFloat(String(input.value).replace(',', '.'));
+    if (!Number.isFinite(montoIngresado) || montoIngresado <= 0) {
       toast('Escribe un monto mayor a cero', true);
       input.focus();
       return;
     }
 
+    let monto = montoIngresado;
+    let rate = null;
+    if (purchaseSimulationCurrency === 'USD') {
+      rate = getExchangeRate();
+      if (!rate) {
+        toast('Necesitas un tipo de cambio para simular en dólares', true);
+        updatePurchaseSimulationConversion();
+        return;
+      }
+      monto = montoIngresado * rate;
+    }
+    const currencyInfo = {
+      currency: purchaseSimulationCurrency,
+      original: montoIngresado,
+      rate
+    };
+
     const hoy = new Date();
     hoy.setHours(12, 0, 0, 0);
-    const compraHoy = escenarioCompra(hoy, monto, hoy);
+    const compraHoy = escenarioCompra(hoy, monto, hoy, currencyInfo);
     const esperarHasta = new Date(compraHoy.calendario.cierre);
     esperarHasta.setDate(esperarHasta.getDate() + 1);
-    const compraEsperando = escenarioCompra(esperarHasta, monto, hoy);
+    const compraEsperando = escenarioCompra(esperarHasta, monto, hoy, currencyInfo);
 
     const disponibleReal = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const disponibleDespues = disponibleReal - monto;
@@ -5317,8 +5491,12 @@
       const disponibleSemanal = disponibleDespues * 7 / capacidad.diasRestantes;
       ritmoSemanalTexto = `Te quedarían aprox. S/ ${fmtSim(disponibleSemanal)} por cada 7 días hasta el cierre.`;
     }
+    const conversionResumen = purchaseSimulationCurrency === 'USD'
+      ? `<div class="purchase-result-conversion">Compra simulada: <strong>US$ ${fmtSim(montoIngresado)}</strong> ≈ <strong>S/ ${fmtSim(monto)}</strong> · TC ${rate.toFixed(3)}</div>`
+      : '';
 
     resultado.innerHTML = `
+      ${conversionResumen}
       <div class="purchase-capacity-card">
         <div class="purchase-capacity-head">
           <div class="purchase-result-heading">Impacto en tu margen</div>
@@ -5882,6 +6060,7 @@
     
     tcFetchInProgress = true;
     updateConversionPreview();
+    updatePurchaseSimulationConversion();
     
     // Múltiples fuentes de fallback (gratuitas, con CORS)
     const sources = [
@@ -5920,6 +6099,7 @@
           saveState();
           tcFetchInProgress = false;
           updateConversionPreview();
+          updatePurchaseSimulationConversion();
           return;
         }
       } catch (e) {
@@ -5930,6 +6110,7 @@
     // Todas fallaron
     tcFetchInProgress = false;
     updateConversionPreview();
+    updatePurchaseSimulationConversion();
   }
   
   function getExchangeRate() {
@@ -6004,6 +6185,7 @@
     };
     saveState();
     updateConversionPreview();
+    updatePurchaseSimulationConversion();
     toast(`TC actualizado: ${rate.toFixed(3)}`);
   }
   
