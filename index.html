@@ -5180,82 +5180,48 @@
     const diasRestantes = totalDias > 0 ? Math.max(0, totalDias - diaActual) : 0;
     const disponible = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const disponibleDespues = disponible - monto;
-
-    const gastosLog = state.log
-      .filter(m => m.etiqueta !== 'recalcula' && ['S', 'DS'].includes(m.tipo))
-      .reduce((s, m) => s + (Number(m.monto) || 0), 0);
-    const gastoActual = gastosLog > 0 ? gastosLog : Math.max(0, Number(state.gastoTotal) || 0);
-    const promedios = [];
-    let incluyeActual = false;
-
-    // Evita proyectar todo el mes con uno o dos días atípicos.
-    // El ritmo del ciclo actual entra al promedio recién desde el día 7.
-    if (gastoActual > 0 && diaActual >= 7) {
-      promedios.push(gastoActual / diaActual);
-      incluyeActual = true;
-    }
-
-    const anterioresUsados = getArchivedCycles()
-      .filter(ciclo => (Number(ciclo.totalGastado) || 0) > 0 && (Number(ciclo.dias) || 0) > 0)
-      .slice(0, 2);
-    anterioresUsados.forEach(ciclo => {
-      promedios.push((Number(ciclo.totalGastado) || 0) / Math.max(1, Number(ciclo.dias) || 1));
-    });
-
-    const promedioDiario = promedios.length
-      ? promedios.reduce((s, valor) => s + valor, 0) / promedios.length
-      : 0;
-    const gastoProyectado = promedioDiario * diasRestantes;
-    const diferencia = disponibleDespues - gastoProyectado;
-    const fuentePartes = [];
-    if (incluyeActual) fuentePartes.push('ciclo actual');
-    if (anterioresUsados.length === 1) fuentePartes.push('1 ciclo anterior');
-    if (anterioresUsados.length === 2) fuentePartes.push('2 ciclos anteriores');
-    const fuente = fuentePartes.join(' + ');
+    const reduccionPct = disponible > 0 ? Math.round((monto / disponible) * 100) : 100;
+    const margenAntes = diasRestantes > 0
+      ? (diasRestantes < 7 ? disponible : disponible * 7 / diasRestantes)
+      : disponible;
+    const margenDespues = diasRestantes > 0
+      ? (diasRestantes < 7 ? Math.max(0, disponibleDespues) : Math.max(0, disponibleDespues) * 7 / diasRestantes)
+      : Math.max(0, disponibleDespues);
 
     let nivel = 'neutral';
-    let capacidad = 'Sin promedio';
-    let titulo = 'Aún no hay suficiente historial para estimarlo.';
-    let detalle = totalDias > 0
-      ? `La compra dejaría S/ ${fmtSim(disponibleDespues)}, pero todavía no hay gastos suficientes para proyectar los ${diasRestantes} días restantes.`
-      : 'Define las fechas del ciclo para poder calcular cuántos días faltan.';
-    let meta = 'La fecha de pago sí puede compararse normalmente.';
+    let capacidad = 'Sin fechas';
+    let titulo = `Esta compra usaría ${reduccionPct}% de tu disponible.`;
+    let detalle = 'Define las fechas del ciclo para calcular el impacto semanal.';
+    let meta = balanceHidden
+      ? 'Tu disponible total continúa oculto.'
+      : `Te quedarían S/ ${fmtSim(disponibleDespues)} después de la compra.`;
 
-    if (totalDias > 0 && diasRestantes === 0) {
-      nivel = disponibleDespues >= 0 ? 'good' : 'bad';
-      capacidad = disponibleDespues >= 0 ? 'Cómodo' : 'No recomendable';
-      titulo = disponibleDespues >= 0
-        ? 'El monto cabe en tu disponible al cierre del ciclo.'
-        : 'El monto supera tu disponible actual.';
-      detalle = disponibleDespues >= 0
-        ? `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)} y ya no quedan días por proyectar en este ciclo.`
-        : `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
-      meta = 'El ciclo actual ya llegó a su último día.';
-    } else if (totalDias > 0 && promedios.length > 0) {
-      const bufferComodo = Math.max(gastoProyectado * 0.1, promedioDiario * 2);
-      if (disponibleDespues < gastoProyectado) {
-        nivel = 'bad';
-        capacidad = 'No recomendable';
-        titulo = 'El monto podría dejarte corto antes del cierre.';
-        detalle = disponibleDespues < 0
-          ? `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}; además, tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}.`
-          : `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}, pero tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}. Faltarían aproximadamente S/ ${fmtSim(Math.abs(diferencia))}.`;
-      } else if (diferencia < bufferComodo) {
-        nivel = 'mid';
-        capacidad = 'Ajustado';
-        titulo = 'El monto cabe, pero te dejaría con poco margen.';
-        detalle = `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}. Tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}, dejando solo S/ ${fmtSim(Math.max(0, diferencia))} de margen.`;
-      } else {
-        nivel = 'good';
-        capacidad = 'Cómodo';
-        titulo = 'El monto cabe sin comprometer tu ritmo habitual.';
-        detalle = `Después de la compra quedarían S/ ${fmtSim(disponibleDespues)}. Tu gasto habitual para los ${diasRestantes} días restantes se estima en S/ ${fmtSim(gastoProyectado)}, dejando S/ ${fmtSim(diferencia)} de margen.`;
-      }
-      meta = `Promedio estimado: S/ ${fmtSim(promedioDiario)} al día · ${fuente}.`;
-    }
-
-    if (balanceHidden) {
-      detalle = `La evaluación usa tu disponible oculto, tu promedio diario y ${diasRestantes} día${diasRestantes === 1 ? '' : 's'} restantes. Muestra el saldo con el ojo para ver el detalle numérico.`;
+    if (disponibleDespues < 0) {
+      nivel = 'bad';
+      capacidad = 'No recomendable';
+      titulo = 'El monto supera tu disponible actual.';
+      detalle = `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
+      meta = totalDias > 0
+        ? `Cálculo directo con tu disponible y ${diasRestantes} día${diasRestantes === 1 ? '' : 's'} restantes.`
+        : 'Define las fechas del ciclo para calcular el impacto semanal.';
+    } else if (totalDias > 0 && diasRestantes === 0) {
+      nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
+      capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
+      titulo = `Esta compra usaría ${reduccionPct}% de tu disponible al cierre.`;
+      detalle = 'El ciclo ya está en su último día, por lo que no queda una semana por calcular.';
+      meta = balanceHidden ? 'Tu disponible total continúa oculto.' : `Te quedarían S/ ${fmtSim(disponibleDespues)}.`;
+    } else if (totalDias > 0) {
+      nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
+      capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
+      titulo = diasRestantes >= 7
+        ? `Esta compra reduciría tu margen semanal en ${reduccionPct}%.`
+        : `Esta compra reduciría tu margen para los ${diasRestantes} días restantes en ${reduccionPct}%.`;
+      detalle = diasRestantes >= 7
+        ? `Antes: S/ ${fmtSim(margenAntes)} por semana · Después: S/ ${fmtSim(margenDespues)} por semana.`
+        : `Antes: S/ ${fmtSim(margenAntes)} · Después: S/ ${fmtSim(margenDespues)} para los días restantes.`;
+      meta = balanceHidden
+        ? `Cálculo directo con tu disponible oculto y ${diasRestantes} días restantes.`
+        : `Te quedarían S/ ${fmtSim(disponibleDespues)} hasta el cierre.`;
     }
 
     return {
@@ -5264,11 +5230,11 @@
       titulo,
       detalle,
       meta,
-      promedioDiario,
-      gastoProyectado,
       diasRestantes,
       disponibleDespues,
-      fuentes: promedios.length
+      margenAntes,
+      margenDespues,
+      reduccionPct
     };
   }
 
@@ -5341,9 +5307,7 @@
       ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
       : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
     let ritmoSemanalTexto;
-    if (balanceHidden) {
-      ritmoSemanalTexto = 'Muestra el saldo con el ojo para ver la referencia semanal.';
-    } else if (disponibleDespues < 0) {
+    if (disponibleDespues < 0) {
       ritmoSemanalTexto = 'No quedaría disponible para repartir hasta el cierre.';
     } else if (capacidad.diasRestantes === 0) {
       ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} en el último día del ciclo.`;
@@ -5357,7 +5321,7 @@
     resultado.innerHTML = `
       <div class="purchase-capacity-card">
         <div class="purchase-capacity-head">
-          <div class="purchase-result-heading">Capacidad actual</div>
+          <div class="purchase-result-heading">Impacto en tu margen</div>
           <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
         </div>
         <div class="purchase-capacity-title">${capacidad.titulo}</div>
