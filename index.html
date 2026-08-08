@@ -135,6 +135,11 @@
   body.dark .week-chip.current .wk-range {
     color: rgba(10,10,11,0.5);
   }
+  body.dark .week-chip.current.overspent {
+    background: #D9543A;
+    color: #fff;
+  }
+  body.dark .week-chip.current.overspent .wk-amount { color: #fff; }
   
   /* === Tarjeta === */
   body.dark .tc-btn,
@@ -1031,11 +1036,15 @@
   .weeks-grid {
     display: flex;
     gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
   }
+  .weeks-grid::-webkit-scrollbar { display: none; }
   .weeks-grid.collapsed .week-chip:not(.current) { display: none; }
   .weeks-grid.collapsed .week-chip.current { flex: 1 1 100%; }
   .week-chip {
-    flex: 1;
+    flex: 1 0 104px;
     background: rgba(255,255,255,0.55);
     border-radius: 14px;
     padding: 12px 10px;
@@ -1063,6 +1072,18 @@
     line-height: 1;
   }
   .week-chip.current .wk-amount { color: var(--bg); }
+  .week-chip.overspent {
+    box-shadow: inset 0 0 0 1.5px var(--danger);
+  }
+  .week-chip.overspent .wk-amount { color: var(--danger); }
+  .week-chip.current.overspent {
+    background: var(--danger);
+    box-shadow: none;
+  }
+  .week-chip.current.overspent .wk-label,
+  .week-chip.current.overspent .wk-range,
+  .week-chip.current.overspent .wk-overrun { color: rgba(250,248,243,0.78); }
+  .week-chip.current.overspent .wk-amount { color: #fff; }
   .week-chip.zero .wk-amount { color: var(--danger); }
   .week-chip.current.zero .wk-amount { color: var(--coral-deep); }
   .week-chip.zero {
@@ -1097,6 +1118,13 @@
   .week-chip.current .wk-daily { color: rgba(250,248,243,0.78); }
   body.dark .week-chip.current .wk-daily { color: rgba(10,10,11,0.7); }
   .week-chip.current .wk-range { color: rgba(250,248,243,0.55); }
+  .wk-overrun {
+    margin-top: 7px;
+    color: var(--danger);
+    font-size: 9px;
+    line-height: 1.25;
+    font-weight: 750;
+  }
   
   /* Tarjeta */
   .tc-card {
@@ -2718,7 +2746,7 @@
     <div class="weeks-header">
       <div class="weeks-header-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></div>
       <div class="weeks-header-title">
-        Presupuesto semanal<span class="aside" id="semanasInfo"></span>
+        Presupuesto por bloques<span class="aside" id="semanasInfo"></span>
       </div>
       <button class="section-toggle-btn" id="btnToggleWeeks" onclick="toggleSection('weeks')">Ver todas</button>
     </div>
@@ -2889,6 +2917,8 @@
     gastoTotal: 6374.94,
     presupuestoInicial: 1759.06,
     fechaInicioCiclo: null, // se setea la primera vez
+    fechaProximoSueldo: null, // límite proyectado del ciclo automático
+    bloquesAdaptables: true, // ciclos nuevos: 4 o 5 bloques según los días reales
     modoManualSemanas: false, // true = el usuario define los rangos manualmente
     cicloAnterior: null,
     historialCiclos: [], // máximo 2 ciclos cerrados, con movimientos compactos
@@ -3232,7 +3262,112 @@
   function initFechaCiclo() {
     if (!state.fechaInicioCiclo) {
       state.fechaInicioCiclo = new Date().toISOString();
+      if (!state.modoManualSemanas && state.bloquesAdaptables === true) {
+        const inicio = new Date(state.fechaInicioCiclo);
+        const proximoSueldo = fechaSueldoEstimadaDesde(inicio);
+        state.fechaProximoSueldo = proximoSueldo.toISOString();
+        const rangos = generarRangosAdaptables(inicio, diaAnterior(proximoSueldo));
+        state.semanas = crearSemanasDesdeRangos(
+          rangos,
+          Math.max(0, state.totalDisponible - (state.metaResidual || 0))
+        );
+      }
     }
+  }
+
+  const MS_DIA = 1000 * 60 * 60 * 24;
+
+  function inicioDelDia(fecha) {
+    const d = new Date(fecha);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+
+  function finDelDia(fecha) {
+    const d = new Date(fecha);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+
+  function diaAnterior(fecha) {
+    const d = inicioDelDia(fecha);
+    d.setDate(d.getDate() - 1);
+    return finDelDia(d);
+  }
+
+  // Estima el siguiente sueldo usando el día configurado. Si el ciclo comienza
+  // hasta 7 días antes de esa fecha, asumimos que ese sueldo llegó adelantado.
+  function fechaSueldoEstimadaDesde(fechaInicio) {
+    const inicio = inicioDelDia(fechaInicio);
+    let candidato = fechaConDiaSeguro(inicio.getFullYear(), inicio.getMonth(), diaSueldoConfigurado());
+    if (candidato <= inicio) {
+      candidato = fechaConDiaSeguro(inicio.getFullYear(), inicio.getMonth() + 1, diaSueldoConfigurado());
+    }
+    const distancia = Math.round((inicioDelDia(candidato) - inicio) / MS_DIA);
+    if (distancia > 0 && distancia <= 7) {
+      candidato = fechaConDiaSeguro(candidato.getFullYear(), candidato.getMonth() + 1, diaSueldoConfigurado());
+    }
+    return inicioDelDia(candidato);
+  }
+
+  function proximoSueldoDelCiclo() {
+    const inicio = inicioDelDia(state.fechaInicioCiclo || new Date());
+    const guardado = state.fechaProximoSueldo ? inicioDelDia(state.fechaProximoSueldo) : null;
+    if (guardado && !isNaN(guardado.getTime()) && guardado > inicio) return guardado;
+    return fechaSueldoEstimadaDesde(inicio);
+  }
+
+  function diasEntreInclusive(inicio, fin) {
+    return Math.max(0, Math.round((inicioDelDia(fin) - inicioDelDia(inicio)) / MS_DIA) + 1);
+  }
+
+  function generarRangosAdaptables(fechaInicio, fechaFin) {
+    const inicio = inicioDelDia(fechaInicio);
+    const fin = finDelDia(fechaFin);
+    if (isNaN(inicio.getTime()) || isNaN(fin.getTime()) || fin < inicio) return [];
+
+    const rangos = [];
+    let cursor = new Date(inicio);
+    while (cursor <= fin && rangos.length < 8) {
+      const diaSemana = cursor.getDay();
+      const diasHastaDomingo = diaSemana === 0 ? 0 : 7 - diaSemana;
+      const cierre = new Date(cursor);
+      cierre.setDate(cierre.getDate() + diasHastaDomingo);
+      const finRango = cierre > fin ? new Date(fin) : finDelDia(cierre);
+      rangos.push({
+        inicio: inicioDelDia(cursor),
+        fin: finRango,
+        dias: diasEntreInclusive(cursor, finRango)
+      });
+      cursor = inicioDelDia(finRango);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    // Un fragmento de 1–3 días no consume un bloque: se integra al contiguo.
+    if (rangos.length > 1 && rangos[0].dias <= 3) {
+      rangos[1].inicio = rangos[0].inicio;
+      rangos[1].dias = diasEntreInclusive(rangos[1].inicio, rangos[1].fin);
+      rangos.shift();
+    }
+    if (rangos.length > 1 && rangos[rangos.length - 1].dias <= 3) {
+      const ultimo = rangos.pop();
+      const anterior = rangos[rangos.length - 1];
+      anterior.fin = ultimo.fin;
+      anterior.dias = diasEntreInclusive(anterior.inicio, anterior.fin);
+    }
+    return rangos;
+  }
+
+  function crearSemanasDesdeRangos(rangos, gastable, fechasManuales = false) {
+    const totalDias = Math.max(1, rangos.reduce((s, r) => s + Math.max(0, r.dias || 0), 0));
+    return rangos.map((rango, i) => ({
+      label: i === 0 ? 'Bloque 1' : 'Bloque ' + (i + 1),
+      presupuesto: Math.max(0, gastable) * Math.max(0, rango.dias || 0) / totalDias,
+      isCurrent: i === 0,
+      fechaInicioManual: fechasManuales ? fechaParaInput(rango.inicio) : null,
+      fechaFinManual: fechasManuales ? fechaParaInput(rango.fin) : null,
+      exceso: 0
+    }));
   }
   
   // Retorna array con {inicio, fin, dias} para cada semana calendario del ciclo
@@ -3255,8 +3390,13 @@
       return rangos;
     }
     
-    // ===== MODO AUTOMÁTICO: calendario real lunes-domingo =====
+    // ===== MODO AUTOMÁTICO ADAPTABLE: hasta el próximo sueldo =====
     if (!state.fechaInicioCiclo) return [];
+    if (state.bloquesAdaptables === true) {
+      return generarRangosAdaptables(state.fechaInicioCiclo, diaAnterior(proximoSueldoDelCiclo()));
+    }
+
+    // ===== MODO AUTOMÁTICO ANTERIOR: se conserva durante el ciclo existente =====
     const inicio = new Date(state.fechaInicioCiclo);
     inicio.setHours(0,0,0,0);
     
@@ -3353,17 +3493,46 @@
       }, 500);
     }
     state.ultimaSemanaVista = currentIdx;
+    return prev !== undefined && prev !== null && currentIdx > prev && currentIdx < state.semanas.length;
+  }
+
+  function diasRestantesParaBloque(rango, fechaReferencia = new Date()) {
+    if (!rango || !rango.inicio || !rango.fin) return 0;
+    const hoy = inicioDelDia(fechaReferencia);
+    const inicio = inicioDelDia(rango.inicio);
+    const fin = inicioDelDia(rango.fin);
+    if (hoy > fin) return 0;
+    return diasEntreInclusive(hoy < inicio ? inicio : hoy, fin);
+  }
+
+  function pesosDeBloquesRestantes(rangos, desdeIdx, fechaReferencia = new Date()) {
+    return rangos.map((rango, i) => {
+      if (i < desdeIdx) return 0;
+      if (!rango || !rango.inicio || !rango.fin) return 1;
+      if (i === desdeIdx) return Math.max(1, diasRestantesParaBloque(rango, fechaReferencia));
+      return Math.max(1, Number(rango.dias) || diasEntreInclusive(rango.inicio, rango.fin));
+    });
+  }
+
+  function distribuirEntreBloques(semanas, monto, desdeIdx, rangos = calcularRangoSemanas(), fechaReferencia = new Date()) {
+    if (!Array.isArray(semanas) || desdeIdx < 0 || desdeIdx >= semanas.length) return [];
+    const pesos = pesosDeBloquesRestantes(rangos, desdeIdx, fechaReferencia);
+    const totalPeso = pesos.slice(desdeIdx, semanas.length).reduce((s, peso) => s + peso, 0);
+    if (totalPeso <= 0) return [];
+    const asignaciones = [];
+    for (let i = desdeIdx; i < semanas.length; i++) {
+      const presupuesto = Math.max(0, monto) * pesos[i] / totalPeso;
+      semanas[i].presupuesto = presupuesto;
+      asignaciones.push({ index: i, presupuesto, dias: pesos[i] });
+    }
+    return asignaciones;
   }
   
   function autoRecalcRestantes() {
     const currentIdx = calcularSemanaActualIdx();
-    const restantes = state.semanas.length - currentIdx;
-    if (restantes <= 0) return;
+    if (currentIdx < 0 || currentIdx >= state.semanas.length) return [];
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
-    const porSem = gastable / restantes;
-    for (let i = currentIdx; i < state.semanas.length; i++) {
-      state.semanas[i].presupuesto = porSem;
-    }
+    return distribuirEntreBloques(state.semanas, gastable, currentIdx);
   }
   
   function formatRangoCorto(r) {
@@ -3372,7 +3541,10 @@
     const i = r.inicio.toLocaleDateString('es-PE', opts);
     const f = r.fin.toLocaleDateString('es-PE', opts);
     if (i === f) return i;
-    return i + '–' + r.fin.toLocaleDateString('es-PE', { day: 'numeric' });
+    const mismoMes = r.inicio.getMonth() === r.fin.getMonth() && r.inicio.getFullYear() === r.fin.getFullYear();
+    return mismoMes
+      ? i + '–' + r.fin.toLocaleDateString('es-PE', { day: 'numeric' })
+      : i + '–' + f;
   }
   
   function cicloTerminado() {
@@ -3393,7 +3565,7 @@
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     initFechaCiclo();
-    detectarCambioSemana();
+    const huboCambioAutomatico = detectarCambioSemana();
     actualizarSemanaActual();
     
     document.getElementById('currentDate').textContent = 
@@ -3448,27 +3620,25 @@
     document.getElementById('gastoNoAdeudado').textContent = fmtInt(state.gastoNoAdeudado);
     document.getElementById('gastoTotal').textContent = fmtInt(state.gastoTotal);
     
-    document.getElementById('semanasInfo').textContent = ' · ' + state.semanas.length + ' semanas';
+    document.getElementById('semanasInfo').textContent = ' · ' + state.semanas.length + ' bloques';
     const weeksEl = document.getElementById('weeksContainer');
     weeksEl.innerHTML = '';
     const rangos = calcularRangoSemanas();
     state.semanas.forEach((sem, i) => {
       const div = document.createElement('div');
       const isZero = sem.presupuesto <= 0;
-      div.className = 'week-chip' + (sem.isCurrent ? ' current' : '') + (isZero ? ' zero' : '');
-      const label = sem.isCurrent ? 'Actual' : 'S+' + i;
+      const excedido = Number(sem.exceso) > 0;
+      div.className = 'week-chip' + (sem.isCurrent ? ' current' : '') + (isZero ? ' zero' : '') + (excedido ? ' overspent' : '');
+      const label = sem.isCurrent ? 'Bloque actual' : 'Bloque ' + (i + 1);
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
-      const diasTxt = rango && rango.inicio && rango.dias < 7 ? ` · ${rango.dias}d` : '';
-      const diasRestantes = sem.isCurrent ? diasRestantesEnRango(rango) : 0;
-      const diarioTxt = sem.isCurrent && diasRestantes > 0
-        ? `<div class="wk-daily">S/ ${fmt(sem.presupuesto / diasRestantes)} por día · ${diasRestantes}d</div>`
-        : '';
+      const diasTxt = rango && rango.inicio ? ` · ${rango.dias}d` : '';
+      const excesoTxt = excedido ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
       div.innerHTML = `
         <span class="wk-label">${label}</span>
         <div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>
         <div class="wk-range">${rangoTxt}${diasTxt}</div>
-        ${diarioTxt}
+        ${excesoTxt}
       `;
       weeksEl.appendChild(div);
     });
@@ -3549,7 +3719,10 @@
     applySectionState();
     initViews();
     requestAnimationFrame(updateViewHeight);
-    saveState({ markModified, sync });
+    saveState({
+      markModified: markModified || huboCambioAutomatico,
+      sync: sync && (markModified || huboCambioAutomatico)
+    });
   }
   
   function renderComparison() {
@@ -3825,6 +3998,33 @@
     };
   }
 
+  function aplicarGastoEnBloques(semanas, monto, totalDisponibleDespues, metaResidual, etiqueta = null) {
+    if (!Array.isArray(semanas) || semanas.length === 0) return { currentIdx: -1, exceso: monto, futuros: [] };
+    let currentIdx = semanas.findIndex(sem => sem.isCurrent);
+    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), semanas.length - 1);
+    const rangos = calcularRangoSemanas();
+    const gastableDespues = Math.max(0, totalDisponibleDespues - (metaResidual || 0));
+
+    if (etiqueta === 'sem') {
+      const asignaciones = distribuirEntreBloques(semanas, gastableDespues, currentIdx, rangos);
+      return { currentIdx, exceso: 0, futuros: asignaciones };
+    }
+
+    const disponibleActual = Math.max(0, Number(semanas[currentIdx]?.presupuesto) || 0);
+    if (monto <= disponibleActual) {
+      semanas[currentIdx].presupuesto = disponibleActual - monto;
+      return { currentIdx, exceso: 0, futuros: [] };
+    }
+
+    const exceso = monto - disponibleActual;
+    semanas[currentIdx].presupuesto = 0;
+    semanas[currentIdx].exceso = (Number(semanas[currentIdx].exceso) || 0) + exceso;
+    const futuros = currentIdx + 1 < semanas.length
+      ? distribuirEntreBloques(semanas, gastableDespues, currentIdx + 1, rangos)
+      : [];
+    return { currentIdx, exceso, futuros };
+  }
+
   function applyMovementToSnapshot(snapshot, mov) {
     const next = cloneMovementSnapshot(snapshot);
     const monto = Number(mov?.monto);
@@ -3837,27 +4037,7 @@
     if (mov.tipo === 'S') next.gastoNoAdeudado += monto;
     if (mov.tipo === 'DS') next.deudaActual += monto;
 
-    if (mov.etiqueta === 'sem') {
-      if (next.semanas.length === 0) throw new Error('Sin semanas');
-      const porSemana = monto / next.semanas.length;
-      next.semanas.forEach(sem => { sem.presupuesto = (Number(sem.presupuesto) || 0) - porSemana; });
-      return next;
-    }
-
-    let restante = monto;
-    const actualIdx = next.semanas.findIndex(sem => sem.isCurrent);
-    if (actualIdx >= 0) {
-      for (let i = actualIdx; i < next.semanas.length && restante > 0; i++) {
-        const disponible = Number(next.semanas[i].presupuesto) || 0;
-        if (disponible >= restante) {
-          next.semanas[i].presupuesto = disponible - restante;
-          restante = 0;
-        } else {
-          restante -= disponible;
-          next.semanas[i].presupuesto = 0;
-        }
-      }
-    }
+    aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta);
     return next;
   }
 
@@ -3868,11 +4048,9 @@
     if (currentIdx < 0) currentIdx = 0;
     const restantes = Math.max(1, next.semanas.length - currentIdx);
     const gastable = Math.max(0, next.totalDisponible - (next.metaResidual || 0));
-    const nuevoPresupuesto = gastable / restantes;
-    for (let i = currentIdx; i < next.semanas.length; i++) {
-      next.semanas[i].presupuesto = nuevoPresupuesto;
-    }
-    return { snapshot: next, monto: nuevoPresupuesto, restantes };
+    const asignaciones = distribuirEntreBloques(next.semanas, gastable, currentIdx);
+    const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
+    return { snapshot: next, monto: nuevoPresupuesto, restantes, asignaciones };
   }
 
   function applySnapshotTransition(current, before, after) {
@@ -3892,6 +4070,9 @@
       isCurrent: !!to.semanas[i].isCurrent,
       fechaInicioManual: to.semanas[i].fechaInicioManual || null,
       fechaFinManual: to.semanas[i].fechaFinManual || null,
+      exceso: (Number(sem.exceso) || 0)
+        + (Number(to.semanas[i].exceso) || 0)
+        - (Number(from.semanas[i].exceso) || 0),
       presupuesto: (Number(sem.presupuesto) || 0)
         + (Number(to.semanas[i].presupuesto) || 0)
         - (Number(from.semanas[i].presupuesto) || 0)
@@ -3934,7 +4115,7 @@
         <input type="text" id="editMovementDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
       </div>
       <label class="edit-sem-row">
-        <span>Repartir entre todas las semanas</span>
+        <span>Repartir entre los bloques restantes</span>
         <input type="checkbox" id="editMovementSem" ${mov.etiqueta === 'sem' ? 'checked' : ''}>
       </label>
       <div class="modal-buttons">
@@ -4004,8 +4185,8 @@
           expectedRebuiltAfter = rebuiltRecalc.snapshot;
           replayedMov.monto = rebuiltRecalc.monto;
           replayedMov.detalle = rebuiltState.metaResidual > 0
-            ? `Redistribución (${rebuiltRecalc.restantes} sem · meta S/ ${fmt(rebuiltState.metaResidual)} protegida)`
-            : `Redistribución en ${rebuiltRecalc.restantes} sem restantes`;
+            ? `Redistribución proporcional (${rebuiltRecalc.restantes} bloques · meta S/ ${fmt(rebuiltState.metaResidual)} protegida)`
+            : `Redistribución proporcional en ${rebuiltRecalc.restantes} bloques restantes`;
         } else {
           expectedOriginalAfter = applyMovementToSnapshot(originalBefore, originalLog[i]);
           expectedRebuiltAfter = applyMovementToSnapshot(rebuiltState, originalLog[i]);
@@ -4387,9 +4568,11 @@
   }
 
   function openNewCycleSetup() {
+    const inicioSugerido = inicioDelDia(new Date());
+    const proximoSueldoSugerido = fechaSueldoEstimadaDesde(inicioSugerido);
     openModal(`
       <h2>Preparar <span class="accent">nuevo ciclo</span></h2>
-      <p class="modal-sub">Paso 2 de 2 · Define los montos y la distribución con la que quieres empezar.</p>
+      <p class="modal-sub">Paso 2 de 2 · La fecha real en que recibes el sueldo inicia el nuevo ciclo.</p>
 
       <div class="modal-field">
         <label>Total disponible del nuevo ciclo</label>
@@ -4409,18 +4592,36 @@
       </div>
       <div class="modal-field">
         <label>Fecha de inicio</label>
-        <input type="date" id="newFechaInicio" value="${fechaParaInput()}">
+        <input type="date" id="newFechaInicio" value="${fechaParaInput(inicioSugerido)}" onchange="actualizarProximoSueldoNuevoCiclo()">
       </div>
       <div class="modal-field">
-        <label>Número de semanas</label>
-        <input type="number" min="1" max="6" id="newNumSem" value="${state.semanas.length}" oninput="previewNuevoCiclo()">
+        <label>Próximo sueldo estimado</label>
+        <input type="date" id="newProximoSueldo" value="${fechaParaInput(proximoSueldoSugerido)}" onchange="previewNuevoCiclo()">
+      </div>
+
+      <div class="manual-ranges-box">
+        <div class="manual-ranges-row">
+          <div>
+            <div class="manual-ranges-title">Rangos manuales</div>
+            <div class="manual-ranges-sub">Déjalo apagado para crear automáticamente 4 o 5 bloques según los días del ciclo.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="newModoManual" onchange="previewNuevoCiclo()">
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="modal-field" id="newNumSemWrap" style="margin:12px 0 0;display:none;">
+          <label>Número de bloques manuales</label>
+          <input type="number" min="1" max="6" id="newNumSem" value="${state.semanas.length}" oninput="previewNuevoCiclo()">
+        </div>
       </div>
 
       <div class="rollover-breakdown">
         <div class="rollover-row highlight">
-          <span class="rollover-week">Gastable por semana</span>
+          <span class="rollover-week">Distribución inicial</span>
           <span class="rollover-amount" id="newPresupuestoPreview">—</span>
         </div>
+        <div id="newBlocksPreview"></div>
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
@@ -4435,17 +4636,63 @@
     previewNuevoCiclo();
   }
 
+  function actualizarProximoSueldoNuevoCiclo() {
+    const fechaInicio = document.getElementById('newFechaInicio')?.value;
+    const inputProximo = document.getElementById('newProximoSueldo');
+    if (fechaInicio && inputProximo) {
+      inputProximo.value = fechaParaInput(fechaSueldoEstimadaDesde(new Date(fechaInicio + 'T00:00:00')));
+    }
+    previewNuevoCiclo();
+  }
+
+  function rangosManualesParaNuevoCiclo(fechaInicio, cantidad, anteriores = calcularRangoSemanas()) {
+    const rangos = [];
+    let cursor = inicioDelDia(fechaInicio);
+    for (let i = 0; i < cantidad; i++) {
+      const duracion = Math.max(1, Number(anteriores[i]?.dias) || 7);
+      const fin = new Date(cursor);
+      fin.setDate(fin.getDate() + duracion - 1);
+      rangos.push({ inicio: inicioDelDia(cursor), fin: finDelDia(fin), dias: duracion });
+      cursor = inicioDelDia(fin);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return rangos;
+  }
+
   function previewNuevoCiclo() {
     const disp = parseFloat(document.getElementById('newDisponible')?.value);
     const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
+    const fechaInicio = document.getElementById('newFechaInicio')?.value;
+    const fechaProximo = document.getElementById('newProximoSueldo')?.value;
+    const manual = !!document.getElementById('newModoManual')?.checked;
     const numSem = parseInt(document.getElementById('newNumSem')?.value);
     const preview = document.getElementById('newPresupuestoPreview');
-    if (!preview) return;
-    if (isNaN(disp) || isNaN(numSem) || numSem < 1 || numSem > 6) {
+    const detalle = document.getElementById('newBlocksPreview');
+    const wrapManual = document.getElementById('newNumSemWrap');
+    if (!preview || !detalle) return;
+    if (wrapManual) wrapManual.style.display = manual ? 'block' : 'none';
+    if (isNaN(disp) || !fechaInicio || (!manual && !fechaProximo) || (manual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       preview.textContent = 'Revisa los datos';
+      detalle.innerHTML = '';
       return;
     }
-    preview.textContent = 'S/ ' + fmt(Math.max(0, disp - meta) / numSem);
+    const inicio = new Date(fechaInicio + 'T00:00:00');
+    const rangos = manual
+      ? rangosManualesParaNuevoCiclo(inicio, numSem)
+      : generarRangosAdaptables(inicio, diaAnterior(new Date(fechaProximo + 'T00:00:00')));
+    if (rangos.length === 0) {
+      preview.textContent = 'Revisa las fechas';
+      detalle.innerHTML = '';
+      return;
+    }
+    const semanasPreview = crearSemanasDesdeRangos(rangos, Math.max(0, disp - meta));
+    preview.textContent = `${rangos.length} bloque${rangos.length === 1 ? '' : 's'}`;
+    detalle.innerHTML = semanasPreview.map((sem, i) => `
+      <div class="rollover-row">
+        <span class="rollover-week">${formatRangoCorto(rangos[i])} · ${rangos[i].dias} días</span>
+        <span class="rollover-amount">S/ ${fmt(sem.presupuesto)}</span>
+      </div>
+    `).join('');
   }
   
   function ejecutarNuevoCiclo() {
@@ -4454,10 +4701,19 @@
     const intocable = parseFloat(document.getElementById('newIntocable')?.value);
     const deuda = parseFloat(document.getElementById('newDeuda')?.value);
     const fechaInicio = document.getElementById('newFechaInicio')?.value;
+    const fechaProximoSueldo = document.getElementById('newProximoSueldo')?.value;
+    const modoManual = !!document.getElementById('newModoManual')?.checked;
     const numSem = parseInt(document.getElementById('newNumSem')?.value);
 
-    if (isNaN(disponible) || disponible < 0 || isNaN(numSem) || numSem < 1 || numSem > 6 || !fechaInicio) {
+    if (isNaN(disponible) || disponible < 0 || !fechaInicio || (!modoManual && !fechaProximoSueldo) || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       toast('Revisa los datos del nuevo ciclo', true);
+      return;
+    }
+
+    const nuevaFechaInicio = new Date(fechaInicio + 'T00:00:00');
+    const nuevoProximoSueldo = fechaProximoSueldo ? new Date(fechaProximoSueldo + 'T00:00:00') : null;
+    if (!modoManual && (!nuevoProximoSueldo || nuevoProximoSueldo <= nuevaFechaInicio)) {
+      toast('El próximo sueldo debe ser posterior al inicio', true);
       return;
     }
 
@@ -4477,6 +4733,11 @@
       totalGastado: totalS + totalDS,
       numMovimientos: soloGastos.length,
       dias: diasEnCiclo(),
+      rangos: rangosAnteriores.map(r => r && r.inicio ? ({
+        inicio: fechaParaInput(r.inicio),
+        fin: fechaParaInput(r.fin),
+        dias: r.dias
+      }) : null),
       detalleDisponible: true,
       movimientos: state.log.map(m => ({
         monto: Number(m.monto) || 0,
@@ -4514,37 +4775,26 @@
     state.gastoTotal = 0;
     state.log = [];
     state.redoMovement = null;
-    state.fechaInicioCiclo = new Date(fechaInicio + 'T00:00:00').toISOString();
+    state.fechaInicioCiclo = nuevaFechaInicio.toISOString();
+    state.fechaProximoSueldo = (nuevoProximoSueldo || fechaSueldoEstimadaDesde(nuevaFechaInicio)).toISOString();
+    state.bloquesAdaptables = true;
+    state.modoManualSemanas = modoManual;
     state.ultimaSemanaVista = null;
 
-    const porSemana = Math.max(0, disponible - state.metaResidual) / numSem;
-    let cursorManual = new Date(fechaInicio + 'T00:00:00');
-    state.semanas = Array.from({ length: numSem }, (_, i) => {
-      let fechaInicioManual = null;
-      let fechaFinManual = null;
-      if (state.modoManualSemanas) {
-        const duracion = Math.max(1, rangosAnteriores[i]?.dias || 7);
-        fechaInicioManual = fechaParaInput(cursorManual);
-        const fin = new Date(cursorManual);
-        fin.setDate(fin.getDate() + duracion - 1);
-        fechaFinManual = fechaParaInput(fin);
-        cursorManual = new Date(fin);
-        cursorManual.setDate(cursorManual.getDate() + 1);
-      }
-      return {
-        label: i === 0 ? 'Semana actual' : 'Semana +' + i,
-        presupuesto: porSemana,
-        isCurrent: i === 0,
-        fechaInicioManual,
-        fechaFinManual
-      };
-    });
+    const nuevosRangos = modoManual
+      ? rangosManualesParaNuevoCiclo(nuevaFechaInicio, numSem, rangosAnteriores)
+      : generarRangosAdaptables(nuevaFechaInicio, diaAnterior(nuevoProximoSueldo));
+    state.semanas = crearSemanasDesdeRangos(
+      nuevosRangos,
+      Math.max(0, disponible - state.metaResidual),
+      modoManual
+    );
 
     uiSections.comparison = false;
     saveUiSections();
     
     closeModal();
-    toast(`Nuevo ciclo · S/ ${fmt(porSemana)} por semana`);
+    toast(`Nuevo ciclo · ${state.semanas.length} bloques según sus días`);
     render();
   }
   
@@ -4606,7 +4856,6 @@
     const currentIdx = calcularSemanaActualIdx();
     const restantes = Math.max(1, state.semanas.length - currentIdx);
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
-    const nuevoPresupuesto = gastable / restantes;
     state.redoMovement = null;
     const snapshot = {
       totalDisponible: state.totalDisponible,
@@ -4616,19 +4865,18 @@
       gastoTotal: state.gastoTotal,
       semanas: JSON.parse(JSON.stringify(state.semanas))
     };
-    // Solo modifica las semanas restantes (actual + futuras)
-    for (let i = currentIdx; i < state.semanas.length; i++) {
-      state.semanas[i].presupuesto = nuevoPresupuesto;
-    }
+    // Solo modifica los bloques restantes y pondera sus días reales.
+    const asignaciones = distribuirEntreBloques(state.semanas, gastable, currentIdx);
+    const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
     state.log.push({
       monto: nuevoPresupuesto, tipo: 'S', etiqueta: 'recalcula',
       detalle: state.metaResidual > 0 
-        ? `Redistribución (${restantes} sem · meta S/ ${fmt(state.metaResidual)} protegida)` 
-        : `Redistribución en ${restantes} sem restantes`,
+        ? `Redistribución proporcional (${restantes} bloques · meta S/ ${fmt(state.metaResidual)} protegida)` 
+        : `Redistribución proporcional en ${restantes} bloques restantes`,
       fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
       snapshot
     });
-    toast(`S/ ${fmt(nuevoPresupuesto)} en cada semana restante`);
+    toast(`${restantes} bloques ajustados según sus días`);
     render();
   }
   
@@ -4655,7 +4903,7 @@
       detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
     }
     
-    // Si es un gasto normal (no sem) y excede la semana actual → confirmación previa
+    // Si es un gasto normal (no sem) y excede el bloque actual → confirmación previa
     if (selectedMod !== 'sem') {
       const semActual = state.semanas.find(s => s.isCurrent);
       if (semActual && monto > semActual.presupuesto) {
@@ -4684,54 +4932,57 @@
   function confirmarRollover(monto, tipo, etiqueta, detalle) {
     const semActual = state.semanas.find(s => s.isCurrent);
     const semActualIdx = state.semanas.findIndex(s => s.isCurrent);
-    const restanteSemActual = semActual.presupuesto;
-    let restante = monto - restanteSemActual;
-    
-    // Simular el rollover para mostrar el desglose
-    const desgloseHtml = [];
-    desgloseHtml.push(`
+    const restanteSemActual = Math.max(0, Number(semActual.presupuesto) || 0);
+    const exceso = Math.max(0, monto - restanteSemActual);
+    const semanasSimuladas = JSON.parse(JSON.stringify(state.semanas));
+    aplicarGastoEnBloques(
+      semanasSimuladas,
+      monto,
+      state.totalDisponible - monto,
+      state.metaResidual || 0,
+      etiqueta
+    );
+
+    const desgloseHtml = [`
       <div class="rollover-row">
-        <span class="rollover-week">Semana actual</span>
-        <span class="rollover-amount">−S/ ${fmt(restanteSemActual)}</span>
+        <span class="rollover-week">Bloque actual</span>
+        <span class="rollover-amount">S/ ${fmt(restanteSemActual)} → S/ 0.00</span>
       </div>
-    `);
-    
-    for (let i = semActualIdx + 1; i < state.semanas.length && restante > 0; i++) {
-      const disponibleEnSem = state.semanas[i].presupuesto;
-      const tomarDeSem = Math.min(disponibleEnSem, restante);
-      restante -= tomarDeSem;
-      const nombreSem = `Semana +${i}`;
+    `];
+
+    for (let i = semActualIdx + 1; i < state.semanas.length; i++) {
+      const anterior = Math.max(0, Number(state.semanas[i].presupuesto) || 0);
+      const nuevo = Math.max(0, Number(semanasSimuladas[i].presupuesto) || 0);
+      const reduccion = Math.max(0, anterior - nuevo);
       desgloseHtml.push(`
         <div class="rollover-row highlight">
-          <span class="rollover-week">${nombreSem} <span class="rollover-tag">rollover</span></span>
-          <span class="rollover-amount">−S/ ${fmt(tomarDeSem)}</span>
+          <span class="rollover-week">Bloque ${i + 1} <span class="rollover-tag">${calcularRangoSemanas()[i]?.dias || 7} días</span></span>
+          <span class="rollover-amount">S/ ${fmt(nuevo)}${reduccion > 0 ? ` · −${fmt(reduccion)}` : ''}</span>
         </div>
       `);
     }
-    
-    let sinCubrirHtml = '';
-    if (restante > 0) {
-      sinCubrirHtml = `
+
+    const fueraDelGastable = Math.max(0, monto - Math.max(0, state.totalDisponible - (state.metaResidual || 0)));
+    const alertaMeta = fueraDelGastable > 0 ? `
         <div class="rollover-row danger">
-          <span class="rollover-week">Sin cubrir</span>
-          <span class="rollover-amount">S/ ${fmt(restante)}</span>
+          <span class="rollover-week">Fuera del monto gastable</span>
+          <span class="rollover-amount">S/ ${fmt(fueraDelGastable)}</span>
         </div>
-      `;
-    }
+      ` : '';
     
     openModal(`
-      <h2>Excede la <span class="accent">semana actual</span></h2>
+      <h2>Excede el <span class="accent">bloque actual</span></h2>
       <p class="modal-sub">
-        Tu gasto de <strong>S/ ${fmt(monto)}</strong> supera lo que tienes esta semana (S/ ${fmt(restanteSemActual)}). Se cubrirá tomando del presupuesto de las próximas semanas:
+        Tu gasto de <strong>S/ ${fmt(monto)}</strong> excede este bloque en <strong>S/ ${fmt(exceso)}</strong>. El disponible restante se repartirá proporcionalmente entre los bloques futuros:
       </p>
       
       <div class="rollover-breakdown">
         ${desgloseHtml.join('')}
-        ${sinCubrirHtml}
+        ${alertaMeta}
       </div>
       
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        Tu total disponible del ciclo no cambia — solo se redistribuye la carga entre semanas.
+        El gasto sí reduce tu total disponible. El monto intocable nunca se usa automáticamente.
       </p>
       
       <div class="modal-buttons">
@@ -4762,47 +5013,24 @@
       }
     };
     
+    state.totalDisponible -= monto;
+    state.gastoTotal += monto;
+    if (tipo === 'S') state.gastoNoAdeudado += monto;
+    if (tipo === 'DS') state.deudaActual += monto;
+
+    const resultadoBloques = aplicarGastoEnBloques(
+      state.semanas,
+      monto,
+      state.totalDisponible,
+      state.metaResidual || 0,
+      etiqueta
+    );
     if (etiqueta === 'sem') {
-      state.totalDisponible -= monto;
-      state.gastoTotal += monto;
-      if (tipo === 'S') state.gastoNoAdeudado += monto;
-      if (tipo === 'DS') state.deudaActual += monto;
-      const porSem = monto / state.semanas.length;
-      state.semanas.forEach(s => s.presupuesto -= porSem);
-      toast(`-S/ ${fmt(porSem)} en cada semana`);
+      toast(`Gasto repartido entre ${resultadoBloques.futuros.length} bloques según sus días`);
+    } else if (resultadoBloques.exceso > 0) {
+      toast(`Excediste S/ ${fmt(resultadoBloques.exceso)} · bloques futuros ajustados`, true);
     } else {
-      state.totalDisponible -= monto;
-      state.gastoTotal += monto;
-      if (tipo === 'S') state.gastoNoAdeudado += monto;
-      if (tipo === 'DS') state.deudaActual += monto;
-      
-      let restante = monto;
-      let tomadoDeSemActual = 0;
-      let semanasAfectadas = 0;
-      const idx = state.semanas.findIndex(s => s.isCurrent);
-      if (idx >= 0) {
-        for (let i = idx; i < state.semanas.length && restante > 0; i++) {
-          if (state.semanas[i].presupuesto >= restante) {
-            state.semanas[i].presupuesto -= restante;
-            if (i === idx) tomadoDeSemActual += restante;
-            else semanasAfectadas++;
-            restante = 0;
-          } else {
-            const tomado = state.semanas[i].presupuesto;
-            if (i === idx) tomadoDeSemActual += tomado;
-            else semanasAfectadas++;
-            restante -= tomado;
-            state.semanas[i].presupuesto = 0;
-          }
-        }
-      }
-      
-      if (restante > 0) toast(`⚠️ S/ ${fmt(restante)} sin cubrir en las semanas`, true);
-      else if (semanasAfectadas > 0) {
-        toast(`↳ Se tomó S/ ${fmt(monto - tomadoDeSemActual)} de próximas semanas`);
-      } else {
-        toast(`−S/ ${fmt(monto)} registrado`);
-      }
+      toast(`−S/ ${fmt(monto)} registrado`);
     }
     
     state.log.push(mov);
@@ -4861,28 +5089,28 @@
           <span class="help-item-chip S">S</span>
           <span class="help-item-title">Contado</span>
         </div>
-        <div class="help-item-desc">Efectivo o débito. Resta del disponible y de la semana actual.</div>
+        <div class="help-item-desc">Efectivo o débito. Resta del disponible y del bloque actual.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
           <span class="help-item-chip DS">DS</span>
           <span class="help-item-title">Deuda o tarjeta</span>
         </div>
-        <div class="help-item-desc">Resta del disponible y semana, suma a deuda acumulada.</div>
+        <div class="help-item-desc">Resta del disponible y del bloque, y suma a la deuda acumulada.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
           <span class="help-item-chip MOD">sem</span>
-          <span class="help-item-title">Reparto semanal</span>
+          <span class="help-item-title">Reparto por bloques</span>
         </div>
-        <div class="help-item-desc">Modificador. Divide el gasto entre todas las semanas del mes.</div>
+        <div class="help-item-desc">Modificador. Reparte el gasto entre los bloques restantes según sus días.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
           <span class="help-item-chip MOD">recalc</span>
           <span class="help-item-title">Redistribuir</span>
         </div>
-        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible actual entre la semana actual y las futuras.</div>
+        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible entre el bloque actual y los futuros según sus días restantes.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -4896,7 +5124,7 @@
           <span class="help-item-chip MOD">✎</span>
           <span class="help-item-title">Editar entradas recientes</span>
         </div>
-        <div class="help-item-desc">Toca “Editar” en cualquiera de las últimas 10 entradas para cambiar monto, tipo, detalle o reparto semanal.</div>
+        <div class="help-item-desc">Toca “Editar” en cualquiera de las últimas 10 entradas para cambiar monto, tipo, detalle o reparto por bloques.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -4912,9 +5140,10 @@
   }
   
   function openSettings() {
+    const automaticoAdaptable = state.bloquesAdaptables === true && !state.modoManualSemanas;
     openModal(`
       <h2>Ajustes</h2>
-      <p class="modal-sub">Edita cualquier valor. El presupuesto por semana se calcula solo al cambiar disponible o número de semanas.</p>
+      <p class="modal-sub">Edita cualquier valor. En automático, los bloques se ponderan según sus días restantes.</p>
       <div class="modal-field">
         <label>Total disponible</label>
         <input type="number" step="0.01" id="setDisponible" value="${state.totalDisponible.toFixed(2)}" oninput="autoRecalcPresupuesto()">
@@ -4944,19 +5173,19 @@
         <input type="date" id="setFechaInicio" value="${state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).toISOString().slice(0,10) : ''}" ${state.modoManualSemanas ? 'disabled style="opacity:0.4;"' : ''}>
       </div>
       <div class="modal-field">
-        <label>Número de semanas</label>
-        <input type="number" min="1" max="6" id="setNumSem" value="${state.semanas.length}" oninput="autoRecalcPresupuesto()">
+        <label>Número de bloques ${automaticoAdaptable ? '<span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">(automático)</span>' : ''}</label>
+        <input type="number" min="1" max="6" id="setNumSem" value="${state.semanas.length}" oninput="autoRecalcPresupuesto()" ${automaticoAdaptable ? 'disabled style="opacity:0.55;"' : ''}>
       </div>
       <div class="modal-field">
-        <label>Presupuesto por semana <span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">(editable)</span></label>
-        <input type="text" id="setPresSem" value="${state.semanas.map(s => s.presupuesto.toFixed(2)).join(', ')}">
+        <label>Presupuesto por bloque <span style="color:var(--ink-mute);text-transform:none;letter-spacing:0;font-weight:400;">${automaticoAdaptable ? '(calculado por días)' : '(editable)'}</span></label>
+        <input type="text" id="setPresSem" value="${state.semanas.map(s => s.presupuesto.toFixed(2)).join(', ')}" ${automaticoAdaptable ? 'disabled style="opacity:0.55;"' : ''}>
       </div>
       
       <div class="manual-ranges-box">
         <div class="manual-ranges-row">
           <div>
             <div class="manual-ranges-title">Rangos manuales</div>
-            <div class="manual-ranges-sub">Define tú mismo qué días componen cada bloque, en vez del calendario automático.</div>
+            <div class="manual-ranges-sub">Define tú mismo qué días componen cada bloque. Apagado usa el calendario adaptable.</div>
           </div>
           <label class="switch">
             <input type="checkbox" id="setModoManual" ${state.modoManualSemanas ? 'checked' : ''} onchange="onToggleModoManual()">
@@ -4980,6 +5209,8 @@
     const checked = document.getElementById('setModoManual').checked;
     const btn = document.getElementById('btnEditarRangos');
     const fechaInput = document.getElementById('setFechaInicio');
+    const numInput = document.getElementById('setNumSem');
+    const presupuestoInput = document.getElementById('setPresSem');
     if (btn) {
       btn.style.opacity = checked ? '1' : '0.4';
       btn.style.pointerEvents = checked ? 'auto' : 'none';
@@ -4988,6 +5219,15 @@
       fechaInput.disabled = checked;
       fechaInput.style.opacity = checked ? '0.4' : '1';
     }
+    if (numInput) {
+      numInput.disabled = !checked;
+      numInput.style.opacity = checked ? '1' : '0.55';
+    }
+    if (presupuestoInput) {
+      presupuestoInput.disabled = !checked;
+      presupuestoInput.style.opacity = checked ? '1' : '0.55';
+    }
+    autoRecalcPresupuesto();
   }
   
   function autoRecalcPresupuesto() {
@@ -4996,13 +5236,26 @@
     const meta = parseFloat(document.getElementById('setMeta').value) || 0;
     if (isNaN(disp) || isNaN(numSem) || numSem < 1 || numSem > 6) return;
     const gastable = Math.max(0, disp - meta);
-    const porSem = gastable / numSem;
-    const arr = [];
-    for (let i = 0; i < numSem; i++) arr.push(porSem.toFixed(2));
+    const manual = !!document.getElementById('setModoManual')?.checked;
+    let arr;
+    if (!manual && state.bloquesAdaptables === true) {
+      const semanasPreview = JSON.parse(JSON.stringify(state.semanas));
+      const currentIdx = Math.min(calcularSemanaActualIdx(), semanasPreview.length - 1);
+      distribuirEntreBloques(semanasPreview, gastable, Math.max(0, currentIdx));
+      arr = semanasPreview.map(s => (Number(s.presupuesto) || 0).toFixed(2));
+    } else {
+      const porSem = gastable / numSem;
+      arr = Array.from({ length: numSem }, () => porSem.toFixed(2));
+    }
     document.getElementById('setPresSem').value = arr.join(', ');
   }
   
   function saveSettings() {
+    const rangosAntesDelCambio = calcularRangoSemanas();
+    const anteriorDisponible = Number(state.totalDisponible) || 0;
+    const anteriorMeta = Number(state.metaResidual) || 0;
+    const modoManualAnterior = !!state.modoManualSemanas;
+    const fechaAnterior = state.fechaInicioCiclo ? fechaParaInput(new Date(state.fechaInicioCiclo)) : '';
     const disp = parseFloat(document.getElementById('setDisponible').value);
     const meta = parseFloat(document.getElementById('setMeta').value);
     const intoc = parseFloat(document.getElementById('setIntocable').value);
@@ -5029,19 +5282,43 @@
         state.ultimaSemanaVista = null; // reset para que no dispare toast falso
       }
     }
-    
-    if (!isNaN(numSem) && numSem >= 1 && numSem <= 6) {
+
+    const cambioModo = modoManualAnterior !== state.modoManualSemanas;
+    const cambioFecha = !!fechaInicio && fechaInicio !== fechaAnterior;
+    const cambioDisponible = !isNaN(disp) && Math.abs(disp - anteriorDisponible) > 0.005;
+    const cambioMeta = !isNaN(meta) && Math.abs(Math.max(0, meta) - anteriorMeta) > 0.005;
+
+    if (!state.modoManualSemanas && (state.bloquesAdaptables === true || cambioModo)) {
+      state.bloquesAdaptables = true;
+      if (cambioFecha || cambioModo || !state.fechaProximoSueldo) {
+        state.fechaProximoSueldo = fechaSueldoEstimadaDesde(state.fechaInicioCiclo).toISOString();
+      }
+      const rangos = generarRangosAdaptables(state.fechaInicioCiclo, diaAnterior(proximoSueldoDelCiclo()));
+      if (cambioFecha || cambioModo || rangos.length !== state.semanas.length) {
+        state.semanas = crearSemanasDesdeRangos(rangos, Math.max(0, state.totalDisponible - state.metaResidual));
+      } else if (cambioDisponible || cambioMeta) {
+        const currentIdx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
+        distribuirEntreBloques(
+          state.semanas,
+          Math.max(0, state.totalDisponible - state.metaResidual),
+          Math.max(0, currentIdx),
+          rangos
+        );
+      }
+    } else if (!isNaN(numSem) && numSem >= 1 && numSem <= 6) {
       const presArr = presStr.split(',').map(v => parseFloat(v.trim()));
       const newSem = [];
       for (let i = 0; i < numSem; i++) {
         // Preservar fechas manuales existentes si esa posición ya tenía semana
         const existente = state.semanas[i];
+        const rangoExistente = rangosAntesDelCambio[i];
         newSem.push({
-          label: i === 0 ? 'Semana actual' : 'Semana +' + i,
+          label: 'Bloque ' + (i + 1),
           presupuesto: !isNaN(presArr[i]) ? presArr[i] : 0,
           isCurrent: i === 0,
-          fechaInicioManual: existente ? (existente.fechaInicioManual || null) : null,
-          fechaFinManual: existente ? (existente.fechaFinManual || null) : null
+          fechaInicioManual: existente?.fechaInicioManual || (state.modoManualSemanas && rangoExistente?.inicio ? fechaParaInput(rangoExistente.inicio) : null),
+          fechaFinManual: existente?.fechaFinManual || (state.modoManualSemanas && rangoExistente?.fin ? fechaParaInput(rangoExistente.fin) : null),
+          exceso: existente ? (Number(existente.exceso) || 0) : 0
         });
       }
       state.semanas = newSem;
@@ -5070,7 +5347,7 @@
     }
     
     const camposHtml = state.semanas.map((sem, i) => {
-      const label = i === 0 ? 'Semana actual (Bloque 1)' : `Bloque ${i + 1}`;
+      const label = i === 0 ? 'Bloque actual (Bloque 1)' : `Bloque ${i + 1}`;
       return `
         <div class="rango-block">
           <div class="rango-block-label">${label}</div>
@@ -5148,6 +5425,12 @@
       state.semanas[i].fechaFinManual = f.fin;
     });
     state.redoMovement = null;
+    const currentIdx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
+    distribuirEntreBloques(
+      state.semanas,
+      Math.max(0, state.totalDisponible - (state.metaResidual || 0)),
+      Math.max(0, currentIdx)
+    );
     
     state.ultimaSemanaVista = null; // evitar toast falso de "avanzó de semana"
     closeModal();
@@ -5337,17 +5620,29 @@
     const disponible = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const disponibleDespues = disponible - monto;
     const reduccionPct = disponible > 0 ? Math.round((monto / disponible) * 100) : 100;
-    const margenAntes = diasRestantes > 0
-      ? (diasRestantes < 7 ? disponible : disponible * 7 / diasRestantes)
-      : disponible;
-    const margenDespues = diasRestantes > 0
-      ? (diasRestantes < 7 ? Math.max(0, disponibleDespues) : Math.max(0, disponibleDespues) * 7 / diasRestantes)
-      : Math.max(0, disponibleDespues);
+    let currentIdx = state.semanas.findIndex(s => s.isCurrent);
+    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
+    const rangos = calcularRangoSemanas();
+    const margenAntes = Math.max(0, Number(state.semanas[currentIdx]?.presupuesto) || 0);
+    let semanasDespues = JSON.parse(JSON.stringify(state.semanas));
+    try {
+      const simulado = applyMovementToSnapshot(captureMovementState(), { monto, tipo: 'DS', etiqueta: null });
+      semanasDespues = simulado.semanas;
+    } catch(e) {}
+    const margenDespues = Math.max(0, Number(semanasDespues[currentIdx]?.presupuesto) || 0);
+    const excesoAntes = Math.max(0, Number(state.semanas[currentIdx]?.exceso) || 0);
+    const excesoDespues = Math.max(0, Number(semanasDespues[currentIdx]?.exceso) || 0);
+    const nuevoExceso = Math.max(0, excesoDespues - excesoAntes);
+    const presupuestosDespues = semanasDespues.slice(Math.max(0, currentIdx)).map((sem, offset) => ({
+      index: currentIdx + offset,
+      presupuesto: Math.max(0, Number(sem.presupuesto) || 0),
+      rango: rangos[currentIdx + offset] || null
+    }));
 
     let nivel = 'neutral';
     let capacidad = 'Sin fechas';
     let titulo = `Esta compra usaría ${reduccionPct}% de tu disponible.`;
-    let detalle = 'Define las fechas del ciclo para calcular el impacto semanal.';
+    let detalle = 'Define las fechas del ciclo para calcular el impacto por bloques.';
     let meta = balanceHidden
       ? 'Tu disponible total continúa oculto.'
       : `Te quedarían S/ ${fmtSim(disponibleDespues)} después de la compra.`;
@@ -5359,22 +5654,26 @@
       detalle = `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
       meta = totalDias > 0
         ? `Cálculo directo con tu disponible y ${diasRestantes} día${diasRestantes === 1 ? '' : 's'} restantes.`
-        : 'Define las fechas del ciclo para calcular el impacto semanal.';
+        : 'Define las fechas del ciclo para calcular el impacto por bloques.';
     } else if (totalDias > 0 && diasRestantes === 0) {
       nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
       capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
       titulo = `Esta compra usaría ${reduccionPct}% de tu disponible al cierre.`;
-      detalle = 'El ciclo ya está en su último día, por lo que no queda una semana por calcular.';
+      detalle = 'El ciclo ya está en su último día, por lo que no queda otro bloque por calcular.';
       meta = balanceHidden ? 'Tu disponible total continúa oculto.' : `Te quedarían S/ ${fmtSim(disponibleDespues)}.`;
     } else if (totalDias > 0) {
       nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
       capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
-      titulo = diasRestantes >= 7
-        ? `Esta compra reduciría tu margen semanal en ${reduccionPct}%.`
-        : `Esta compra reduciría tu margen para los ${diasRestantes} días restantes en ${reduccionPct}%.`;
-      detalle = diasRestantes >= 7
-        ? `Antes: S/ ${fmtSim(margenAntes)} por semana · Después: S/ ${fmtSim(margenDespues)} por semana.`
-        : `Antes: S/ ${fmtSim(margenAntes)} · Después: S/ ${fmtSim(margenDespues)} para los días restantes.`;
+      if (nuevoExceso > 0) {
+        titulo = `La compra excedería el bloque actual en S/ ${fmtSim(nuevoExceso)}.`;
+        const futuros = presupuestosDespues.slice(1).map(b => `S/ ${fmtSim(b.presupuesto)}`).join(' · ');
+        detalle = futuros
+          ? `El bloque actual quedaría en cero. Los siguientes se ajustarían a ${futuros}.`
+          : 'El bloque actual quedaría en cero y no hay bloques futuros para redistribuir.';
+      } else {
+        titulo = `El bloque actual quedaría con S/ ${fmtSim(margenDespues)}.`;
+        detalle = `Antes: S/ ${fmtSim(margenAntes)} · Después: S/ ${fmtSim(margenDespues)}${rangos[currentIdx] ? ` · hasta el ${formatFecha(rangos[currentIdx].fin)}` : ''}.`;
+      }
       meta = balanceHidden
         ? `Cálculo directo con tu disponible oculto y ${diasRestantes} días restantes.`
         : `Te quedarían S/ ${fmtSim(disponibleDespues)} hasta el cierre.`;
@@ -5390,6 +5689,8 @@
       disponibleDespues,
       margenAntes,
       margenDespues,
+      nuevoExceso,
+      presupuestosDespues,
       reduccionPct
     };
   }
@@ -5482,13 +5783,13 @@
     let ritmoSemanalTexto;
     if (disponibleDespues < 0) {
       ritmoSemanalTexto = 'No quedaría disponible para repartir hasta el cierre.';
-    } else if (capacidad.diasRestantes === 0) {
-      ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} en el último día del ciclo.`;
-    } else if (capacidad.diasRestantes < 7) {
-      ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} para los ${capacidad.diasRestantes} días que faltan.`;
+    } else if (!capacidad.presupuestosDespues.length) {
+      ritmoSemanalTexto = `Te quedarían S/ ${fmtSim(disponibleDespues)} al cierre.`;
     } else {
-      const disponibleSemanal = disponibleDespues * 7 / capacidad.diasRestantes;
-      ritmoSemanalTexto = `Te quedarían aprox. S/ ${fmtSim(disponibleSemanal)} por cada 7 días hasta el cierre.`;
+      const bloquesTexto = capacidad.presupuestosDespues
+        .map((bloque, i) => `${i === 0 ? 'Actual' : 'B' + (bloque.index + 1)}: S/ ${fmtSim(bloque.presupuesto)}`)
+        .join(' · ');
+      ritmoSemanalTexto = `Después de la compra · ${bloquesTexto}`;
     }
     const conversionResumen = purchaseSimulationCurrency === 'USD'
       ? `<div class="purchase-result-conversion">Compra simulada: <strong>US$ ${fmtSim(montoIngresado)}</strong> ≈ <strong>S/ ${fmtSim(monto)}</strong> · TC ${rate.toFixed(3)}</div>`
