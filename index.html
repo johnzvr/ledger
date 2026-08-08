@@ -3116,12 +3116,12 @@
     return JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
   
-  function saveState() {
+  function saveState({ markModified = true, sync = true } = {}) {
     try {
-      state.lastModified = Date.now();
+      if (markModified) state.lastModified = Date.now();
       localStorage.setItem('ledger-state-v2', JSON.stringify(state));
     } catch(e) { toast('Error guardando', true); }
-    scheduleSyncUpload();
+    if (markModified && sync) scheduleSyncUpload();
   }
   
   function fmt(n) {
@@ -3232,7 +3232,6 @@
   function initFechaCiclo() {
     if (!state.fechaInicioCiclo) {
       state.fechaInicioCiclo = new Date().toISOString();
-      saveState();
     }
   }
   
@@ -3390,7 +3389,7 @@
     return Math.floor((fin - hoy) / (1000 * 60 * 60 * 24)) + 1;
   }
   
-  function render() {
+  function render({ markModified = true, sync = true } = {}) {
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     initFechaCiclo();
@@ -3550,7 +3549,7 @@
     applySectionState();
     initViews();
     requestAnimationFrame(updateViewHeight);
-    saveState();
+    saveState({ markModified, sync });
   }
   
   function renderComparison() {
@@ -4063,7 +4062,7 @@
     if (!safeToRedo) {
       state.redoMovement = null;
       toast('Ya hubo otros cambios; no se puede rehacer', true);
-      render();
+      render({ markModified: false, sync: false });
       return;
     }
     restoreMovementState(redo.afterSnapshot);
@@ -5722,7 +5721,6 @@
   
   async function uploadToDrive() {
     if (!accessToken) return;
-    state.lastModified = Date.now();
     const content = JSON.stringify(state);
     
     // Si no tengo fileId, primero crear el archivo (metadata)
@@ -5961,6 +5959,10 @@
           : remoteTime < localTime
             ? 'Tu versión local parece más reciente. Bajar podría reemplazar cambios nuevos.'
             : 'Ambas versiones tienen la misma fecha de edición.';
+      } else if (!localTime && remoteTime) {
+        freshness = 'Drive contiene una versión guardada; este dispositivo aún no registra cambios.';
+      } else if (localTime && !remoteTime) {
+        freshness = 'Este dispositivo contiene cambios con fecha registrada.';
       }
 
       openModal(`
@@ -6002,7 +6004,7 @@
     state = { ...remoteState, darkMode: localDarkMode };
     closeModal();
     applyTheme();
-    render();
+    render({ markModified: false, sync: false });
     state.lastModified = remoteModified;
     try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e) {}
     pauseAutoUpload = false;
@@ -6015,7 +6017,7 @@
   function toggleTheme() {
     state.darkMode = !state.darkMode;
     applyTheme();
-    saveState();
+    saveState({ markModified: false, sync: false });
   }
   
   function applyTheme() {
@@ -6096,7 +6098,7 @@
             fetchedAt: Date.now(),
             source: source.name
           };
-          saveState();
+          saveState({ markModified: false, sync: false });
           tcFetchInProgress = false;
           updateConversionPreview();
           updatePurchaseSimulationConversion();
@@ -6183,7 +6185,7 @@
       fetchedAt: Date.now(),
       source: 'manual'
     };
-    saveState();
+    saveState({ markModified: false, sync: false });
     updateConversionPreview();
     updatePurchaseSimulationConversion();
     toast(`TC actualizado: ${rate.toFixed(3)}`);
@@ -6191,7 +6193,7 @@
   
   // ============ INIT ============
   applyTheme();
-  render();
+  render({ markModified: false, sync: false });
   initKeyboardHandling();
   initGoogleSync();
   // Precargar TC en background (silencioso, solo si es viejo)
