@@ -673,6 +673,14 @@
     margin-right: 6px;
     letter-spacing: -0.02em;
   }
+  .balance-mask {
+    letter-spacing: 0.12em !important;
+    font-kerning: none;
+  }
+  .hero-amount .balance-mask {
+    position: relative;
+    top: 0.16em;
+  }
   .hero-progress {
     margin-top: 18px;
     height: 4px;
@@ -2960,11 +2968,13 @@
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
 
     if (amountEl) amountEl.textContent = balanceHidden
-      ? '••••••'
+      ? '******'
       : fmt((state.metaResidual || 0) > 0 ? gastable : state.totalDisponible);
     if (totalRefEl) totalRefEl.textContent = balanceHidden
-      ? 'S/ ••••••'
+      ? 'S/ ******'
       : 'S/ ' + fmt(state.totalDisponible);
+    if (amountEl) amountEl.classList.toggle('balance-mask', balanceHidden);
+    if (totalRefEl) totalRefEl.classList.toggle('balance-mask', balanceHidden);
     if (button) button.setAttribute('aria-label', balanceHidden ? 'Mostrar monto disponible' : 'Ocultar monto disponible');
     if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
   }
