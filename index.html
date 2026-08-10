@@ -4072,17 +4072,58 @@
     };
   }
 
+  function restarGastoDivididoEntreBloques(semanas, monto, desdeIdx) {
+    if (!Array.isArray(semanas) || desdeIdx < 0 || desdeIdx >= semanas.length || monto <= 0) {
+      return { cuota: 0, exceso: Math.max(0, Number(monto) || 0), repartos: [] };
+    }
+
+    const indices = [];
+    for (let i = desdeIdx; i < semanas.length; i++) indices.push(i);
+    const cuota = monto / Math.max(1, indices.length);
+    const repartos = [];
+    let aplicado = 0;
+    let arrastre = 0;
+
+    indices.forEach((index, posicion) => {
+      const disponible = Math.max(0, Number(semanas[index]?.presupuesto) || 0);
+      // Cada bloque recibe una parte igual. Si no puede cubrirla, el faltante
+      // se suma a la parte del bloque siguiente.
+      const porRestar = posicion === indices.length - 1
+        ? Math.max(0, monto - aplicado)
+        : cuota + arrastre;
+      const descuento = Math.min(disponible, porRestar);
+      semanas[index].presupuesto = disponible - descuento;
+      aplicado += descuento;
+      arrastre = Math.max(0, porRestar - descuento);
+      repartos.push({ index, descuento, presupuesto: semanas[index].presupuesto });
+    });
+
+    return {
+      cuota,
+      exceso: Math.max(0, monto - aplicado),
+      repartos
+    };
+  }
+
   function aplicarGastoEnBloques(semanas, monto, totalDisponibleDespues, metaResidual, etiqueta = null) {
     if (!Array.isArray(semanas) || semanas.length === 0) return { currentIdx: -1, exceso: monto, futuros: [] };
     let currentIdx = semanas.findIndex(sem => sem.isCurrent);
     if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), semanas.length - 1);
+    if (etiqueta === 'sem') {
+      const resultado = restarGastoDivididoEntreBloques(semanas, monto, currentIdx);
+      if (resultado.exceso > 0) {
+        semanas[currentIdx].exceso = (Number(semanas[currentIdx].exceso) || 0) + resultado.exceso;
+      }
+      return {
+        currentIdx,
+        exceso: resultado.exceso,
+        cuota: resultado.cuota,
+        futuros: resultado.repartos
+      };
+    }
+
     const rangos = calcularRangoSemanas();
     const gastableDespues = Math.max(0, totalDisponibleDespues - (metaResidual || 0));
-
-    if (etiqueta === 'sem') {
-      const asignaciones = distribuirEntreBloques(semanas, gastableDespues, currentIdx, rangos);
-      return { currentIdx, exceso: 0, futuros: asignaciones };
-    }
 
     const disponibleActual = Math.max(0, Number(semanas[currentIdx]?.presupuesto) || 0);
     if (monto <= disponibleActual) {
@@ -5113,7 +5154,11 @@
       etiqueta
     );
     if (etiqueta === 'sem') {
-      toast(`Gasto repartido entre ${resultadoBloques.futuros.length} bloques según sus días`);
+      if (resultadoBloques.exceso > 0) {
+        toast(`Gasto dividido · faltaron S/ ${fmt(resultadoBloques.exceso)} por cubrir`, true);
+      } else {
+        toast(`S/ ${fmt(monto)} dividido entre ${resultadoBloques.futuros.length} bloques`);
+      }
     } else if (resultadoBloques.exceso > 0) {
       toast(`Excediste S/ ${fmt(resultadoBloques.exceso)} · bloques futuros ajustados`, true);
     } else {
@@ -5200,7 +5245,7 @@
           <span class="help-item-chip MOD">sem</span>
           <span class="help-item-title">Reparto por bloques</span>
         </div>
-        <div class="help-item-desc">Modificador. Reparte el gasto entre los bloques restantes según sus días.</div>
+        <div class="help-item-desc">Modificador. Divide el gasto en partes iguales y resta una parte de cada bloque restante, sin recalcular sus presupuestos.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
