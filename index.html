@@ -1061,6 +1061,10 @@
     background: var(--ink);
     color: var(--bg);
   }
+  .week-chip.closed {
+    background: rgba(255,255,255,0.32);
+    opacity: 0.62;
+  }
   .week-chip .wk-label {
     font-size: 9px;
     color: var(--ink-dim);
@@ -1080,6 +1084,14 @@
     line-height: 1;
   }
   .week-chip.current .wk-amount { color: var(--bg); }
+  .wk-closed-status {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    color: var(--ink-dim);
+  }
   .week-chip.overspent {
     box-shadow: inset 0 0 0 1.5px var(--danger);
   }
@@ -2904,7 +2916,7 @@
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
       <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
-      <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')">recalc</div>
+      <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')" role="button" aria-label="Redistribuir presupuesto">redistrib.</div>
     </div>
   </div>
 </div>
@@ -2928,6 +2940,7 @@
     fechaProximoSueldo: null, // límite proyectado del ciclo automático
     bloquesAdaptables: true, // ciclos nuevos: 4 o 5 bloques según los días reales
     modoManualSemanas: false, // true = el usuario define los rangos manualmente
+    ultimoBloqueProcesado: null, // bloque cuya entrada ya disparó la redistribución automática
     cicloAnterior: null,
     historialCiclos: [], // máximo 2 ciclos cerrados, con movimientos compactos
     darkMode: false,
@@ -3481,29 +3494,68 @@
   }
   
   function actualizarSemanaActual() {
-    const idx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
+    const idx = calcularSemanaActualIdx();
     state.semanas.forEach((s, i) => {
-      s.isCurrent = (i === idx);
+      s.isCurrent = idx >= 0 && idx < state.semanas.length && i === idx;
     });
+  }
+
+  function presupuestosDeAsignaciones(asignaciones) {
+    return asignaciones
+      .map(item => `S/ ${fmt(item.presupuesto)}`)
+      .join(' · ');
+  }
+
+  function presupuestosCambiaron(antes, despues, desdeIdx = 0) {
+    if (!Array.isArray(antes) || !Array.isArray(despues) || antes.length !== despues.length) return true;
+    for (let i = Math.max(0, desdeIdx); i < antes.length; i++) {
+      if (Math.abs((Number(antes[i]) || 0) - (Number(despues[i]) || 0)) > 0.005) return true;
+    }
+    return false;
   }
   
   function detectarCambioSemana() {
     const currentIdx = calcularSemanaActualIdx();
-    const prev = state.ultimaSemanaVista;
-    
-    if (prev !== undefined && prev !== null && currentIdx > prev && currentIdx < state.semanas.length) {
-      // Avanzó de semana → auto-redistribuir el disponible entre las restantes
-      autoRecalcRestantes();
-      const rangos = calcularRangoSemanas();
-      const semLabel = rangos[currentIdx] 
-        ? formatRangoCorto(rangos[currentIdx]) 
-        : 'nueva semana';
+    const marcadorGuardado = state.ultimoBloqueProcesado;
+    const ultimoGuardado = Number(marcadorGuardado);
+    const tieneGuardado = marcadorGuardado !== null
+      && marcadorGuardado !== undefined
+      && marcadorGuardado !== ''
+      && Number.isInteger(ultimoGuardado)
+      && ultimoGuardado >= 0;
+    const dentroDelCiclo = currentIdx >= 0 && currentIdx < state.semanas.length;
+    let debeProcesar = false;
+    let esRecuperacion = false;
+
+    if (dentroDelCiclo) {
+      if (!tieneGuardado) {
+        // Migración o descarga sin marcador: si ya no estamos en el primer bloque,
+        // rehacer el reparto desde hoy para recuperar cualquier transición perdida.
+        debeProcesar = currentIdx > 0;
+        esRecuperacion = debeProcesar;
+      } else if (currentIdx > ultimoGuardado) {
+        debeProcesar = true;
+      }
+    }
+
+    let huboCambioNumerico = false;
+    if (debeProcesar) {
+      const antes = state.semanas.map(sem => Number(sem.presupuesto) || 0);
+      const asignaciones = autoRecalcRestantes();
+      const despues = state.semanas.map(sem => Number(sem.presupuesto) || 0);
+      huboCambioNumerico = presupuestosCambiaron(antes, despues, currentIdx);
+      const resumen = presupuestosDeAsignaciones(asignaciones);
       setTimeout(() => {
-        toast(`↻ Semana avanzó (${semLabel}) · presupuesto redistribuido`);
+        if (resumen) {
+          toast(`${esRecuperacion ? 'Presupuesto recuperado' : 'Nuevo bloque'} · ${resumen}`);
+        }
       }, 500);
     }
+
+    if (dentroDelCiclo) state.ultimoBloqueProcesado = currentIdx;
+    else if (currentIdx >= state.semanas.length) state.ultimoBloqueProcesado = state.semanas.length;
     state.ultimaSemanaVista = currentIdx;
-    return prev !== undefined && prev !== null && currentIdx > prev && currentIdx < state.semanas.length;
+    return debeProcesar || huboCambioNumerico;
   }
 
   function diasRestantesParaBloque(rango, fechaReferencia = new Date()) {
@@ -3634,11 +3686,17 @@
     const weeksEl = document.getElementById('weeksContainer');
     weeksEl.innerHTML = '';
     const rangos = calcularRangoSemanas();
+    const currentBlockIdx = calcularSemanaActualIdx();
     state.semanas.forEach((sem, i) => {
       const div = document.createElement('div');
-      const isZero = sem.presupuesto <= 0;
-      const excedido = Number(sem.exceso) > 0;
-      div.className = 'week-chip' + (sem.isCurrent ? ' current' : '') + (isZero ? ' zero' : '') + (excedido ? ' overspent' : '');
+      const isClosed = i < currentBlockIdx;
+      const isZero = !isClosed && sem.presupuesto <= 0;
+      const excedido = !isClosed && Number(sem.exceso) > 0;
+      div.className = 'week-chip'
+        + (sem.isCurrent ? ' current' : '')
+        + (isClosed ? ' closed' : '')
+        + (isZero ? ' zero' : '')
+        + (excedido ? ' overspent' : '');
       const label = sem.isCurrent ? 'Bloque actual' : 'Bloque ' + (i + 1);
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
@@ -3646,7 +3704,9 @@
       const excesoTxt = excedido ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
       div.innerHTML = `
         <span class="wk-label">${label}</span>
-        <div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>
+        ${isClosed
+          ? '<div class="wk-closed-status">✓ Cerrado</div>'
+          : `<div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>`}
         <div class="wk-range">${rangoTxt}${diasTxt}</div>
         ${excesoTxt}
       `;
@@ -3790,6 +3850,10 @@
     }
     return indices;
   }
+
+  function logAmountText(mov) {
+    return mov?.etiqueta === 'recalcula' ? 'Presupuesto' : `S/ ${fmt(mov?.monto)}`;
+  }
   
   function renderLog() {
     const logEl = document.getElementById('logContainer');
@@ -3840,7 +3904,7 @@
           </div>
         </div>
         <div class="log-right">
-          <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+          <div class="log-amount">${logAmountText(mov)}</div>
           ${editableIndices.has(idx) ? `<button class="log-edit-btn" onclick="openEditMovement(${idx})">Editar</button>` : ''}
           ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
         </div>
@@ -4224,11 +4288,12 @@
     }
     const lastIdx = state.log.length - 1;
     const mov = state.log[lastIdx];
+    const esRedistribucion = mov?.etiqueta === 'recalcula';
     
     openModal(`
-      <h2>Deshacer <span class="accent">último gasto</span></h2>
+      <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'último gasto'}</span></h2>
       <p class="modal-sub">
-        <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
@@ -4259,7 +4324,7 @@
     restoreMovementState(redo.afterSnapshot);
     state.log.push(JSON.parse(JSON.stringify(redo.movement)));
     state.redoMovement = null;
-    toast('Movimiento recuperado');
+    toast(redo.movement.etiqueta === 'recalcula' ? 'Redistribución recuperada' : 'Movimiento recuperado');
     render();
   }
   
@@ -4307,7 +4372,7 @@
               </div>
             </div>
             <div class="log-right">
-              <div class="log-amount">S/ ${fmt(mov.monto)}</div>
+              <div class="log-amount">${logAmountText(mov)}</div>
               ${editableIndices.has(originalIdx) ? `<button class="log-edit-btn" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
               ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
             </div>
@@ -4476,7 +4541,7 @@
                 <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha || '')}</span></div>
               </div>
             </div>
-            <div class="log-right"><div class="log-amount">S/ ${fmt(mov.monto)}</div></div>
+            <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
           </div>
         `;
       });
@@ -4790,6 +4855,7 @@
     state.bloquesAdaptables = true;
     state.modoManualSemanas = modoManual;
     state.ultimaSemanaVista = null;
+    state.ultimoBloqueProcesado = 0;
 
     const nuevosRangos = modoManual
       ? rangosManualesParaNuevoCiclo(nuevaFechaInicio, numSem, rangosAnteriores)
@@ -4862,11 +4928,14 @@
   
   function ejecutarRecalculo() {
     const numSem = state.semanas.length;
-    if (numSem === 0) { toast('No hay semanas configuradas', true); return; }
+    if (numSem === 0) { toast('No hay bloques configurados', true); return; }
     const currentIdx = calcularSemanaActualIdx();
+    if (currentIdx < 0 || currentIdx >= numSem) {
+      toast('El ciclo ya terminó; inicia uno nuevo', true);
+      return;
+    }
     const restantes = Math.max(1, state.semanas.length - currentIdx);
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
-    state.redoMovement = null;
     const snapshot = {
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
@@ -4876,8 +4945,16 @@
       semanas: JSON.parse(JSON.stringify(state.semanas))
     };
     // Solo modifica los bloques restantes y pondera sus días reales.
+    const antes = state.semanas.map(sem => Number(sem.presupuesto) || 0);
     const asignaciones = distribuirEntreBloques(state.semanas, gastable, currentIdx);
+    const despues = state.semanas.map(sem => Number(sem.presupuesto) || 0);
+    if (!presupuestosCambiaron(antes, despues, currentIdx)) {
+      state.semanas = JSON.parse(JSON.stringify(snapshot.semanas));
+      toast('El presupuesto ya estaba actualizado');
+      return;
+    }
     const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
+    state.redoMovement = null;
     state.log.push({
       monto: nuevoPresupuesto, tipo: 'S', etiqueta: 'recalcula',
       detalle: state.metaResidual > 0 
@@ -4886,7 +4963,7 @@
       fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
       snapshot
     });
-    toast(`${restantes} bloques ajustados según sus días`);
+    toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
     render();
   }
   
@@ -5054,10 +5131,11 @@
     }
     const mov = state.log[idx];
     if (!mov) return;
+    const esRedistribucion = mov.etiqueta === 'recalcula';
     openModal(`
-      <h2>Deshacer <span class="accent">movimiento</span></h2>
+      <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'movimiento'}</span></h2>
       <p class="modal-sub">
-        <strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
@@ -5077,6 +5155,10 @@
     }
     const mov = state.log[idx];
     if (!mov || !mov.snapshot) { closeModal(); return; }
+    const bloqueDelSnapshot = Array.isArray(mov.snapshot.semanas)
+      ? mov.snapshot.semanas.findIndex(sem => sem.isCurrent)
+      : -1;
+    const bloqueCalendario = calcularSemanaActualIdx();
     const afterSnapshot = captureMovementState();
     restoreMovementState(mov.snapshot);
     state.log.splice(idx, 1);
@@ -5085,8 +5167,13 @@
       afterSnapshot,
       logLength: state.log.length
     };
+    if (mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
+      // Si el gasto pertenecía a un bloque anterior, rehacer el reparto actual
+      // después de restaurar el dinero para no regresar a presupuestos vencidos.
+      state.ultimoBloqueProcesado = null;
+    }
     closeModal();
-    toast('Movimiento deshecho');
+    toast(mov.etiqueta === 'recalcula' ? 'Redistribución deshecha' : 'Movimiento deshecho');
     render();
   }
   
@@ -5117,10 +5204,10 @@
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">recalc</span>
+          <span class="help-item-chip MOD">redistrib.</span>
           <span class="help-item-title">Redistribuir</span>
         </div>
-        <div class="help-item-desc">Acción inmediata (sin monto). Reparte el disponible entre el bloque actual y los futuros según sus días restantes.</div>
+        <div class="help-item-desc">Respaldo manual. Reparte el disponible entre el bloque actual y los futuros según sus días restantes. Si ya está correcto, no hace cambios.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -5290,6 +5377,7 @@
       if (!isNaN(nuevaFecha.getTime())) {
         state.fechaInicioCiclo = nuevaFecha.toISOString();
         state.ultimaSemanaVista = null; // reset para que no dispare toast falso
+        state.ultimoBloqueProcesado = null; // obliga a verificar la distribución con los nuevos rangos
       }
     }
 
@@ -5297,6 +5385,7 @@
     const cambioFecha = !!fechaInicio && fechaInicio !== fechaAnterior;
     const cambioDisponible = !isNaN(disp) && Math.abs(disp - anteriorDisponible) > 0.005;
     const cambioMeta = !isNaN(meta) && Math.abs(Math.max(0, meta) - anteriorMeta) > 0.005;
+    if (cambioModo || cambioFecha) state.ultimoBloqueProcesado = null;
 
     if (!state.modoManualSemanas && (state.bloquesAdaptables === true || cambioModo)) {
       state.bloquesAdaptables = true;
@@ -5442,7 +5531,8 @@
       Math.max(0, currentIdx)
     );
     
-    state.ultimaSemanaVista = null; // evitar toast falso de "avanzó de semana"
+    state.ultimaSemanaVista = null; // compatibilidad con versiones anteriores
+    state.ultimoBloqueProcesado = Math.max(0, currentIdx);
     closeModal();
     toast('Rangos guardados');
     render();
