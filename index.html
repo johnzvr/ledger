@@ -1079,6 +1079,8 @@
     display: flex;
     gap: 8px;
     overflow-x: auto;
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
     padding-bottom: 2px;
   }
@@ -3141,6 +3143,8 @@
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       const target = e.target instanceof Element ? e.target : null;
       if (!target || target.closest('.input-bar, .modal-overlay.active')) return;
+      // Los carruseles internos conservan el gesto horizontal y no cambian de página.
+      if (target.closest('.weeks-grid, [data-page-swipe-lock]')) return;
       const tabs = document.querySelector('.view-tabs');
       const inputBar = document.querySelector('.input-bar');
       const areaTop = tabs?.getBoundingClientRect().bottom || 0;
