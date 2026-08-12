@@ -184,6 +184,10 @@
     background: rgba(255, 155, 127, 0.15);
     color: #FF9B7F;
   }
+  body.dark .log-dot.F {
+    background: rgba(176, 197, 214, 0.15);
+    color: #B0C5D6;
+  }
   body.dark .log-dot.RC {
     background: rgba(180, 140, 220, 0.15);
     color: #B48CDC;
@@ -788,6 +792,7 @@
     flex-direction: column;
     justify-content: space-between;
   }
+  .bento-card.fund-card { position: relative; }
   .bento-card.coral { background: var(--coral); }
   .bento-card.sky { background: var(--sky); }
   .bento-card.mint { background: var(--mint); }
@@ -834,6 +839,35 @@
     color: var(--ink-dim);
     margin-top: 4px;
     font-weight: 500;
+  }
+  .fund-privacy {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border: 1.25px solid var(--ink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    cursor: pointer;
+    background: rgba(255,255,255,0.24);
+    padding: 0;
+  }
+  .fund-privacy .ui-icon { width: 15px; height: 15px; }
+  .fund-privacy:active { background: rgba(255,255,255,0.5); }
+  body.dark .fund-privacy {
+    border-color: rgba(245,245,247,0.3);
+    color: #F5F5F7;
+    background: rgba(255,255,255,0.04);
+  }
+  .bento-value .fund-mask {
+    letter-spacing: 0.12em;
+    font-kerning: none;
+    position: relative;
+    top: 0.18em;
   }
   
   /* Semanas */
@@ -1768,6 +1802,7 @@
   }
   .all-sum-item.S { background: var(--mint); }
   .all-sum-item.DS { background: var(--coral); }
+  .all-sum-item.F { background: var(--sky); grid-column: 1 / -1; }
   .all-sum-label {
     font-size: 9px;
     color: var(--ink-dim);
@@ -1887,6 +1922,18 @@
     transition: transform 0.22s ease;
     touch-action: pan-y;
   }
+  .log-item.fund-movement,
+  .log-swipe .log-item.fund-movement {
+    background: #EEF4F7;
+    box-shadow: inset 3px 0 0 #8FAEC3;
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  body.dark .log-item.fund-movement,
+  body.dark .log-swipe .log-item.fund-movement {
+    background: #111A20;
+    box-shadow: inset 3px 0 0 #7FB8E0;
+  }
   .log-swipe.swipe-enabled .log-item { cursor: grab; }
   .log-swipe.swipe-enabled .log-item {
     -webkit-user-select: none;
@@ -1901,21 +1948,40 @@
     background: #2A1512;
     box-shadow: inset 0 0 0 1.5px var(--danger);
   }
+  .log-swipe.edit-armed .log-item {
+    background: #EEF4F7;
+    box-shadow: inset 0 0 0 1.5px #6F95AE;
+  }
+  body.dark .log-swipe.edit-armed .log-item {
+    background: #111A20;
+    box-shadow: inset 0 0 0 1.5px #7FB8E0;
+  }
   .log-swipe.dragging .log-item { transition: none; cursor: grabbing; }
   .swipe-action {
     position: absolute;
     z-index: 1;
     top: 0;
-    right: 0;
     bottom: 0;
     width: 94px;
     border: none;
-    background: var(--danger);
-    color: white;
     font-family: inherit;
     font-size: 11px;
     font-weight: 750;
     cursor: pointer;
+  }
+  .swipe-action.undo {
+    left: 0;
+    background: var(--danger);
+    color: white;
+  }
+  .swipe-action.edit {
+    right: 0;
+    background: #BFD4E1;
+    color: #263F50;
+  }
+  body.dark .swipe-action.edit {
+    background: #31556C;
+    color: #F5F5F7;
   }
   .swipe-hint {
     color: var(--ink-mute);
@@ -1925,7 +1991,9 @@
   }
   @keyframes swipePeek {
     0%, 100% { transform: translateX(0); }
-    35%, 65% { transform: translateX(-34px); }
+    20%, 38% { transform: translateX(-34px); }
+    50% { transform: translateX(0); }
+    62%, 80% { transform: translateX(34px); }
   }
   @keyframes holdPulse {
     0% { transform: scale(1); }
@@ -1960,6 +2028,7 @@
   }
   .log-dot.S { background: var(--mint); color: var(--gain); }
   .log-dot.DS { background: var(--coral); color: var(--danger); }
+  .log-dot.F { background: var(--sky); color: #4A6F8A; }
   .log-dot.RC { background: var(--lavender); color: var(--ink); }
   .log-info {
     flex: 1;
@@ -2021,22 +2090,6 @@
     font-weight: 500;
   }
   .log-undo:active { color: var(--danger); }
-  .log-edit-btn {
-    min-height: 30px;
-    border: none;
-    border-radius: 9px;
-    padding: 4px 9px;
-    background: var(--line);
-    color: var(--ink-dim);
-    font-family: inherit;
-    font-size: 9px;
-    font-weight: 650;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-  }
-  .log-edit-btn:active { background: var(--line-hi); color: var(--ink); }
-  
   .empty {
     text-align: center;
     padding: 40px 20px;
@@ -2188,7 +2241,7 @@
     background: var(--input-glass);
     border: 1px solid var(--input-border);
     color: rgba(250,248,243,0.7);
-    padding: 10px 0;
+    padding: 0;
     border-radius: 12px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
@@ -2201,8 +2254,13 @@
     user-select: none;
     transition: all 0.15s;
     min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
   .chip:active { transform: scale(0.96); }
+  .chip[data-mod="recalcula"] { font-size: 10px; letter-spacing: 0; }
   
   .chip.type-S.active {
     background: var(--mint);
@@ -2213,6 +2271,11 @@
     background: var(--coral);
     color: var(--ink);
     border-color: var(--coral);
+  }
+  .chip.type-F.active {
+    background: var(--sky);
+    color: var(--ink);
+    border-color: var(--sky);
   }
   .chip.mod.active {
     background: var(--lavender);
@@ -2316,7 +2379,7 @@
   .modal-field input:focus { border-color: var(--ink); }
   .edit-type-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -2404,6 +2467,7 @@
   }
   .help-item-chip.S { background: var(--mint); color: var(--gain); }
   .help-item-chip.DS { background: var(--coral); color: var(--danger); }
+  .help-item-chip.F { background: var(--sky); color: #4A6F8A; }
   .help-item-chip.MOD { background: var(--lavender); color: var(--ink); }
   .help-item-title {
     font-weight: 600;
@@ -2729,14 +2793,17 @@
         <div class="bento-sub">acumulada</div>
       </div>
     </div>
-    <div class="bento-card sky">
+    <div class="bento-card sky fund-card">
+      <button class="fund-privacy" id="fundPrivacyBtn" onclick="toggleFundPrivacy()" aria-label="Ocultar fondo">
+        <svg class="ui-icon"><use id="fundPrivacyIcon" href="#icon-eye"></use></svg>
+      </button>
       <div>
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-shield"></use></svg></div>
-        <div class="bento-label">Monto intocable</div>
+        <div class="bento-label">Fondo</div>
       </div>
       <div>
         <div class="bento-value"><span class="cur">S/</span><span id="montoIntocable">0</span></div>
-        <div class="bento-sub">protegido</div>
+        <div class="bento-sub">ahorrado</div>
       </div>
     </div>
     <div class="bento-card mint">
@@ -2915,6 +2982,7 @@
     <div class="chips-row">
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
       <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
+      <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Retirar del fondo">F</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
       <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')" role="button" aria-label="Redistribuir presupuesto">redistrib.</div>
     </div>
@@ -2966,6 +3034,10 @@
     try { return localStorage.getItem('ledger-balance-hidden-v1') === '1'; }
     catch(e) { return false; }
   })();
+  let fundHidden = (() => {
+    try { return localStorage.getItem('ledger-fund-hidden-v1') === '1'; }
+    catch(e) { return false; }
+  })();
 
   function toggleBalancePrivacy() {
     balanceHidden = !balanceHidden;
@@ -2990,6 +3062,24 @@
     if (totalRefEl) totalRefEl.classList.toggle('balance-mask', balanceHidden);
     if (button) button.setAttribute('aria-label', balanceHidden ? 'Mostrar monto disponible' : 'Ocultar monto disponible');
     if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
+  }
+
+  function toggleFundPrivacy() {
+    fundHidden = !fundHidden;
+    try { localStorage.setItem('ledger-fund-hidden-v1', fundHidden ? '1' : '0'); } catch(e) {}
+    applyFundPrivacy();
+  }
+
+  function applyFundPrivacy() {
+    const amount = document.getElementById('montoIntocable');
+    const button = document.getElementById('fundPrivacyBtn');
+    const icon = document.getElementById('fundPrivacyIcon');
+    if (amount) {
+      amount.textContent = fundHidden ? '******' : fmtInt(state.montoIntocable);
+      amount.classList.toggle('fund-mask', fundHidden);
+    }
+    if (button) button.setAttribute('aria-label', fundHidden ? 'Mostrar fondo' : 'Ocultar fondo');
+    if (icon) icon.setAttribute('href', fundHidden ? '#icon-eye-off' : '#icon-eye');
   }
 
   function goToView(index, options = {}) {
@@ -3783,6 +3873,7 @@
     signalTrack.title = signalTitle;
 
     applyBalancePrivacy();
+    applyFundPrivacy();
     renderLog();
     renderComparison();
     renderCycleHistoryInline();
@@ -3838,7 +3929,7 @@
   }
 
   let swipeHintSeen = (() => {
-    try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v2') === '1'; }
+    try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v3') === '1'; }
     catch(e) { return true; }
   })();
 
@@ -3884,7 +3975,11 @@
       const idx = state.log.length - 1 - i;
       const div = document.createElement('div');
       const canUndo = idx === state.log.length - 1;
-      div.className = 'log-swipe' + (canUndo ? ' swipe-enabled' : '');
+      const canEdit = editableIndices.has(idx);
+      const canSwipe = canUndo || canEdit;
+      div.className = 'log-swipe' + (canSwipe ? ' swipe-enabled' : '');
+      div.dataset.canUndo = canUndo ? '1' : '0';
+      div.dataset.canEdit = canEdit ? '1' : '0';
       
       let dotType = mov.tipo;
       let dotLabel = mov.tipo;
@@ -3894,8 +3989,9 @@
       if (mov.etiqueta === 'sem') badge = '<span class="badge">SEM</span>';
       
       div.innerHTML = `
-        ${canUndo ? `<button class="swipe-action" onclick="confirmDelete(${idx})">Deshacer</button>` : ''}
-        <div class="log-item" ${canUndo ? `data-swipe-index="${idx}"` : ''}>
+        ${canUndo ? `<button class="swipe-action undo" onclick="confirmDelete(${idx})">Deshacer</button>` : ''}
+        ${canEdit ? `<button class="swipe-action edit" onclick="openEditMovement(${idx})">Editar</button>` : ''}
+        <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}" ${canSwipe ? `data-swipe-index="${idx}"` : ''}>
         <div class="log-left">
           <div class="log-dot ${dotType}">${dotLabel}</div>
           <div class="log-info">
@@ -3905,8 +4001,7 @@
         </div>
         <div class="log-right">
           <div class="log-amount">${logAmountText(mov)}</div>
-          ${editableIndices.has(idx) ? `<button class="log-edit-btn" onclick="openEditMovement(${idx})">Editar</button>` : ''}
-          ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
+          ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← editar · deshacer →' : 'mantén · deshacer →'}</span>` : ''}
         </div>
         </div>
       `;
@@ -3917,17 +4012,19 @@
 
   function runSwipeOnboarding(root) {
     if (swipeHintSeen || !root) return;
-    const row = root.querySelector('.log-swipe.swipe-enabled');
+    const row = root.querySelector('.log-swipe.swipe-enabled[data-can-undo="1"][data-can-edit="1"]')
+      || root.querySelector('.log-swipe.swipe-enabled[data-can-edit="1"]')
+      || root.querySelector('.log-swipe.swipe-enabled');
     if (!row) return;
     swipeHintSeen = true;
-    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v2', '1'); } catch(e) {}
+    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v3', '1'); } catch(e) {}
     row.classList.add('hold-onboarding');
     setTimeout(() => {
       row.classList.remove('hold-onboarding');
-      row.classList.add('undo-armed', 'swipe-onboarding');
+      row.classList.add('swipe-onboarding');
     }, 390);
     setTimeout(() => {
-      row.classList.remove('undo-armed', 'swipe-onboarding');
+      row.classList.remove('swipe-onboarding');
       const hint = row.querySelector('.swipe-hint');
       if (hint) hint.style.display = 'none';
     }, 1500);
@@ -3938,6 +4035,8 @@
       if (item.dataset.swipeReady === '1') return;
       item.dataset.swipeReady = '1';
       const row = item.closest('.log-swipe');
+      const canUndo = row.dataset.canUndo === '1';
+      const canEdit = row.dataset.canEdit === '1';
       let startX = 0;
       let startY = 0;
       let lastX = 0;
@@ -3955,7 +4054,7 @@
         document.querySelectorAll('.log-swipe.open .log-item').forEach(other => {
           if (other !== item) {
             other.style.transform = 'translateX(0)';
-            other.closest('.log-swipe').classList.remove('open');
+            other.closest('.log-swipe').classList.remove('open', 'open-undo', 'open-edit');
           }
         });
       };
@@ -3965,7 +4064,7 @@
         if (e.target.closest('button')) return;
         closeOtherRows();
         item.style.transform = 'translateX(0)';
-        row.classList.remove('open', 'undo-armed');
+        row.classList.remove('open', 'open-undo', 'open-edit', 'undo-armed', 'edit-armed');
         startX = e.clientX;
         startY = e.clientY;
         lastX = e.clientX;
@@ -3977,7 +4076,7 @@
           if (!dragging) return;
           armed = true;
           undoGestureActive = true;
-          row.classList.add('undo-armed', 'dragging');
+          row.classList.add('dragging');
           const track = document.getElementById('viewsTrack');
           if (track) {
             track.classList.remove('dragging');
@@ -4001,7 +4100,11 @@
         }
         if (!horizontal && Math.abs(dx) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
         if (!horizontal) return;
-        const offset = Math.max(-94, Math.min(0, dx));
+        let offset = 0;
+        if (dx > 0 && canUndo) offset = Math.min(94, dx);
+        if (dx < 0 && canEdit) offset = Math.max(-94, dx);
+        row.classList.toggle('undo-armed', offset > 8);
+        row.classList.toggle('edit-armed', offset < -8);
         item.style.transform = `translateX(${offset}px)`;
       });
 
@@ -4011,12 +4114,18 @@
         dragging = false;
         const wasArmed = armed;
         const dx = (Number.isFinite(e.clientX) ? e.clientX : lastX) - startX;
-        const open = wasArmed && horizontal && dx < -42;
+        const action = wasArmed && horizontal
+          ? (dx > 42 && canUndo ? 'undo' : (dx < -42 && canEdit ? 'edit' : null))
+          : null;
         if (wasArmed) {
-          item.style.transform = open ? 'translateX(-94px)' : 'translateX(0)';
-          row.classList.toggle('open', open);
+          item.style.transform = action === 'undo'
+            ? 'translateX(94px)'
+            : (action === 'edit' ? 'translateX(-94px)' : 'translateX(0)');
+          row.classList.toggle('open', !!action);
+          row.classList.toggle('open-undo', action === 'undo');
+          row.classList.toggle('open-edit', action === 'edit');
         }
-        row.classList.remove('dragging', 'undo-armed');
+        row.classList.remove('dragging', 'undo-armed', 'edit-armed');
         armed = false;
         try { item.releasePointerCapture(e.pointerId); } catch(err) {}
         if (wasArmed) setTimeout(() => { undoGestureActive = false; }, 0);
@@ -4033,6 +4142,7 @@
     return {
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
+      montoIntocable: state.montoIntocable,
       deudaActual: state.deudaActual,
       gastoNoAdeudado: state.gastoNoAdeudado,
       gastoTotal: state.gastoTotal,
@@ -4043,6 +4153,9 @@
   function restoreMovementState(snapshot) {
     state.totalDisponible = snapshot.totalDisponible;
     state.metaResidual = snapshot.metaResidual || 0;
+    if (Number.isFinite(Number(snapshot.montoIntocable))) {
+      state.montoIntocable = Number(snapshot.montoIntocable);
+    }
     state.deudaActual = snapshot.deudaActual;
     state.gastoNoAdeudado = snapshot.gastoNoAdeudado;
     state.gastoTotal = snapshot.gastoTotal;
@@ -4054,6 +4167,7 @@
     const sameNumber = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 0.005;
     return sameNumber(state.totalDisponible, snapshot.totalDisponible)
       && sameNumber(state.metaResidual || 0, snapshot.metaResidual || 0)
+      && (!Number.isFinite(Number(snapshot.montoIntocable)) || sameNumber(state.montoIntocable, snapshot.montoIntocable))
       && sameNumber(state.deudaActual, snapshot.deudaActual)
       && sameNumber(state.gastoNoAdeudado, snapshot.gastoNoAdeudado)
       && sameNumber(state.gastoTotal, snapshot.gastoTotal)
@@ -4065,6 +4179,11 @@
     return {
       totalDisponible: Number(snapshot.totalDisponible) || 0,
       metaResidual: Number(snapshot.metaResidual) || 0,
+      // Los snapshots creados antes de la categoría F no guardaban el fondo.
+      // En esos casos se conserva el saldo actual para no alterar datos antiguos.
+      montoIntocable: Number.isFinite(Number(snapshot.montoIntocable))
+        ? Number(snapshot.montoIntocable)
+        : (Number(state.montoIntocable) || 0),
       deudaActual: Number(snapshot.deudaActual) || 0,
       gastoNoAdeudado: Number(snapshot.gastoNoAdeudado) || 0,
       gastoTotal: Number(snapshot.gastoTotal) || 0,
@@ -4143,8 +4262,14 @@
   function applyMovementToSnapshot(snapshot, mov) {
     const next = cloneMovementSnapshot(snapshot);
     const monto = Number(mov?.monto);
-    if (!next || !Number.isFinite(monto) || monto <= 0 || !['S', 'DS'].includes(mov?.tipo) || mov?.etiqueta === 'recalcula') {
+    if (!next || !Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F'].includes(mov?.tipo) || mov?.etiqueta === 'recalcula') {
       throw new Error('Movimiento no editable');
+    }
+
+    if (mov.tipo === 'F') {
+      if (monto > next.montoIntocable + 0.005) throw new Error('Fondo insuficiente');
+      next.montoIntocable -= monto;
+      return next;
     }
 
     next.totalDisponible -= monto;
@@ -4176,7 +4301,7 @@
       throw new Error('Historial incompatible');
     }
 
-    ['totalDisponible', 'metaResidual', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
+    ['totalDisponible', 'metaResidual', 'montoIntocable', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
       result[key] += to[key] - from[key];
     });
     result.semanas = result.semanas.map((sem, i) => ({
@@ -4223,13 +4348,17 @@
             <input type="radio" name="editMovementType" value="DS" ${mov.tipo === 'DS' ? 'checked' : ''}>
             <span>DS · Tarjeta</span>
           </label>
+          <label class="edit-type-option">
+            <input type="radio" name="editMovementType" value="F" ${mov.tipo === 'F' ? 'checked' : ''}>
+            <span>F · Fondo</span>
+          </label>
         </div>
       </div>
       <div class="modal-field">
         <label>Detalle</label>
         <input type="text" id="editMovementDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
       </div>
-      <label class="edit-sem-row">
+      <label class="edit-sem-row" id="editMovementSemRow">
         <span>Repartir entre los bloques restantes</span>
         <input type="checkbox" id="editMovementSem" ${mov.etiqueta === 'sem' ? 'checked' : ''}>
       </label>
@@ -4238,6 +4367,20 @@
         <button class="btn-primary" onclick="saveMovementEdit(${idx})">Guardar cambios</button>
       </div>
     `);
+    document.querySelectorAll('input[name="editMovementType"]').forEach(input => {
+      input.addEventListener('change', () => toggleEditFundType(input.value));
+    });
+    toggleEditFundType(mov.tipo);
+  }
+
+  function toggleEditFundType(tipo) {
+    const sem = document.getElementById('editMovementSem');
+    const row = document.getElementById('editMovementSemRow');
+    if (!sem || !row) return;
+    const esFondo = tipo === 'F';
+    if (esFondo) sem.checked = false;
+    sem.disabled = esFondo;
+    row.style.opacity = esFondo ? '0.42' : '1';
   }
 
   function saveMovementEdit(idx) {
@@ -4249,8 +4392,8 @@
     const monto = parseFloat(document.getElementById('editMovementAmount')?.value);
     const tipo = document.querySelector('input[name="editMovementType"]:checked')?.value;
     const detalle = document.getElementById('editMovementDetail')?.value.trim() || '';
-    const etiqueta = document.getElementById('editMovementSem')?.checked ? 'sem' : null;
-    if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS'].includes(tipo)) {
+    const etiqueta = tipo !== 'F' && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
+    if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F'].includes(tipo)) {
       toast('Revisa el monto y el tipo', true);
       return;
     }
@@ -4332,7 +4475,7 @@
     const esRedistribucion = mov?.etiqueta === 'recalcula';
     
     openModal(`
-      <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'último gasto'}</span></h2>
+      <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'último movimiento'}</span></h2>
       <p class="modal-sub">
         ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
@@ -4387,6 +4530,7 @@
     const soloGastos = filtrados.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const count = soloGastos.length;
     
     const editableIndices = new Set(getEditableMovementIndices());
@@ -4397,14 +4541,17 @@
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
         const canUndo = originalIdx === state.log.length - 1;
+        const canEdit = editableIndices.has(originalIdx);
+        const canSwipe = canUndo || canEdit;
         let dotType = mov.tipo;
         let dotLabel = mov.tipo;
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         listaHTML += `
-          <div class="log-swipe${canUndo ? ' swipe-enabled' : ''}">
-          ${canUndo ? `<button class="swipe-action" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
-          <div class="log-item" ${canUndo ? `data-swipe-index="${originalIdx}"` : ''}>
+          <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
+          ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
+          ${canEdit ? `<button class="swipe-action edit" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
+          <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}" ${canSwipe ? `data-swipe-index="${originalIdx}"` : ''}>
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
@@ -4414,8 +4561,7 @@
             </div>
             <div class="log-right">
               <div class="log-amount">${logAmountText(mov)}</div>
-              ${editableIndices.has(originalIdx) ? `<button class="log-edit-btn" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
-              ${canUndo && !swipeHintSeen ? '<span class="swipe-hint">mantén y desliza ←</span>' : ''}
+              ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← editar · deshacer →' : 'mantén · deshacer →'}</span>` : ''}
             </div>
           </div>
           </div>
@@ -4452,6 +4598,10 @@
           <div class="all-sum-label">Deuda (DS)</div>
           <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div>
         </div>
+        ${totalF > 0 ? `<div class="all-sum-item F">
+          <div class="all-sum-label">Retirado del fondo (F)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div>
+        </div>` : ''}
       </div>
       
       <div class="all-list">${listaHTML}</div>
@@ -4574,7 +4724,7 @@
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         listaHTML += `
-          <div class="log-item">
+          <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}">
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
@@ -4600,6 +4750,10 @@
           <div class="all-sum-label">Deuda (DS)</div>
           <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalDS)}</div>
         </div>
+        ${Number(ciclo.totalF) > 0 ? `<div class="all-sum-item F">
+          <div class="all-sum-label">Retirado del fondo (F)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalF)}</div>
+        </div>` : ''}
       </div>
       <div class="rollover-breakdown" style="margin-bottom:14px;">
         <div class="rollover-row highlight">
@@ -4648,6 +4802,7 @@
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const totalGastado = totalS + totalDS;
 
     openModal(`
@@ -4666,6 +4821,10 @@
           <span class="rollover-week">Gasto DS (deuda)</span>
           <span class="rollover-amount">S/ ${fmt(totalDS)}</span>
         </div>
+        ${totalF > 0 ? `<div class="rollover-row">
+          <span class="rollover-week">Retirado del fondo</span>
+          <span class="rollover-amount">S/ ${fmt(totalF)}</span>
+        </div>` : ''}
         <div class="rollover-row highlight">
           <span class="rollover-week">Total gastado</span>
           <span class="rollover-amount">S/ ${fmt(totalGastado)}</span>
@@ -4699,7 +4858,7 @@
         <input type="number" step="0.01" id="newMeta" value="${(state.metaResidual || 0).toFixed(2)}" oninput="previewNuevoCiclo()">
       </div>
       <div class="modal-field">
-        <label>Monto intocable</label>
+        <label>Fondo</label>
         <input type="number" step="0.01" id="newIntocable" value="${state.montoIntocable.toFixed(2)}">
       </div>
       <div class="modal-field">
@@ -4836,6 +4995,7 @@
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const rangosAnteriores = calcularRangoSemanas();
     const fechaFinCiclo = new Date().toISOString();
 
@@ -4846,6 +5006,7 @@
       fechaFin: fechaFinCiclo,
       totalS,
       totalDS,
+      totalF,
       totalGastado: totalS + totalDS,
       numMovimientos: soloGastos.length,
       dias: diasEnCiclo(),
@@ -4948,11 +5109,16 @@
   
   function setType(tipo) {
     selectedType = (selectedType === tipo) ? null : tipo;
+    if (selectedType === 'F') selectedMod = null;
     updateChipsUI();
   }
   
   function setMod(mod) {
     if (mod === 'recalcula') { ejecutarRecalculo(); return; }
+    if (selectedType === 'F') {
+      toast('El fondo no usa reparto por bloques', true);
+      return;
+    }
     selectedMod = (selectedMod === mod) ? null : mod;
     updateChipsUI();
   }
@@ -4980,6 +5146,7 @@
     const snapshot = {
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
+      montoIntocable: state.montoIntocable,
       deudaActual: state.deudaActual,
       gastoNoAdeudado: state.gastoNoAdeudado,
       gastoTotal: state.gastoTotal,
@@ -5013,7 +5180,7 @@
     const detalleEl = document.getElementById('inputDetalle');
     const montoRaw = parseFloat(amountEl.value);
     if (isNaN(montoRaw) || montoRaw <= 0) { toast('Ingresa un monto válido', true); amountEl.focus(); return; }
-    if (!selectedType) { toast('Elige tipo: S o DS', true); return; }
+    if (!selectedType) { toast('Elige tipo: S, DS o F', true); return; }
     
     let detalle = detalleEl.value.trim();
     let monto = montoRaw;
@@ -5030,9 +5197,14 @@
       const usdInfo = `USD ${montoRaw.toFixed(2)} @ ${rate.toFixed(3)}`;
       detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
     }
+
+    if (selectedType === 'F' && monto > state.montoIntocable + 0.005) {
+      toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
+      return;
+    }
     
     // Si es un gasto normal (no sem) y excede el bloque actual → confirmación previa
-    if (selectedMod !== 'sem') {
+    if (selectedType !== 'F' && selectedMod !== 'sem') {
       const semActual = state.semanas.find(s => s.isCurrent);
       if (semActual && monto > semActual.presupuesto) {
         confirmarRollover(monto, selectedType, selectedMod, detalle);
@@ -5110,7 +5282,7 @@
       </div>
       
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        El gasto sí reduce tu total disponible. El monto intocable nunca se usa automáticamente.
+        El gasto sí reduce tu total disponible. El fondo nunca se usa automáticamente.
       </p>
       
       <div class="modal-buttons">
@@ -5134,12 +5306,25 @@
       snapshot: {
         totalDisponible: state.totalDisponible,
         metaResidual: state.metaResidual || 0,
+        montoIntocable: state.montoIntocable,
         deudaActual: state.deudaActual,
         gastoNoAdeudado: state.gastoNoAdeudado,
         gastoTotal: state.gastoTotal,
         semanas: JSON.parse(JSON.stringify(state.semanas))
       }
     };
+
+    if (tipo === 'F') {
+      if (monto > state.montoIntocable + 0.005) {
+        toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
+        return;
+      }
+      state.montoIntocable -= monto;
+      state.log.push(mov);
+      toast(`−S/ ${fmt(monto)} retirado del fondo`);
+      render();
+      return;
+    }
     
     state.totalDisponible -= monto;
     state.gastoTotal += monto;
@@ -5205,14 +5390,17 @@
       : -1;
     const bloqueCalendario = calcularSemanaActualIdx();
     const afterSnapshot = captureMovementState();
-    restoreMovementState(mov.snapshot);
+    const beforeSnapshot = cloneMovementSnapshot(mov.snapshot) || mov.snapshot;
+    restoreMovementState(beforeSnapshot);
     state.log.splice(idx, 1);
+    const redoMovementCopy = JSON.parse(JSON.stringify(mov));
+    redoMovementCopy.snapshot = cloneMovementSnapshot(beforeSnapshot) || beforeSnapshot;
     state.redoMovement = {
-      movement: JSON.parse(JSON.stringify(mov)),
+      movement: redoMovementCopy,
       afterSnapshot,
       logLength: state.log.length
     };
-    if (mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
+    if (mov.tipo !== 'F' && mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
       // Si el gasto pertenecía a un bloque anterior, rehacer el reparto actual
       // después de restaurar el dinero para no regresar a presupuestos vencidos.
       state.ultimoBloqueProcesado = null;
@@ -5242,6 +5430,13 @@
       </div>
       <div class="help-item">
         <div class="help-item-head">
+          <span class="help-item-chip F">F</span>
+          <span class="help-item-title">Retiro del fondo</span>
+        </div>
+        <div class="help-item-desc">Resta únicamente del Fondo. No cambia tu disponible, deuda, gasto acumulado ni presupuesto por bloques.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
           <span class="help-item-chip MOD">sem</span>
           <span class="help-item-title">Reparto por bloques</span>
         </div>
@@ -5256,17 +5451,17 @@
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">←</span>
+          <span class="help-item-chip MOD">→</span>
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
-        <div class="help-item-desc">Mantén presionado el movimiento más reciente hasta que se marque en rojo y, sin soltar, deslízalo hacia la izquierda. Un swipe normal cambia de ventana.</div>
+        <div class="help-item-desc">Mantén presionado el movimiento más reciente y, sin soltar, deslízalo hacia la derecha. Aparecerá “Deshacer” en rojo.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">✎</span>
+          <span class="help-item-chip MOD">←</span>
           <span class="help-item-title">Editar entradas recientes</span>
         </div>
-        <div class="help-item-desc">Toca “Editar” en cualquiera de las últimas 10 entradas para cambiar monto, tipo, detalle o reparto por bloques.</div>
+        <div class="help-item-desc">Mantén presionada cualquiera de las últimas 10 entradas y deslízala hacia la izquierda. Aparecerá “Editar” en azul. Un swipe normal sigue cambiando de ventana.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -5295,7 +5490,7 @@
         <input type="number" step="0.01" id="setMeta" value="${(state.metaResidual || 0).toFixed(2)}" oninput="autoRecalcPresupuesto()">
       </div>
       <div class="modal-field">
-        <label>Monto intocable</label>
+        <label>Fondo</label>
         <input type="number" step="0.01" id="setIntocable" value="${state.montoIntocable.toFixed(2)}">
       </div>
       <div class="modal-field">
