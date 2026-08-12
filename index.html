@@ -1970,12 +1970,12 @@
     cursor: pointer;
   }
   .swipe-action.undo {
-    left: 0;
+    right: 0;
     background: var(--danger);
     color: white;
   }
   .swipe-action.edit {
-    right: 0;
+    left: 0;
     background: #BFD4E1;
     color: #263F50;
   }
@@ -3929,7 +3929,7 @@
   }
 
   let swipeHintSeen = (() => {
-    try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v3') === '1'; }
+    try { return localStorage.getItem('ledger-hold-swipe-hint-seen-v4') === '1'; }
     catch(e) { return true; }
   })();
 
@@ -4001,7 +4001,7 @@
         </div>
         <div class="log-right">
           <div class="log-amount">${logAmountText(mov)}</div>
-          ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← editar · deshacer →' : 'mantén · deshacer →'}</span>` : ''}
+          ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← deshacer · editar →' : 'mantén · ← deshacer'}</span>` : ''}
         </div>
         </div>
       `;
@@ -4017,7 +4017,7 @@
       || root.querySelector('.log-swipe.swipe-enabled');
     if (!row) return;
     swipeHintSeen = true;
-    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v3', '1'); } catch(e) {}
+    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v4', '1'); } catch(e) {}
     row.classList.add('hold-onboarding');
     setTimeout(() => {
       row.classList.remove('hold-onboarding');
@@ -4101,10 +4101,10 @@
         if (!horizontal && Math.abs(dx) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
         if (!horizontal) return;
         let offset = 0;
-        if (dx > 0 && canUndo) offset = Math.min(94, dx);
-        if (dx < 0 && canEdit) offset = Math.max(-94, dx);
-        row.classList.toggle('undo-armed', offset > 8);
-        row.classList.toggle('edit-armed', offset < -8);
+        if (dx > 0 && canEdit) offset = Math.min(94, dx);
+        if (dx < 0 && canUndo) offset = Math.max(-94, dx);
+        row.classList.toggle('edit-armed', offset > 8);
+        row.classList.toggle('undo-armed', offset < -8);
         item.style.transform = `translateX(${offset}px)`;
       });
 
@@ -4115,12 +4115,12 @@
         const wasArmed = armed;
         const dx = (Number.isFinite(e.clientX) ? e.clientX : lastX) - startX;
         const action = wasArmed && horizontal
-          ? (dx > 42 && canUndo ? 'undo' : (dx < -42 && canEdit ? 'edit' : null))
+          ? (dx > 42 && canEdit ? 'edit' : (dx < -42 && canUndo ? 'undo' : null))
           : null;
         if (wasArmed) {
-          item.style.transform = action === 'undo'
+          item.style.transform = action === 'edit'
             ? 'translateX(94px)'
-            : (action === 'edit' ? 'translateX(-94px)' : 'translateX(0)');
+            : (action === 'undo' ? 'translateX(-94px)' : 'translateX(0)');
           row.classList.toggle('open', !!action);
           row.classList.toggle('open-undo', action === 'undo');
           row.classList.toggle('open-edit', action === 'edit');
@@ -4561,7 +4561,7 @@
             </div>
             <div class="log-right">
               <div class="log-amount">${logAmountText(mov)}</div>
-              ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← editar · deshacer →' : 'mantén · deshacer →'}</span>` : ''}
+              ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← deshacer · editar →' : 'mantén · ← deshacer'}</span>` : ''}
             </div>
           </div>
           </div>
@@ -5451,17 +5451,17 @@
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">→</span>
+          <span class="help-item-chip MOD">←</span>
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
-        <div class="help-item-desc">Mantén presionado el movimiento más reciente y, sin soltar, deslízalo hacia la derecha. Aparecerá “Deshacer” en rojo.</div>
+        <div class="help-item-desc">Mantén presionado el movimiento más reciente y, sin soltar, deslízalo hacia la izquierda. Aparecerá “Deshacer” en rojo.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">←</span>
+          <span class="help-item-chip MOD">→</span>
           <span class="help-item-title">Editar entradas recientes</span>
         </div>
-        <div class="help-item-desc">Mantén presionada cualquiera de las últimas 10 entradas y deslízala hacia la izquierda. Aparecerá “Editar” en azul. Un swipe normal sigue cambiando de ventana.</div>
+        <div class="help-item-desc">Mantén presionada cualquiera de las últimas 10 entradas y deslízala hacia la derecha. Aparecerá “Editar” en azul. Un swipe normal sigue cambiando de ventana.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
