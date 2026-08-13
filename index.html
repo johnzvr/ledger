@@ -1899,6 +1899,53 @@
     margin-left: 6px;
     letter-spacing: 0.03em;
   }
+
+  .card-cycle-divider {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 14px 0 4px;
+    padding: 8px 10px;
+    border-radius: 11px;
+    background: rgba(223,211,232,0.52);
+    color: var(--ink);
+  }
+  .card-cycle-divider.overdue { background: rgba(240,208,196,0.62); }
+  .card-cycle-divider-text { min-width: 0; }
+  .card-cycle-divider-label {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+  }
+  .card-cycle-divider-date {
+    display: block;
+    font-size: 10px;
+    font-weight: 650;
+  }
+  .card-cycle-divider-amount {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .log-meta .payment-badge {
+    background: var(--lavender);
+    color: var(--ink-dim);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  body.dark .card-cycle-divider { background: rgba(180,140,220,0.12); }
+  body.dark .card-cycle-divider.overdue { background: #2A1512; }
   
   /* Log */
   .log-item {
@@ -3949,9 +3996,122 @@
   function logAmountText(mov) {
     return mov?.etiqueta === 'recalcula' ? 'Presupuesto' : `S/ ${fmt(mov?.monto)}`;
   }
+
+  // Los movimientos nuevos guardan un timestamp. Para los anteriores, recuperamos
+  // la fecha corta que ya muestran e inferimos el año desde el inicio del ciclo.
+  function fechaDeMovimiento(mov, index = 0) {
+    const timestamp = Number(mov?.timestamp);
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      const fecha = new Date(timestamp);
+      if (!Number.isNaN(fecha.getTime())) return fecha;
+    }
+
+    if (mov?.fechaISO) {
+      const fechaISO = new Date(mov.fechaISO);
+      if (!Number.isNaN(fechaISO.getTime())) return fechaISO;
+    }
+
+    const texto = String(mov?.fecha || '').toLowerCase().replace(/\./g, '');
+    const partes = texto.match(/^(\d{1,2})\s+([a-záéíóúñ]+)/i);
+    const meses = {
+      ene: 0, enero: 0, feb: 1, febrero: 1, mar: 2, marzo: 2,
+      abr: 3, abril: 3, may: 4, mayo: 4, jun: 5, junio: 5,
+      jul: 6, julio: 6, ago: 7, agosto: 7, sep: 8, set: 8,
+      sept: 8, septiembre: 8, setiembre: 8, oct: 9, octubre: 9,
+      nov: 10, noviembre: 10, dic: 11, diciembre: 11
+    };
+    if (partes) {
+      const dia = Number(partes[1]);
+      const mesTexto = partes[2].normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const mes = meses[mesTexto] ?? meses[mesTexto.slice(0, 3)];
+      if (Number.isInteger(mes)) {
+        const inicio = new Date(state.fechaInicioCiclo || Date.now());
+        const baseYear = Number.isNaN(inicio.getTime()) ? new Date().getFullYear() : inicio.getFullYear();
+        const referencia = Number.isNaN(inicio.getTime()) ? new Date() : inicio;
+        const candidatos = [baseYear - 1, baseYear, baseYear + 1].map(year =>
+          new Date(year, mes, dia, 12, 0, 0, 0)
+        );
+        candidatos.sort((a, b) => Math.abs(a - referencia) - Math.abs(b - referencia));
+        return candidatos[0];
+      }
+    }
+
+    const fallback = new Date(state.fechaInicioCiclo || Date.now());
+    if (Number.isNaN(fallback.getTime())) return new Date();
+    fallback.setMilliseconds(fallback.getMilliseconds() + index);
+    return fallback;
+  }
+
+  function gruposPagoTarjeta() {
+    const porFecha = new Map();
+    state.log.forEach((mov, index) => {
+      if (!mov) return;
+      const calendario = fechaPagoParaCompra(fechaDeMovimiento(mov, index));
+      const key = fechaParaInput(calendario.pago);
+      if (!porFecha.has(key)) {
+        const cierreAnterior = fechaConDiaSeguro(
+          calendario.cierre.getFullYear(),
+          calendario.cierre.getMonth() - 1,
+          state.tarjeta.diaCierre
+        );
+        const inicio = new Date(cierreAnterior);
+        inicio.setDate(inicio.getDate() + 1);
+        porFecha.set(key, {
+          key,
+          inicio,
+          pago: calendario.pago,
+          cierre: calendario.cierre,
+          total: 0,
+          count: 0,
+          indices: []
+        });
+      }
+      const grupo = porFecha.get(key);
+      if (mov.tipo === 'DS' && mov.etiqueta !== 'recalcula') {
+        grupo.total += Number(mov.monto) || 0;
+        grupo.count += 1;
+      }
+      grupo.indices.push(index);
+    });
+    return [...porFecha.values()].sort((a, b) => a.pago - b.pago);
+  }
+
+  function contextoPagosTarjeta() {
+    const grupos = gruposPagoTarjeta();
+    const ultimoCiclo = grupos.at(-1)?.key;
+    const porIndice = new Map();
+    grupos.forEach(grupo => {
+      grupo.esAnterior = grupo.key !== ultimoCiclo;
+      grupo.etiqueta = grupo.esAnterior ? 'Ciclo anterior de tarjeta' : 'Nuevo ciclo de tarjeta';
+      grupo.indices.forEach(index => porIndice.set(index, grupo));
+    });
+    return { grupos, porIndice };
+  }
+
+  function etiquetaPagoCorta(fecha) {
+    return formatFecha(fecha).replace(/\.$/, '');
+  }
+
+  function divisorCicloTarjeta(grupo) {
+    const div = document.createElement('div');
+    div.className = 'card-cycle-divider' + (grupo.esAnterior ? ' overdue' : '');
+    div.innerHTML = `
+      <span class="card-cycle-divider-text">
+        <span class="card-cycle-divider-label">${grupo.etiqueta} · ${etiquetaPagoCorta(grupo.inicio)}–${etiquetaPagoCorta(grupo.cierre)}</span>
+        <span class="card-cycle-divider-date">Paga hasta el ${formatFechaCompleta(grupo.pago)}</span>
+      </span>
+      <span class="card-cycle-divider-amount">DS · S/ ${fmt(grupo.total)}</span>
+    `;
+    return div;
+  }
+
+  function badgePagoTarjeta(grupo) {
+    return grupo ? `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>` : '';
+  }
   
   function renderLog() {
     const logEl = document.getElementById('logContainer');
+    const pagosTarjeta = contextoPagosTarjeta();
     document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
     if (state.redoMovement) {
       const redo = state.redoMovement;
@@ -3974,9 +4134,15 @@
     
     logEl.innerHTML = '';
     const editableIndices = new Set(getEditableMovementIndices());
+    const ciclosMostrados = new Set();
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
+      const grupoPago = pagosTarjeta.porIndice.get(idx);
+      if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
+        logEl.appendChild(divisorCicloTarjeta(grupoPago));
+        ciclosMostrados.add(grupoPago.key);
+      }
       const div = document.createElement('div');
       const canUndo = idx === state.log.length - 1;
       const canEdit = editableIndices.has(idx);
@@ -4000,7 +4166,7 @@
           <div class="log-dot ${dotType}">${dotLabel}</div>
           <div class="log-info">
             <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-            <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha)}</span></div>
+            <div class="log-meta">${badge}${mov.tipo === 'DS' ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
           </div>
         </div>
         <div class="log-right">
@@ -4529,6 +4695,7 @@
     const filtrados = q 
       ? state.log.filter(m => (m.detalle || '').toLowerCase().includes(q))
       : state.log;
+    const pagosTarjeta = contextoPagosTarjeta();
     
     // Calcular sumas (excluyendo recalcs) sobre los filtrados
     const soloGastos = filtrados.filter(m => m.etiqueta !== 'recalcula');
@@ -4542,8 +4709,14 @@
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
     } else {
+      const ciclosMostrados = new Set();
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
+        const grupoPago = pagosTarjeta.porIndice.get(originalIdx);
+        if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
+          listaHTML += divisorCicloTarjeta(grupoPago).outerHTML;
+          ciclosMostrados.add(grupoPago.key);
+        }
         const canUndo = originalIdx === state.log.length - 1;
         const canEdit = editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
@@ -4560,7 +4733,7 @@
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}<span>${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${mov.tipo === 'DS' ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
@@ -5025,7 +5198,8 @@
         tipo: m.tipo,
         etiqueta: m.etiqueta || null,
         detalle: m.detalle || '',
-        fecha: m.fecha || ''
+        fecha: m.fecha || '',
+        timestamp: Number(m.timestamp) || null
       }))
     };
 
@@ -5167,12 +5341,14 @@
     }
     const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
     state.redoMovement = null;
+    const ahora = new Date();
     state.log.push({
       monto: nuevoPresupuesto, tipo: 'S', etiqueta: 'recalcula',
       detalle: state.metaResidual > 0 
         ? `Redistribución proporcional (${restantes} bloques · meta S/ ${fmt(state.metaResidual)} protegida)` 
         : `Redistribución proporcional en ${restantes} bloques restantes`,
-      fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      fecha: ahora.toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      timestamp: ahora.getTime(),
       snapshot
     });
     toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
@@ -5304,9 +5480,11 @@
   
   function aplicarMovimiento(monto, tipo, etiqueta, detalle) {
     state.redoMovement = null;
+    const ahora = new Date();
     const mov = {
       monto, tipo, etiqueta, detalle,
-      fecha: new Date().toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      fecha: ahora.toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      timestamp: ahora.getTime(),
       snapshot: {
         totalDisponible: state.totalDisponible,
         metaResidual: state.metaResidual || 0,
