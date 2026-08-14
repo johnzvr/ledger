@@ -1358,6 +1358,32 @@
     align-items: end;
   }
   .purchase-sim-actions .modal-field { margin-bottom: 0; }
+  .purchase-mode-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 16px;
+    border-radius: 14px;
+    background: var(--line);
+  }
+  .purchase-mode-option {
+    min-height: 40px;
+    border: none;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .purchase-mode-option.active {
+    background: var(--bg);
+    color: var(--ink);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  }
+  body.dark .purchase-mode-option.active { background: #2A2A2E; }
   .purchase-sim-field-head {
     display: flex;
     align-items: center;
@@ -1421,6 +1447,100 @@
     white-space: nowrap;
   }
   body.dark .purchase-conversion-preview { background: rgba(127,184,224,0.1); }
+  .purchase-installment-settings {
+    display: none;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(223,211,232,0.38);
+  }
+  .purchase-installment-settings.visible { display: block; }
+  body.dark .purchase-installment-settings { background: rgba(180,140,220,0.1); }
+  .purchase-installment-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+  }
+  .purchase-installment-head span {
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .purchase-installment-head strong {
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+  }
+  .purchase-installment-stepper {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    gap: 7px;
+  }
+  .purchase-installment-step {
+    min-height: 42px;
+    border: 1.5px solid rgba(26,26,26,0.12);
+    border-radius: 11px;
+    background: rgba(255,255,255,0.5);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 19px;
+    font-weight: 650;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .purchase-installment-step:disabled {
+    color: var(--ink-mute);
+    opacity: 0.38;
+    cursor: default;
+  }
+  .purchase-installment-select-wrap {
+    position: relative;
+    min-width: 0;
+  }
+  .purchase-installment-select {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 30px 0 14px;
+    border: 1.5px solid var(--ink);
+    border-radius: 11px;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 750;
+    text-align: center;
+    text-align-last: center;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .purchase-installment-select-arrow {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--bg);
+    transform: translateY(-35%);
+    pointer-events: none;
+  }
+  body.dark .purchase-installment-step {
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+  }
+  .purchase-installment-hint {
+    margin-top: 8px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.4;
+  }
   .purchase-result-conversion {
     margin-top: 14px;
     padding: 9px 11px;
@@ -1434,6 +1554,293 @@
   }
   .purchase-result-conversion strong { color: var(--ink); }
   .purchase-result-conversion + .purchase-capacity-card { margin-top: 8px; }
+  .purchase-finance-summary {
+    margin-top: 14px;
+    padding: 14px 15px;
+    border-radius: 17px;
+    background: #F0EAF4;
+  }
+  body.dark .purchase-finance-summary {
+    background: rgba(180,140,220,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .purchase-finance-top {
+    display: block;
+  }
+  .purchase-finance-kicker {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .purchase-finance-payment {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .purchase-finance-payment > span:last-child {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+  }
+  .purchase-result-term-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .purchase-result-term-select {
+    width: 112px;
+    min-height: 36px;
+    padding: 4px 24px 4px 9px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.7);
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    text-align: center;
+    text-align-last: center;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    line-height: 1;
+  }
+  .purchase-result-term-arrow {
+    position: absolute;
+    top: 50%;
+    right: 9px;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--ink);
+    transform: translateY(-35%);
+    pointer-events: none;
+  }
+  body.dark .purchase-result-term-select {
+    background: rgba(255,255,255,0.08);
+    color: var(--ink);
+  }
+  .purchase-finance-rate {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #D8C7E4;
+    color: #1A1A1A;
+    font-size: 9px;
+    font-weight: 750;
+  }
+  .purchase-finance-metrics {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+    color: var(--ink-dim);
+  }
+  .purchase-finance-metric {
+    display: block;
+    min-width: 0;
+  }
+  .purchase-finance-metric + .purchase-finance-metric {
+    padding-left: 12px;
+    border-left: 1px solid rgba(27,27,27,0.1);
+  }
+  body.dark .purchase-finance-metric + .purchase-finance-metric {
+    border-left-color: rgba(255,255,255,0.1);
+  }
+  .purchase-finance-metric span {
+    display: block;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.07em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .purchase-finance-metric strong {
+    display: block;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+  .purchase-finance-note {
+    margin-top: 7px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.45;
+  }
+  .purchase-recommendation-card {
+    margin-top: 12px;
+    padding: 14px 15px;
+    border-radius: 17px;
+    background: #EAF1E6;
+  }
+  body.dark .purchase-recommendation-card {
+    background: rgba(168,204,143,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .purchase-recommendation-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .purchase-recommendation-label {
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .purchase-recommendation-title {
+    margin-top: 5px;
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 20px;
+    font-weight: 750;
+    letter-spacing: -0.025em;
+    line-height: 1.1;
+  }
+  .purchase-recommendation-copy {
+    margin-top: 5px;
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+  .purchase-budget-card {
+    margin-top: 12px;
+    padding: 14px 15px;
+    border: 1.5px solid var(--line);
+    border-radius: 17px;
+    background: var(--bg);
+  }
+  body.dark .purchase-budget-card {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.08);
+  }
+  .purchase-budget-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .purchase-budget-title {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .purchase-budget-track {
+    height: 6px;
+    margin-top: 11px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--line);
+  }
+  .purchase-budget-fill {
+    height: 100%;
+    min-width: 3px;
+    border-radius: inherit;
+    background: var(--ink);
+  }
+  .purchase-budget-values {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 7px;
+    color: var(--ink-dim);
+    font-size: 10px;
+  }
+  .purchase-budget-values strong { color: var(--ink); font-weight: 700; }
+  .purchase-budget-context {
+    margin-top: 6px;
+    color: var(--ink-dim);
+    font-size: 9px;
+  }
+  .purchase-comparison-toggle {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 12px;
+    padding: 0 15px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  body.dark .purchase-comparison-toggle {
+    background: rgba(255,255,255,0.04);
+    border-color: rgba(255,255,255,0.1);
+  }
+  .purchase-comparison-chevron {
+    font-size: 16px;
+    color: var(--ink-dim);
+    transition: transform 0.2s ease;
+  }
+  .purchase-comparison-toggle.open .purchase-comparison-chevron { transform: rotate(180deg); }
+  .purchase-comparison-details[hidden] { display: none; }
+  .purchase-comparison-details {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .purchase-compare-card {
+    padding: 13px 14px;
+    border-radius: 15px;
+    background: #F0EAF4;
+  }
+  .purchase-compare-card.wait { background: #EAF1E6; }
+  body.dark .purchase-compare-card,
+  body.dark .purchase-compare-card.wait {
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .purchase-compare-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .purchase-compare-title {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .purchase-compare-payment {
+    margin-top: 8px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .purchase-compare-meta {
+    margin-top: 4px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.45;
+  }
   .purchase-analyze-btn {
     min-height: 44px;
     border: none;
@@ -1936,6 +2343,84 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
+  .log-meta .installment-badge {
+    background: rgba(223, 211, 232, 0.72);
+    color: #554862;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  body.dark .log-meta .installment-badge {
+    background: rgba(180,140,220,0.18);
+    color: var(--ink-dim);
+  }
+  .installment-plans-card {
+    margin: 4px 0 16px;
+    padding: 13px 14px;
+    border-radius: 16px;
+    background: #F0EAF4;
+  }
+  body.dark .installment-plans-card {
+    background: rgba(180,140,220,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .installment-plans-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .installment-plans-title {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 750;
+  }
+  .installment-plans-count {
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 650;
+  }
+  .installment-plan-row {
+    padding: 9px 0;
+    border-top: 1px solid rgba(27,27,27,0.08);
+  }
+  body.dark .installment-plan-row { border-top-color: rgba(255,255,255,0.08); }
+  .installment-plan-row:first-of-type { border-top: none; padding-top: 0; }
+  .installment-plan-top,
+  .installment-plan-meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .installment-plan-name {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .installment-plan-progress {
+    flex: 0 0 auto;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .installment-plan-meta {
+    margin-top: 3px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .installment-plan-meta span:last-child { text-align: right; }
   
   /* Log */
   .log-item {
@@ -2490,6 +2975,38 @@
     cursor: pointer;
   }
   .edit-sem-row input { width: 18px; height: 18px; accent-color: var(--ink); }
+
+  .installment-confirm-summary {
+    margin: 14px 0;
+    padding: 13px 14px;
+    border-radius: 15px;
+    background: #F0EAF4;
+  }
+  body.dark .installment-confirm-summary {
+    background: rgba(180,140,220,0.1);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .installment-confirm-main {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 17px;
+    font-weight: 750;
+    line-height: 1.15;
+  }
+  .installment-confirm-meta {
+    margin-top: 6px;
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.45;
+  }
+  .installment-source-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .installment-source-grid .edit-type-option.fds { grid-column: auto; }
+  .purchase-footer-register[hidden],
+  .purchase-footer-close[hidden] { display: none !important; }
   
   .modal-buttons {
     display: flex;
@@ -3090,6 +3607,7 @@
     tarjetaAjusteDeuda: 1756.94,
     tarjetaCiclosPagados: [],
     tarjetaMovimientosArrastrados: [],
+    planesCuotas: [], // compromisos financiados; cada ciclo activa solo su cuota
     log: [],
     redoMovement: null
   };
@@ -3793,13 +4311,19 @@
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
     if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
+    if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
     initFechaCiclo();
     if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
     }
-    const huboCambioAutomatico = detectarCambioSemana();
+    let huboCambioAutomatico = detectarCambioSemana();
     actualizarSemanaActual();
+    const cuotasActivadas = activarCuotasPendientes();
+    if (cuotasActivadas > 0) {
+      huboCambioAutomatico = true;
+      toast(`${cuotasActivadas} cuota${cuotasActivadas === 1 ? '' : 's'} activada${cuotasActivadas === 1 ? '' : 's'} automáticamente`);
+    }
     
     document.getElementById('currentDate').textContent = 
       new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
@@ -4018,7 +4542,7 @@
     const indices = [];
     for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
       const mov = state.log[i];
-      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot) indices.unshift(i);
+      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot && !mov?.planCuotasId) indices.unshift(i);
     }
     return indices;
   }
@@ -4029,6 +4553,7 @@
       // Para recalcular con seguridad, todas las entradas posteriores deben
       // conservar el snapshot que se guarda al crear cada movimiento.
       if (!state.log[i]?.snapshot) break;
+      if (state.log[i]?.planCuotasId) continue;
       indices.unshift(i);
     }
     return indices;
@@ -4285,6 +4810,136 @@
     return grupo ? `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>` : '';
   }
 
+  function badgeCuotaMovimiento(mov) {
+    const numero = Number(mov?.cuotaNumero);
+    const total = Number(mov?.cuotasTotal);
+    if (!mov?.planCuotasId || !Number.isFinite(numero) || !Number.isFinite(total)) return '';
+    return `<span class="installment-badge">Cuota ${numero}/${total}</span>`;
+  }
+
+  function planesCuotasActivos() {
+    return (Array.isArray(state.planesCuotas) ? state.planesCuotas : [])
+      .filter(plan => plan && plan.estado !== 'completado' && Number(plan.cuotasRegistradas) < Number(plan.cuotas));
+  }
+
+  function fechaActivacionCuota(plan, numeroCuota) {
+    const compra = new Date(plan?.fechaCompra || Date.now());
+    if (Number.isNaN(compra.getTime())) return new Date();
+    compra.setHours(12, 0, 0, 0);
+    if (numeroCuota <= 1) return compra;
+    const primerCalendario = fechaPagoParaCompra(compra, state.tarjeta);
+    const cierrePrevio = fechaConDiaSeguro(
+      primerCalendario.cierre.getFullYear(),
+      primerCalendario.cierre.getMonth() + Math.max(0, numeroCuota - 2),
+      state.tarjeta.diaCierre
+    );
+    cierrePrevio.setDate(cierrePrevio.getDate() + 1);
+    cierrePrevio.setHours(12, 0, 0, 0);
+    return cierrePrevio;
+  }
+
+  function cuotaPlanEnSoles(plan) {
+    return redondearDinero(Number(plan?.cuotaPen) || 0);
+  }
+
+  function montoPlanTexto(monto, moneda = 'PEN') {
+    return `${moneda === 'USD' ? 'US$' : 'S/'} ${fmt(monto)}`;
+  }
+
+  function activarCuotasPendientes() {
+    if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+    const hoy = inicioDelDia(new Date());
+    let activadas = 0;
+
+    state.planesCuotas.forEach(plan => {
+      const totalCuotas = Math.max(0, Number(plan?.cuotas) || 0);
+      let registradas = Math.max(0, Number(plan?.cuotasRegistradas) || 0);
+      if (!totalCuotas || registradas >= totalCuotas || plan.estado === 'completado') {
+        if (totalCuotas && registradas >= totalCuotas) plan.estado = 'completado';
+        return;
+      }
+
+      while (registradas < totalCuotas) {
+        const numero = registradas + 1;
+        const fechaActivacion = fechaActivacionCuota(plan, numero);
+        if (inicioDelDia(fechaActivacion) > hoy) break;
+        const cuotaPen = cuotaPlanEnSoles(plan);
+        if (cuotaPen <= 0) break;
+        if (normalizarTipoMovimiento(plan.tipo) === 'FDS' && cuotaPen > state.montoIntocable + 0.005) {
+          plan.estado = 'sin_fondo';
+          plan.mensajeEstado = `Faltan fondos para activar la cuota ${numero}/${totalCuotas}.`;
+          break;
+        }
+
+        const ok = aplicarMovimiento(
+          cuotaPen,
+          plan.tipo || 'DS',
+          null,
+          plan.detalle || 'Compra en cuotas',
+          {
+            fecha: fechaActivacion,
+            renderizar: false,
+            notificar: false,
+            metadata: {
+              planCuotasId: plan.id,
+              cuotaNumero: numero,
+              cuotasTotal: totalCuotas,
+              cuotaMoneda: plan.moneda || 'PEN',
+              cuotaOriginal: Number(plan.cuotaOriginal) || 0,
+              cuotaAutomatica: true
+            }
+          }
+        );
+        if (!ok) break;
+        registradas = numero;
+        plan.cuotasRegistradas = registradas;
+        plan.ultimaActivacion = fechaActivacion.toISOString();
+        plan.estado = registradas >= totalCuotas ? 'completado' : 'activo';
+        plan.mensajeEstado = '';
+        activadas += 1;
+      }
+    });
+
+    return activadas;
+  }
+
+  function appendInstallmentPlansSummary(root) {
+    const planes = planesCuotasActivos();
+    if (!root || planes.length === 0) return;
+    const card = document.createElement('div');
+    card.className = 'installment-plans-card';
+    const filas = planes.map(plan => {
+      const total = Number(plan.cuotas) || 0;
+      const registradas = Number(plan.cuotasRegistradas) || 0;
+      const pendientes = Math.max(0, total - registradas);
+      const pendienteOriginal = pendientes * (Number(plan.cuotaOriginal) || 0);
+      const siguienteNumero = registradas + 1;
+      const siguienteActivacion = fechaActivacionCuota(plan, siguienteNumero);
+      const siguientePago = fechaPagoParaCompra(siguienteActivacion, state.tarjeta).pago;
+      const estadoFondo = plan.estado === 'sin_fondo' ? ' · fondo insuficiente' : '';
+      return `
+        <div class="installment-plan-row">
+          <div class="installment-plan-top">
+            <span class="installment-plan-name">${escapeHtml(plan.detalle || 'Compra en cuotas')}</span>
+            <span class="installment-plan-progress">${registradas}/${total}</span>
+          </div>
+          <div class="installment-plan-meta">
+            <span>${pendientes} pendiente${pendientes === 1 ? '' : 's'} · ${montoPlanTexto(pendienteOriginal, plan.moneda)}</span>
+            <span>Próxima: paga ${etiquetaPagoCorta(siguientePago)}${estadoFondo}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    card.innerHTML = `
+      <div class="installment-plans-head">
+        <span class="installment-plans-title">Cuotas activas</span>
+        <span class="installment-plans-count">${planes.length} plan${planes.length === 1 ? '' : 'es'}</span>
+      </div>
+      ${filas}
+    `;
+    root.appendChild(card);
+  }
+
   function renderLog() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
@@ -4296,18 +4951,20 @@
     
     // Estado de Deshacer y Rehacer
     const btnUndo = document.getElementById('btnUndo');
-    if (btnUndo) btnUndo.disabled = state.log.length === 0;
+    if (btnUndo) btnUndo.disabled = state.log.length === 0 || !!state.log[state.log.length - 1]?.planCuotasId;
     const btnRedo = document.getElementById('btnRedo');
     if (btnRedo) btnRedo.disabled = !state.redoMovement;
     const btnHistory = document.getElementById('btnCycleHistory');
     if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
-    if (state.log.length === 0 && recientesAnteriores.length === 0) {
+    const planesActivos = planesCuotasActivos();
+    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
       logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
       return;
     }
     
     logEl.innerHTML = '';
+    appendInstallmentPlansSummary(logEl);
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
     const ciclosMostrados = new Set();
@@ -4333,6 +4990,7 @@
       
       let badge = '';
       if (mov.etiqueta === 'sem') badge = '<span class="badge">SEM</span>';
+      badge += badgeCuotaMovimiento(mov);
       
       div.innerHTML = `
         ${canUndo ? `<button class="swipe-action undo" onclick="confirmDelete(${idx})">Deshacer</button>` : ''}
@@ -4368,7 +5026,8 @@
         }
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov.tipo);
-        const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        badge += badgeCuotaMovimiento(mov);
         const div = document.createElement('div');
         div.className = `log-item previous-salary-movement${claseEspecialMovimiento(mov)}`;
         div.innerHTML = `
@@ -4920,6 +5579,10 @@
     }
     const lastIdx = state.log.length - 1;
     const mov = state.log[lastIdx];
+    if (mov?.planCuotasId) {
+      toast('Esta cuota pertenece a un plan y no se deshace como movimiento suelto', true);
+      return;
+    }
     const esRedistribucion = mov?.etiqueta === 'recalcula';
     
     openModal(`
@@ -5023,6 +5686,7 @@
         let dotLabel = etiquetaTipoMovimiento(mov.tipo);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        badge += badgeCuotaMovimiento(mov);
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
@@ -5202,7 +5866,8 @@
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov.tipo);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
-        const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        badge += badgeCuotaMovimiento(mov);
         listaHTML += `
           <div class="log-item${claseEspecialMovimiento(mov)}">
             <div class="log-left">
@@ -5617,6 +6282,11 @@
       fecha: mov.fecha || '',
       fechaISO: mov.fechaISO || null,
       timestamp: Number(mov.timestamp) || null,
+      planCuotasId: mov.planCuotasId || null,
+      cuotaNumero: Number(mov.cuotaNumero) || null,
+      cuotasTotal: Number(mov.cuotasTotal) || null,
+      cuotaMoneda: mov.cuotaMoneda || null,
+      cuotaOriginal: Number(mov.cuotaOriginal) || null,
       fechaInicioCiclo
     };
   }
@@ -5694,7 +6364,12 @@
         detalle: m.detalle || '',
         fecha: m.fecha || '',
         fechaISO: m.fechaISO || null,
-        timestamp: Number(m.timestamp) || null
+        timestamp: Number(m.timestamp) || null,
+        planCuotasId: m.planCuotasId || null,
+        cuotaNumero: Number(m.cuotaNumero) || null,
+        cuotasTotal: Number(m.cuotasTotal) || null,
+        cuotaMoneda: m.cuotaMoneda || null,
+        cuotaOriginal: Number(m.cuotaOriginal) || null
       }))
     };
 
@@ -5991,9 +6666,13 @@
     resetInputs();
   }
   
-  function aplicarMovimiento(monto, tipo, etiqueta, detalle) {
+  function aplicarMovimiento(monto, tipo, etiqueta, detalle, opciones = {}) {
+    const renderizar = opciones.renderizar !== false;
+    const notificar = opciones.notificar !== false;
     state.redoMovement = null;
-    const ahora = new Date();
+    const ahora = opciones.fecha ? new Date(opciones.fecha) : new Date();
+    if (Number.isNaN(ahora.getTime())) return false;
+    const metadata = opciones.metadata || {};
     tipo = normalizarTipoMovimiento(tipo);
     const mov = {
       id: 'mov-' + ahora.getTime() + '-' + Math.random().toString(36).slice(2, 7),
@@ -6001,6 +6680,14 @@
       fecha: ahora.toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
       fechaISO: ahora.toISOString(),
       timestamp: ahora.getTime(),
+      ...(metadata.planCuotasId ? {
+        planCuotasId: metadata.planCuotasId,
+        cuotaNumero: Number(metadata.cuotaNumero) || 1,
+        cuotasTotal: Number(metadata.cuotasTotal) || 1,
+        cuotaMoneda: metadata.cuotaMoneda || 'PEN',
+        cuotaOriginal: Number(metadata.cuotaOriginal) || 0,
+        cuotaAutomatica: !!metadata.cuotaAutomatica
+      } : {}),
       snapshot: {
         totalDisponible: state.totalDisponible,
         metaResidual: state.metaResidual || 0,
@@ -6015,17 +6702,19 @@
 
     if (tipo === 'F' || tipo === 'FDS') {
       if (monto > state.montoIntocable + 0.005) {
-        toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
-        return;
+        if (notificar) toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
+        return false;
       }
       state.montoIntocable -= monto;
       if (tipo === 'FDS') state.deudaActual += monto;
       state.log.push(mov);
-      toast(tipo === 'FDS'
-        ? `F+DS · S/ ${fmt(monto)} cubiertos por el fondo`
-        : `−S/ ${fmt(monto)} retirado del fondo`);
-      render();
-      return;
+      if (notificar) {
+        toast(tipo === 'FDS'
+          ? `F+DS · S/ ${fmt(monto)} cubiertos por el fondo`
+          : `−S/ ${fmt(monto)} retirado del fondo`);
+      }
+      if (renderizar) render();
+      return true;
     }
     
     state.totalDisponible -= monto;
@@ -6040,20 +6729,21 @@
       state.metaResidual || 0,
       etiqueta
     );
-    if (etiqueta === 'sem') {
+    if (notificar && etiqueta === 'sem') {
       if (resultadoBloques.exceso > 0) {
         toast(`Gasto dividido · faltaron S/ ${fmt(resultadoBloques.exceso)} por cubrir`, true);
       } else {
         toast(`S/ ${fmt(monto)} dividido entre ${resultadoBloques.futuros.length} bloques`);
       }
-    } else if (resultadoBloques.exceso > 0) {
+    } else if (notificar && resultadoBloques.exceso > 0) {
       toast(`Excediste S/ ${fmt(resultadoBloques.exceso)} · bloques futuros ajustados`, true);
-    } else {
+    } else if (notificar) {
       toast(`−S/ ${fmt(monto)} registrado`);
     }
     
     state.log.push(mov);
-    render();
+    if (renderizar) render();
+    return true;
   }
 
   function reconstruirSinMovimiento(idx) {
@@ -6651,7 +7341,98 @@
     render();
   }
 
+  const PURCHASE_INSTALLMENT_TEA = Object.freeze({ PEN: 83.32, USD: 65.92 });
+  const PURCHASE_INSTALLMENT_TERMS = Object.freeze(Array.from({ length: 35 }, (_, index) => index + 2));
   let purchaseSimulationCurrency = 'PEN';
+  let purchaseSimulationMode = 'single';
+  let purchaseSimulationInstallments = 12;
+  let pendingPurchaseSimulation = null;
+
+  function purchaseSimulationTea(currency = purchaseSimulationCurrency) {
+    return PURCHASE_INSTALLMENT_TEA[currency === 'USD' ? 'USD' : 'PEN'];
+  }
+
+  function clearPurchaseSimulationResult() {
+    const resultado = document.getElementById('purchaseSimulationResult');
+    if (resultado) resultado.innerHTML = '';
+    pendingPurchaseSimulation = null;
+    updatePurchaseSimulatorFooter(false);
+  }
+
+  function updatePurchaseSimulatorFooter(canRegister = false) {
+    const secondary = document.getElementById('purchaseFooterSecondary');
+    const close = document.getElementById('purchaseFooterClose');
+    const register = document.getElementById('purchaseFooterRegister');
+    if (!secondary || !close || !register) return;
+    if (canRegister) {
+      secondary.textContent = 'Cerrar';
+      secondary.setAttribute('onclick', 'closeModal()');
+      close.hidden = true;
+      register.hidden = false;
+    } else {
+      secondary.textContent = 'Editar fechas';
+      secondary.setAttribute('onclick', 'openCCConfig()');
+      close.hidden = false;
+      register.hidden = true;
+    }
+  }
+
+  function updatePurchaseInstallmentUi() {
+    const settings = document.getElementById('purchaseInstallmentSettings');
+    if (settings) settings.classList.toggle('visible', purchaseSimulationMode === 'installments');
+    const tea = document.getElementById('purchaseInstallmentTea');
+    if (tea) tea.textContent = `TEA ${purchaseSimulationTea().toFixed(2)}%`;
+    const hint = document.getElementById('purchaseInstallmentHint');
+    if (hint) {
+      hint.textContent = purchaseSimulationCurrency === 'USD'
+        ? 'La cuota se calcula en dólares. Su equivalente en soles usa el tipo de cambio actual.'
+        : 'La cuota se calcula con la tasa para compras en soles.';
+    }
+    const selector = document.getElementById('purchaseInstallmentSelect');
+    if (selector) selector.value = String(purchaseSimulationInstallments);
+    const resultSelector = document.getElementById('purchaseResultInstallmentSelect');
+    if (resultSelector) resultSelector.value = String(purchaseSimulationInstallments);
+    const minus = document.querySelector('[data-installment-step="-1"]');
+    const plus = document.querySelector('[data-installment-step="1"]');
+    if (minus) minus.disabled = purchaseSimulationInstallments <= PURCHASE_INSTALLMENT_TERMS[0];
+    if (plus) plus.disabled = purchaseSimulationInstallments >= PURCHASE_INSTALLMENT_TERMS[PURCHASE_INSTALLMENT_TERMS.length - 1];
+  }
+
+  function setPurchaseSimulationMode(mode) {
+    purchaseSimulationMode = mode === 'installments' ? 'installments' : 'single';
+    document.querySelectorAll('.purchase-mode-option').forEach(btn => {
+      const active = btn.dataset.mode === purchaseSimulationMode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    updatePurchaseInstallmentUi();
+    clearPurchaseSimulationResult();
+  }
+
+  function setPurchaseSimulationInstallments(months) {
+    const parsed = Number(months);
+    const resultado = document.getElementById('purchaseSimulationResult');
+    const input = document.getElementById('simPurchaseAmount');
+    const monto = input ? parseFloat(String(input.value).replace(',', '.')) : 0;
+    const recalcularEnVivo = purchaseSimulationMode === 'installments'
+      && resultado
+      && resultado.innerHTML.trim().length > 0
+      && Number.isFinite(monto)
+      && monto > 0;
+    purchaseSimulationInstallments = PURCHASE_INSTALLMENT_TERMS.includes(parsed) ? parsed : 12;
+    updatePurchaseInstallmentUi();
+    if (recalcularEnVivo) calculatePurchaseSimulation();
+    else clearPurchaseSimulationResult();
+  }
+
+  function stepPurchaseSimulationInstallments(direction) {
+    const currentIndex = PURCHASE_INSTALLMENT_TERMS.indexOf(purchaseSimulationInstallments);
+    const nextIndex = Math.max(
+      0,
+      Math.min(PURCHASE_INSTALLMENT_TERMS.length - 1, currentIndex + (direction < 0 ? -1 : 1))
+    );
+    setPurchaseSimulationInstallments(PURCHASE_INSTALLMENT_TERMS[nextIndex]);
+  }
 
   function setPurchaseSimulationCurrency(currency) {
     purchaseSimulationCurrency = currency === 'USD' ? 'USD' : 'PEN';
@@ -6660,17 +7441,16 @@
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
-    const resultado = document.getElementById('purchaseSimulationResult');
-    if (resultado) resultado.innerHTML = '';
+    clearPurchaseSimulationResult();
     updatePurchaseSimulationConversion();
+    updatePurchaseInstallmentUi();
     if (purchaseSimulationCurrency === 'USD') {
       Promise.resolve(fetchExchangeRate()).finally(updatePurchaseSimulationConversion);
     }
   }
 
   function onPurchaseSimulationInput() {
-    const resultado = document.getElementById('purchaseSimulationResult');
-    if (resultado) resultado.innerHTML = '';
+    clearPurchaseSimulationResult();
     updatePurchaseSimulationConversion();
   }
 
@@ -6707,12 +7487,19 @@
 
   function openPurchaseSimulator() {
     purchaseSimulationCurrency = 'PEN';
+    purchaseSimulationMode = 'single';
+    purchaseSimulationInstallments = 12;
+    pendingPurchaseSimulation = null;
     openModal(`
       <h2 class="purchase-modal-title">Simular compra</h2>
       <p class="modal-sub">
         Revisa cuánto cambia tu margen y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
         <span style="font-size:11px;">Cálculo con sueldo el día ${diaSueldoConfigurado()}.</span>
       </p>
+      <div class="purchase-mode-switch" role="group" aria-label="Modalidad de compra">
+        <button class="purchase-mode-option active" data-mode="single" aria-pressed="true" onclick="setPurchaseSimulationMode('single')">Un solo pago</button>
+        <button class="purchase-mode-option" data-mode="installments" aria-pressed="false" onclick="setPurchaseSimulationMode('installments')">En cuotas</button>
+      </div>
       <div class="purchase-sim-field-head">
         <label for="simPurchaseAmount">Monto que planeas gastar</label>
         <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
@@ -6727,16 +7514,192 @@
         <button class="purchase-analyze-btn" onclick="calculatePurchaseSimulation()">Analizar</button>
       </div>
       <div class="purchase-conversion-preview" id="purchaseConversionPreview"></div>
+      <div class="purchase-installment-settings" id="purchaseInstallmentSettings">
+        <div class="purchase-installment-head">
+          <span>Cantidad de cuotas</span>
+          <strong id="purchaseInstallmentTea">TEA ${purchaseSimulationTea().toFixed(2)}%</strong>
+        </div>
+        <div class="purchase-installment-stepper" role="group" aria-label="Cantidad de cuotas">
+          <button class="purchase-installment-step" type="button" data-installment-step="-1" aria-label="Una cuota menos" onclick="stepPurchaseSimulationInstallments(-1)">−</button>
+          <div class="purchase-installment-select-wrap">
+            <select class="purchase-installment-select" id="purchaseInstallmentSelect" aria-label="Seleccionar cantidad de cuotas" onchange="setPurchaseSimulationInstallments(this.value)">
+              ${PURCHASE_INSTALLMENT_TERMS.map(months => `<option value="${months}" ${months === 12 ? 'selected' : ''}>${months} cuotas</option>`).join('')}
+            </select>
+            <span class="purchase-installment-select-arrow" aria-hidden="true"></span>
+          </div>
+          <button class="purchase-installment-step" type="button" data-installment-step="1" aria-label="Una cuota más" onclick="stepPurchaseSimulationInstallments(1)">+</button>
+        </div>
+        <div class="purchase-installment-hint" id="purchaseInstallmentHint">La cuota se calcula con la tasa para compras en soles.</div>
+      </div>
       <div id="purchaseSimulationResult"></div>
       <div class="modal-buttons">
-        <button class="btn-secondary" onclick="openCCConfig()">Editar fechas</button>
-        <button class="btn-primary" onclick="closeModal()">Cerrar</button>
+        <button class="btn-secondary" id="purchaseFooterSecondary" onclick="openCCConfig()">Editar fechas</button>
+        <button class="btn-primary purchase-footer-close" id="purchaseFooterClose" onclick="closeModal()">Cerrar</button>
+        <button class="btn-primary purchase-footer-register" id="purchaseFooterRegister" onclick="openInstallmentRegistration()" hidden>Registrar en cuotas</button>
       </div>
     `);
     requestAnimationFrame(() => {
       updatePurchaseSimulationConversion();
+      updatePurchaseInstallmentUi();
+      updatePurchaseSimulatorFooter(false);
       document.getElementById('simPurchaseAmount')?.focus();
     });
+  }
+
+  function calcularPlanCuotas(montoOriginal, currency, meses) {
+    const teaPct = purchaseSimulationTea(currency);
+    const tea = teaPct / 100;
+    const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
+    const factor = Math.pow(1 + tasaMensual, meses);
+    const cuotaCalculada = tasaMensual > 0
+      ? montoOriginal * (tasaMensual * factor) / (factor - 1)
+      : montoOriginal / meses;
+    const cuota = redondearDinero(cuotaCalculada);
+    const total = redondearDinero(cuota * meses);
+    return {
+      meses,
+      teaPct,
+      tasaMensual,
+      cuota,
+      total,
+      intereses: Math.max(0, redondearDinero(total - montoOriginal))
+    };
+  }
+
+  function formatInstallmentMoney(amount, currency = purchaseSimulationCurrency) {
+    return `${currency === 'USD' ? 'US$' : 'S/'} ${fmt(amount)}`;
+  }
+
+  function fechaUltimaCuota(fechaPrimera, meses) {
+    return fechaConDiaSeguro(
+      fechaPrimera.getFullYear(),
+      fechaPrimera.getMonth() + Math.max(0, meses - 1),
+      fechaPrimera.getDate()
+    );
+  }
+
+  function planCuotasParaEscenario(plan, escenario, currencyInfo) {
+    const primera = escenario.calendario.pago;
+    const ultima = fechaUltimaCuota(primera, plan.meses);
+    const cuotaTexto = formatInstallmentMoney(plan.cuota, currencyInfo.currency);
+    return `Primera de ${plan.meses} cuotas: ${cuotaTexto} el ${formatFecha(primera)}. La última sería el ${formatFechaCompleta(ultima)}.`;
+  }
+
+  function resumenFinanciamiento(plan, currencyInfo) {
+    const cuota = formatInstallmentMoney(plan.cuota, currencyInfo.currency);
+    const total = formatInstallmentMoney(plan.total, currencyInfo.currency);
+    const intereses = formatInstallmentMoney(plan.intereses, currencyInfo.currency);
+    let equivalencia = '';
+    if (currencyInfo.currency === 'USD' && currencyInfo.rate) {
+      equivalencia = `<div class="purchase-finance-note">Aprox. S/ ${fmt(plan.cuota * currencyInfo.rate)} por cuota con TC ${currencyInfo.rate.toFixed(3)}.</div>`;
+    }
+    return `
+      <div class="purchase-finance-summary">
+        <div class="purchase-finance-top">
+          <span class="purchase-finance-kicker">Financiamiento estimado</span>
+          <div class="purchase-finance-payment">
+            <span class="purchase-result-term-wrap">
+              <select class="purchase-result-term-select" id="purchaseResultInstallmentSelect" aria-label="Cambiar cantidad de cuotas y recalcular" onchange="setPurchaseSimulationInstallments(this.value)">
+                ${PURCHASE_INSTALLMENT_TERMS.map(months => `<option value="${months}" ${months === plan.meses ? 'selected' : ''}>${months} cuotas</option>`).join('')}
+              </select>
+              <span class="purchase-result-term-arrow" aria-hidden="true"></span>
+            </span>
+            <span>de ${cuota}</span>
+          </div>
+        </div>
+        <div class="purchase-finance-metrics">
+          <div class="purchase-finance-metric">
+            <span>Total</span>
+            <strong>${total}</strong>
+          </div>
+          <div class="purchase-finance-metric">
+            <span>Intereses</span>
+            <strong>${intereses}</strong>
+          </div>
+        </div>
+        ${equivalencia}
+      </div>
+    `;
+  }
+
+  function resumenRecomendacionCuotas(esperarHasta, compraEsperando) {
+    const sueldosAntesDelPago = Array.isArray(compraEsperando.sueldos) ? compraEsperando.sueldos : [];
+    const contextoAbonos = sueldosAntesDelPago.length
+      ? `Antes de empezar a pagar recibirías ${sueldosAntesDelPago.length} abono${sueldosAntesDelPago.length === 1 ? '' : 's'} de sueldo: ${unirFechasCortas(sueldosAntesDelPago)}.`
+      : 'No recibirías otro abono de sueldo antes de esa fecha.';
+    return `
+      <div class="purchase-recommendation-card">
+        <div class="purchase-recommendation-head">
+          <span class="purchase-recommendation-label">Más margen</span>
+          <span class="purchase-sim-badge good">Recomendado</span>
+        </div>
+        <div class="purchase-recommendation-title">Esperar al ${formatFecha(esperarHasta)}</div>
+        <div class="purchase-recommendation-copy">La primera cuota sería el ${formatFechaCompleta(compraEsperando.calendario.pago)}. ${contextoAbonos}</div>
+      </div>
+    `;
+  }
+
+  function resumenImpactoCuota(capacidad) {
+    const antes = Math.max(0, Number(capacidad.margenAntes) || 0);
+    const despues = Math.max(0, Number(capacidad.margenDespues) || 0);
+    const puedeComparar = antes > 0 || despues > 0;
+    const porcentaje = antes > 0 ? Math.max(0, Math.min(100, (despues / antes) * 100)) : (despues > 0 ? 100 : 0);
+    const diasPeriodo = Math.max(0, Number(capacidad.diasBloqueRestantes) || 0);
+    const mostrarPeriodoDirecto = puedeComparar && capacidad.nuevoExceso <= 0 && diasPeriodo > 0;
+    const titulo = mostrarPeriodoDirecto
+      ? `Te quedarían S/ ${fmtSim(despues)} para ${diasPeriodo === 1 ? 'el próximo día' : `los próximos ${diasPeriodo} días`}`
+      : capacidad.titulo.replace(/^El bloque actual/i, 'Este periodo').replace(/\.$/, '');
+    const contexto = mostrarPeriodoDirecto && capacidad.rangoBloqueActual
+      ? `Periodo presupuestado: ${capacidad.rangoBloqueActual}.`
+      : capacidad.diasRestantes > 0
+        ? `${capacidad.diasRestantes} día${capacidad.diasRestantes === 1 ? '' : 's'} restante${capacidad.diasRestantes === 1 ? '' : 's'} en el ciclo.`
+        : capacidad.detalle;
+    return `
+      <div class="purchase-budget-card">
+        <div class="purchase-budget-head">
+          <div class="purchase-budget-title">${titulo}</div>
+          <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
+        </div>
+        ${puedeComparar ? `
+          <div class="purchase-budget-track" aria-label="Disponible del bloque después de la cuota">
+            <div class="purchase-budget-fill" style="width:${porcentaje.toFixed(1)}%"></div>
+          </div>
+          <div class="purchase-budget-values">
+            <span>Antes <strong>S/ ${fmtSim(antes)}</strong></span>
+            <span>Después <strong>S/ ${fmtSim(despues)}</strong></span>
+          </div>
+        ` : `<div class="purchase-recommendation-copy">${capacidad.detalle}</div>`}
+        <div class="purchase-budget-context">${contexto}</div>
+      </div>
+    `;
+  }
+
+  function comparacionCuotaCard(titulo, escenario, plan, currencyInfo, variante = 'today') {
+    const ultima = fechaUltimaCuota(escenario.calendario.pago, plan.meses);
+    const abonos = escenario.sueldos.length === 0
+      ? 'Sin abonos antes del pago'
+      : `${escenario.sueldos.length} abono${escenario.sueldos.length === 1 ? '' : 's'} antes del pago`;
+    return `
+      <div class="purchase-compare-card ${variante === 'wait' ? 'wait' : ''}">
+        <div class="purchase-compare-head">
+          <div class="purchase-compare-title">${titulo}</div>
+          <span class="purchase-sim-badge ${escenario.nivel}">${escenario.margen}</span>
+        </div>
+        <div class="purchase-compare-payment">Primera cuota · ${formatInstallmentMoney(plan.cuota, currencyInfo.currency)} · ${formatFechaCompleta(escenario.calendario.pago)}</div>
+        <div class="purchase-compare-meta">Cierra ${formatFecha(escenario.calendario.cierre)} · ${abonos} · Última cuota ${formatFechaCompleta(ultima)}.</div>
+      </div>
+    `;
+  }
+
+  function togglePurchaseComparison(button) {
+    const details = button.nextElementSibling;
+    if (!details) return;
+    const willOpen = details.hidden;
+    details.hidden = !willOpen;
+    button.classList.toggle('open', willOpen);
+    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    const label = button.querySelector('.purchase-comparison-label');
+    if (label) label.textContent = willOpen ? 'Ocultar comparación' : 'Ver comparación de fechas';
   }
 
   function formatPurchasePlanAmount(montoPen, currencyInfo, montoOriginal = null) {
@@ -6788,7 +7751,8 @@
     return { calendario, sueldos, nivel, margen, explicacion, plan };
   }
 
-  function analizarCapacidadCompra(monto) {
+  function analizarCapacidadCompra(monto, esCuota = false) {
+    const sujeto = esCuota ? 'La primera cuota' : 'Esta compra';
     const totalDias = diasTotalesCiclo();
     const diaActualCalculado = diasEnCiclo();
     const diaActual = totalDias > 0
@@ -6802,6 +7766,8 @@
     if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
     const rangos = calcularRangoSemanas();
     const margenAntes = Math.max(0, Number(state.semanas[currentIdx]?.presupuesto) || 0);
+    const rangoBloqueActual = rangos[currentIdx] || null;
+    const diasBloqueRestantes = diasRestantesParaBloque(rangoBloqueActual);
     let semanasDespues = JSON.parse(JSON.stringify(state.semanas));
     try {
       const simulado = applyMovementToSnapshot(captureMovementState(), { monto, tipo: 'DS', etiqueta: null });
@@ -6819,7 +7785,7 @@
 
     let nivel = 'neutral';
     let capacidad = 'Sin fechas';
-    let titulo = `Esta compra usaría ${reduccionPct}% de tu disponible.`;
+    let titulo = `${sujeto} usaría ${reduccionPct}% de tu disponible.`;
     let detalle = 'Define las fechas del ciclo para calcular el impacto por bloques.';
     let meta = balanceHidden
       ? 'Tu disponible total continúa oculto.'
@@ -6828,22 +7794,22 @@
     if (disponibleDespues < 0) {
       nivel = 'bad';
       capacidad = 'No recomendable';
-      titulo = 'El monto supera tu disponible actual.';
-      detalle = `La compra excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
+      titulo = `${sujeto} supera tu disponible actual.`;
+      detalle = `${sujeto} excedería tu disponible en S/ ${fmtSim(Math.abs(disponibleDespues))}.`;
       meta = totalDias > 0
         ? `Cálculo directo con tu disponible y ${diasRestantes} día${diasRestantes === 1 ? '' : 's'} restantes.`
         : 'Define las fechas del ciclo para calcular el impacto por bloques.';
     } else if (totalDias > 0 && diasRestantes === 0) {
       nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
       capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
-      titulo = `Esta compra usaría ${reduccionPct}% de tu disponible al cierre.`;
+      titulo = `${sujeto} usaría ${reduccionPct}% de tu disponible al cierre.`;
       detalle = 'El ciclo ya está en su último día, por lo que no queda otro bloque por calcular.';
       meta = balanceHidden ? 'Tu disponible total continúa oculto.' : `Te quedarían S/ ${fmtSim(disponibleDespues)}.`;
     } else if (totalDias > 0) {
       nivel = reduccionPct <= 15 ? 'good' : reduccionPct <= 30 ? 'mid' : 'bad';
       capacidad = reduccionPct <= 15 ? 'Impacto bajo' : reduccionPct <= 30 ? 'Impacto moderado' : 'Impacto alto';
       if (nuevoExceso > 0) {
-        titulo = `La compra excedería el bloque actual en S/ ${fmtSim(nuevoExceso)}.`;
+        titulo = `${sujeto} excedería el bloque actual en S/ ${fmtSim(nuevoExceso)}.`;
         const futuros = presupuestosDespues.slice(1).map(b => `S/ ${fmtSim(b.presupuesto)}`).join(' · ');
         detalle = futuros
           ? `El bloque actual quedaría en cero. Los siguientes se ajustarían a ${futuros}.`
@@ -6867,6 +7833,8 @@
       disponibleDespues,
       margenAntes,
       margenDespues,
+      diasBloqueRestantes,
+      rangoBloqueActual: rangoBloqueActual ? formatRangoCorto(rangoBloqueActual) : '',
       nuevoExceso,
       presupuestosDespues,
       reduccionPct
@@ -6944,20 +7912,35 @@
       rate
     };
 
+    const planCuotas = purchaseSimulationMode === 'installments'
+      ? calcularPlanCuotas(montoIngresado, purchaseSimulationCurrency, purchaseSimulationInstallments)
+      : null;
+    const cuotaPen = planCuotas
+      ? planCuotas.cuota * (purchaseSimulationCurrency === 'USD' ? rate : 1)
+      : monto;
+    const montoImpacto = planCuotas ? cuotaPen : monto;
+
     const hoy = new Date();
     hoy.setHours(12, 0, 0, 0);
-    const compraHoy = escenarioCompra(hoy, monto, hoy, currencyInfo);
+    const compraHoy = escenarioCompra(hoy, montoImpacto, hoy, currencyInfo);
     const esperarHasta = new Date(compraHoy.calendario.cierre);
     esperarHasta.setDate(esperarHasta.getDate() + 1);
-    const compraEsperando = escenarioCompra(esperarHasta, monto, hoy, currencyInfo);
+    const compraEsperando = escenarioCompra(esperarHasta, montoImpacto, hoy, currencyInfo);
+
+    if (planCuotas) {
+      compraHoy.plan = planCuotasParaEscenario(planCuotas, compraHoy, currencyInfo);
+      compraEsperando.plan = planCuotasParaEscenario(planCuotas, compraEsperando, currencyInfo);
+    }
 
     const disponibleReal = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
-    const disponibleDespues = disponibleReal - monto;
+    const disponibleDespues = disponibleReal - montoImpacto;
     const deudaDespues = state.deudaActual + monto;
-    const capacidad = analizarCapacidadCompra(monto);
-    const impactoTexto = balanceHidden
-      ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
-      : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
+    const capacidad = analizarCapacidadCompra(montoImpacto, Boolean(planCuotas));
+    const impactoTexto = planCuotas
+      ? `Cuota por ciclo: ${formatInstallmentMoney(planCuotas.cuota, purchaseSimulationCurrency)} · Compromiso total: ${formatInstallmentMoney(planCuotas.total, purchaseSimulationCurrency)}`
+      : balanceHidden
+        ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
+        : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
     let ritmoSemanalTexto;
     if (disponibleDespues < 0) {
       ritmoSemanalTexto = 'No quedaría disponible para repartir hasta el cierre.';
@@ -6967,11 +7950,43 @@
       const bloquesTexto = capacidad.presupuestosDespues
         .map((bloque, i) => `${i === 0 ? 'Actual' : 'B' + (bloque.index + 1)}: S/ ${fmtSim(bloque.presupuesto)}`)
         .join(' · ');
-      ritmoSemanalTexto = `Después de la compra · ${bloquesTexto}`;
+      ritmoSemanalTexto = `${planCuotas ? 'Después de la primera cuota' : 'Después de la compra'} · ${bloquesTexto}`;
     }
     const conversionResumen = purchaseSimulationCurrency === 'USD'
       ? `<div class="purchase-result-conversion">Compra simulada: <strong>US$ ${fmtSim(montoIngresado)}</strong> ≈ <strong>S/ ${fmtSim(monto)}</strong> · TC ${rate.toFixed(3)}</div>`
       : '';
+
+    if (planCuotas) {
+      pendingPurchaseSimulation = {
+        montoOriginal: montoIngresado,
+        montoPen: redondearDinero(monto),
+        moneda: purchaseSimulationCurrency,
+        rate,
+        plan: { ...planCuotas },
+        fechaCompra: hoy.toISOString(),
+        primerCierre: compraHoy.calendario.cierre.toISOString(),
+        primerPago: compraHoy.calendario.pago.toISOString()
+      };
+      resultado.innerHTML = `
+        ${conversionResumen}
+        ${resumenFinanciamiento(planCuotas, currencyInfo)}
+        ${resumenRecomendacionCuotas(esperarHasta, compraEsperando)}
+        ${resumenImpactoCuota(capacidad)}
+        <button class="purchase-comparison-toggle" type="button" aria-expanded="false" onclick="togglePurchaseComparison(this)">
+          <span class="purchase-comparison-label">Ver comparación de fechas</span>
+          <span class="purchase-comparison-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="purchase-comparison-details" hidden>
+          ${comparacionCuotaCard('Comprar hoy', compraHoy, planCuotas, currencyInfo, 'today')}
+          ${comparacionCuotaCard(`Esperar al ${formatFecha(esperarHasta)}`, compraEsperando, planCuotas, currencyInfo, 'wait')}
+        </div>
+      `;
+      updatePurchaseSimulatorFooter(true);
+      return;
+    }
+
+    pendingPurchaseSimulation = null;
+    updatePurchaseSimulatorFooter(false);
 
     resultado.innerHTML = `
       ${conversionResumen}
@@ -6995,6 +8010,164 @@
         ${tarjetaEscenarioCompra(`Si esperas al ${formatFecha(esperarHasta)}`, compraEsperando, 'wait')}
       </div>
     `;
+  }
+
+  function returnToInstallmentSimulation() {
+    const sim = pendingPurchaseSimulation ? JSON.parse(JSON.stringify(pendingPurchaseSimulation)) : null;
+    if (!sim) {
+      openPurchaseSimulator();
+      return;
+    }
+    openPurchaseSimulator();
+    purchaseSimulationInstallments = Number(sim.plan?.meses) || 12;
+    setPurchaseSimulationMode('installments');
+    setPurchaseSimulationCurrency(sim.moneda || 'PEN');
+    const input = document.getElementById('simPurchaseAmount');
+    if (input) input.value = Number(sim.montoOriginal) || '';
+    updatePurchaseInstallmentUi();
+    calculatePurchaseSimulation();
+  }
+
+  function openInstallmentRegistration() {
+    const sim = pendingPurchaseSimulation;
+    if (!sim?.plan) {
+      toast('Vuelve a analizar la compra antes de registrarla', true);
+      return;
+    }
+    const moneda = sim.moneda === 'USD' ? 'USD' : 'PEN';
+    const simbolo = moneda === 'USD' ? 'US$' : 'S/';
+    const primera = new Date(sim.primerPago);
+    const ultima = fechaUltimaCuota(primera, sim.plan.meses);
+    openModal(`
+      <h2>Confirmar compra <span class="accent">en cuotas</span></h2>
+      <p class="modal-sub">Este segundo paso sí modificará tus montos. Revisa la cuota real que te muestra el banco antes de confirmar.</p>
+      <div class="installment-confirm-summary">
+        <div class="installment-confirm-main">${sim.plan.meses} cuotas · primera el ${formatFechaCompleta(primera)}</div>
+        <div class="installment-confirm-meta">
+          Compra: ${montoPlanTexto(sim.montoOriginal, moneda)} · Última cuota estimada: ${formatFechaCompleta(ultima)}.<br>
+          Solo la primera cuota se registrará ahora; las siguientes se activarán en sus ciclos.
+        </div>
+      </div>
+      <div class="modal-field">
+        <label>Detalle de la compra</label>
+        <input type="text" id="installmentPurchaseDetail" placeholder="Ej. Laptop" autocomplete="off" autocapitalize="sentences">
+      </div>
+      <div class="modal-field">
+        <label>Cuota real del banco (${simbolo})</label>
+        <input type="number" id="installmentBankPayment" min="0.01" step="0.01" inputmode="decimal" value="${Number(sim.plan.cuota).toFixed(2)}" oninput="updateInstallmentConfirmationPreview()">
+      </div>
+      <div class="modal-field">
+        <label>De dónde se cubrirá</label>
+        <div class="installment-source-grid">
+          <label class="edit-type-option">
+            <input type="radio" name="installmentPurchaseType" value="DS" checked>
+            <span>DS · Sueldo</span>
+          </label>
+          <label class="edit-type-option fds">
+            <input type="radio" name="installmentPurchaseType" value="FDS">
+            <span>F+DS · Fondo</span>
+          </label>
+        </div>
+      </div>
+      <div class="installment-confirm-summary" id="installmentConfirmPreview"></div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="returnToInstallmentSimulation()">Volver</button>
+        <button class="btn-primary" onclick="confirmInstallmentRegistration()">Confirmar y registrar</button>
+      </div>
+    `);
+    requestAnimationFrame(() => {
+      updateInstallmentConfirmationPreview();
+      document.getElementById('installmentPurchaseDetail')?.focus();
+    });
+  }
+
+  function updateInstallmentConfirmationPreview() {
+    const sim = pendingPurchaseSimulation;
+    const preview = document.getElementById('installmentConfirmPreview');
+    const input = document.getElementById('installmentBankPayment');
+    if (!sim?.plan || !preview || !input) return;
+    const cuota = parseFloat(String(input.value).replace(',', '.')) || 0;
+    const total = redondearDinero(cuota * sim.plan.meses);
+    const intereses = Math.max(0, redondearDinero(total - sim.montoOriginal));
+    const cuotaPen = redondearDinero(cuota * (sim.moneda === 'USD' ? Number(sim.rate) || 0 : 1));
+    preview.innerHTML = `
+      <div class="installment-confirm-main">${montoPlanTexto(cuota, sim.moneda)} por ciclo</div>
+      <div class="installment-confirm-meta">
+        Total comprometido: ${montoPlanTexto(total, sim.moneda)} · Intereses: ${montoPlanTexto(intereses, sim.moneda)}
+        ${sim.moneda === 'USD' ? `<br>Primera cuota registrada como aprox. S/ ${fmt(cuotaPen)} con TC ${Number(sim.rate).toFixed(3)}.` : ''}
+      </div>
+    `;
+  }
+
+  function confirmInstallmentRegistration() {
+    const sim = pendingPurchaseSimulation;
+    const cuotaOriginal = parseFloat(String(document.getElementById('installmentBankPayment')?.value || '').replace(',', '.'));
+    const detalle = document.getElementById('installmentPurchaseDetail')?.value.trim() || 'Compra en cuotas';
+    const tipo = document.querySelector('input[name="installmentPurchaseType"]:checked')?.value || 'DS';
+    if (!sim?.plan || !Number.isFinite(cuotaOriginal) || cuotaOriginal <= 0) {
+      toast('Revisa el valor real de la cuota', true);
+      return;
+    }
+    const factorCambio = sim.moneda === 'USD' ? Number(sim.rate) : 1;
+    if (!Number.isFinite(factorCambio) || factorCambio <= 0) {
+      toast('Falta el tipo de cambio para registrar la cuota', true);
+      return;
+    }
+    const cuotaPen = redondearDinero(cuotaOriginal * factorCambio);
+    if (tipo === 'FDS' && cuotaPen > state.montoIntocable + 0.005) {
+      toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
+      return;
+    }
+
+    const ahora = new Date(sim.fechaCompra || Date.now());
+    const totalOriginal = redondearDinero(cuotaOriginal * sim.plan.meses);
+    const plan = {
+      id: 'plan-cuotas-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      detalle,
+      tipo,
+      moneda: sim.moneda,
+      tipoCambio: sim.moneda === 'USD' ? factorCambio : null,
+      montoCompraOriginal: redondearDinero(sim.montoOriginal),
+      montoCompraPen: redondearDinero(sim.montoPen),
+      cuotas: Number(sim.plan.meses),
+      cuotaOriginal: redondearDinero(cuotaOriginal),
+      cuotaPen,
+      totalOriginal,
+      totalPen: redondearDinero(totalOriginal * factorCambio),
+      teaPct: Number(sim.plan.teaPct) || 0,
+      fechaCompra: ahora.toISOString(),
+      primerPago: sim.primerPago,
+      cuotasRegistradas: 0,
+      estado: 'activo',
+      creadoEn: new Date().toISOString()
+    };
+    if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+    state.planesCuotas.push(plan);
+    const ok = aplicarMovimiento(cuotaPen, tipo, null, detalle, {
+      fecha: ahora,
+      renderizar: false,
+      notificar: false,
+      metadata: {
+        planCuotasId: plan.id,
+        cuotaNumero: 1,
+        cuotasTotal: plan.cuotas,
+        cuotaMoneda: plan.moneda,
+        cuotaOriginal: plan.cuotaOriginal,
+        cuotaAutomatica: false
+      }
+    });
+    if (!ok) {
+      state.planesCuotas = state.planesCuotas.filter(item => item.id !== plan.id);
+      toast('No se pudo registrar la primera cuota', true);
+      return;
+    }
+    plan.cuotasRegistradas = 1;
+    plan.ultimaActivacion = ahora.toISOString();
+    if (plan.cuotas <= 1) plan.estado = 'completado';
+    pendingPurchaseSimulation = null;
+    closeModal();
+    toast(`Compra registrada · cuota 1/${plan.cuotas} por S/ ${fmt(cuotaPen)}`);
+    render();
   }
   
   function openModal(html) {
