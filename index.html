@@ -2900,6 +2900,18 @@
     font-weight: 500;
   }
   .modal-field input:focus { border-color: var(--ink); }
+  .calendar-date-input {
+    min-height: 48px;
+    cursor: pointer;
+    color-scheme: light;
+  }
+  .calendar-date-input::-webkit-calendar-picker-indicator {
+    width: 19px;
+    height: 19px;
+    cursor: pointer;
+    opacity: 0.9;
+  }
+  body.dark .calendar-date-input { color-scheme: dark; }
   .edit-type-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -3578,6 +3590,7 @@
       { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
     tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 },
+    tarjetaCalendarios: [], // cierres y pagos exactos; cada ciclo salarial conserva su propio calendario
     tarjetaAjusteDeuda: 1756.94,
     tarjetaCiclosPagados: [],
     tarjetaMovimientosArrastrados: [],
@@ -3864,6 +3877,148 @@
     const ultimoDia = new Date(year, month + 1, 0).getDate();
     return new Date(year, month, Math.min(day, ultimoDia), 12, 0, 0, 0);
   }
+
+  function fechaDesdeInput(valor) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(valor || ''))) return null;
+    const fecha = new Date(String(valor) + 'T12:00:00');
+    return Number.isNaN(fecha.getTime()) ? null : fecha;
+  }
+
+  function claveCicloSueldo(fecha = state.fechaInicioCiclo) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(fecha || ''))) return String(fecha);
+    const valor = fecha ? new Date(fecha) : new Date();
+    return Number.isNaN(valor.getTime()) ? fechaParaInput(new Date()) : fechaParaInput(valor);
+  }
+
+  function calendariosTarjetaExactos(calendarios = state.tarjetaCalendarios) {
+    return (Array.isArray(calendarios) ? calendarios : [])
+      .map(item => {
+        const cierre = fechaDesdeInput(item?.cierre) || new Date(item?.cierre);
+        const pago = fechaDesdeInput(item?.pago) || new Date(item?.pago);
+        const inicio = fechaDesdeInput(item?.inicio) || new Date(item?.inicio);
+        if ([cierre, pago, inicio].some(fecha => Number.isNaN(fecha.getTime()))) return null;
+        cierre.setHours(12, 0, 0, 0);
+        pago.setHours(12, 0, 0, 0);
+        inicio.setHours(12, 0, 0, 0);
+        return {
+          ...item,
+          id: item.id || `tarjeta-${fechaParaInput(cierre)}`,
+          cicloSueldoId: item.cicloSueldoId || '',
+          inicio,
+          cierre,
+          pago
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.cierre - b.cierre);
+  }
+
+  function serializarCalendariosTarjeta(calendarios) {
+    return calendariosTarjetaExactos(calendarios)
+      .slice(-24)
+      .map(item => ({
+        id: item.id,
+        cicloSueldoId: item.cicloSueldoId || '',
+        inicio: fechaParaInput(item.inicio),
+        cierre: fechaParaInput(item.cierre),
+        pago: fechaParaInput(item.pago),
+        manual: item.manual !== false,
+        actualizadoEn: item.actualizadoEn || new Date().toISOString()
+      }));
+  }
+
+  function calendarioTarjetaConRegistro(cierre, pago, cicloSueldoId = claveCicloSueldo(), calendariosBase = state.tarjetaCalendarios) {
+    const cierreFecha = new Date(cierre);
+    const pagoFecha = new Date(pago);
+    cierreFecha.setHours(12, 0, 0, 0);
+    pagoFecha.setHours(12, 0, 0, 0);
+    const existentes = calendariosTarjetaExactos(calendariosBase);
+    const anteriorMismoCiclo = existentes.find(item => item.cicloSueldoId === cicloSueldoId);
+    const restantes = existentes.filter(item => item.cicloSueldoId !== cicloSueldoId);
+    const anterioresCompatibles = restantes.filter(item => item.cierre < cierreFecha);
+    const anterior = anterioresCompatibles.length > 0
+      ? anterioresCompatibles[anterioresCompatibles.length - 1]
+      : null;
+    let inicio;
+    if (anteriorMismoCiclo) {
+      inicio = new Date(anteriorMismoCiclo.inicio);
+    } else if (anterior) {
+      inicio = new Date(anterior.cierre);
+      inicio.setDate(inicio.getDate() + 1);
+    } else {
+      const diaAnteriorConfigurado = Math.max(1, Math.min(31, parseInt(state.tarjeta?.diaCierre) || cierreFecha.getDate()));
+      inicio = fechaConDiaSeguro(cierreFecha.getFullYear(), cierreFecha.getMonth() - 1, diaAnteriorConfigurado);
+      inicio.setDate(inicio.getDate() + 1);
+    }
+    inicio.setHours(12, 0, 0, 0);
+    const registro = {
+      id: anteriorMismoCiclo?.id || `tarjeta-${cicloSueldoId}-${Date.now()}`,
+      cicloSueldoId,
+      inicio,
+      cierre: cierreFecha,
+      pago: pagoFecha,
+      manual: true,
+      actualizadoEn: new Date().toISOString()
+    };
+    return serializarCalendariosTarjeta([...restantes, registro]);
+  }
+
+  function migrarCalendarioTarjetaExacto() {
+    if (Array.isArray(state.tarjetaCalendarios) && state.tarjetaCalendarios.length > 0) return false;
+    const porCierre = new Map();
+    const agregarCalendarioLegacy = (referencia, esActual = false) => {
+      const clave = fechaParaInput(referencia.cierre);
+      const cierreAnterior = fechaConDiaSeguro(
+        referencia.cierre.getFullYear(),
+        referencia.cierre.getMonth() - 1,
+        state.tarjeta?.diaCierre || referencia.cierre.getDate()
+      );
+      cierreAnterior.setDate(cierreAnterior.getDate() + 1);
+      const existente = porCierre.get(clave);
+      porCierre.set(clave, {
+        id: existente?.id || `tarjeta-migrado-${clave}`,
+        cicloSueldoId: esActual ? claveCicloSueldo() : (existente?.cicloSueldoId || `legacy-${clave}`),
+        inicio: cierreAnterior,
+        cierre: referencia.cierre,
+        pago: referencia.pago,
+        manual: false,
+        actualizadoEn: new Date().toISOString()
+      });
+    };
+    movimientosTarjetaCombinados().forEach(({ mov, index, fechaInicioReferencia }) => {
+      const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
+      agregarCalendarioLegacy(fechaPagoParaCompra(fechaMovimiento, state.tarjeta));
+    });
+    agregarCalendarioLegacy(fechaPagoParaCompra(new Date(), state.tarjeta), true);
+    state.tarjetaCalendarios = serializarCalendariosTarjeta([...porCierre.values()]);
+    return true;
+  }
+
+  function calendarioExactoParaFecha(fecha, calendarios = state.tarjetaCalendarios) {
+    const compra = new Date(fecha);
+    compra.setHours(12, 0, 0, 0);
+    const exactos = calendariosTarjetaExactos(calendarios);
+    if (exactos.length === 0 || Number.isNaN(compra.getTime())) return null;
+    const encontrado = exactos.find((item, index) => {
+      const dentroDelInicio = compra >= item.inicio || index === 0;
+      return dentroDelInicio && compra <= item.cierre;
+    });
+    if (encontrado) return { ...encontrado, pendiente: false };
+    const ultimo = exactos[exactos.length - 1];
+    if (compra > ultimo.cierre) {
+      const inicio = new Date(ultimo.cierre);
+      inicio.setDate(inicio.getDate() + 1);
+      return {
+        id: `tarjeta-pendiente-${fechaParaInput(inicio)}`,
+        key: `pendiente-${fechaParaInput(inicio)}`,
+        inicio,
+        cierre: null,
+        pago: null,
+        pendiente: true
+      };
+    }
+    return null;
+  }
   
   function proxCierre() {
     const hoy = new Date();
@@ -3899,7 +4054,7 @@
     return { cierre: cierreCompra, pago: pagoCompra };
   }
   function fechaPagoCompraHoy() {
-    return fechaPagoParaCompra(new Date());
+    return calendarioExactoParaFecha(new Date()) || fechaPagoParaCompra(new Date());
   }
 
   function diaSueldoConfigurado() {
@@ -4287,6 +4442,8 @@
     if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
     if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
     initFechaCiclo();
+    // Migración estructural: se guarda localmente sin fingir una edición financiera.
+    migrarCalendarioTarjetaExacto();
     if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
@@ -4408,48 +4565,59 @@
       `;
     }
     
-    const cierre = proxCierre();
-    const pago = proxPago();
     const compraHoy = fechaPagoCompraHoy();
-    const diasCierre = diasHasta(cierre);
-    const diasPago = diasHasta(pago);
-    const diasPagoCompra = diasHasta(compraHoy.pago);
-    document.getElementById('ccProxCierre').textContent = formatFecha(cierre);
-    document.getElementById('ccProxPago').textContent = formatFecha(pago);
-    document.getElementById('ccCierreSub').textContent = diasCierre === 0 ? 'hoy' : 'en ' + diasCierre + ' días';
-    document.getElementById('ccPagoSub').textContent = diasPago === 0 ? 'hoy' : 'en ' + diasPago + ' días';
-    document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(compraHoy.pago);
-    document.getElementById('ccCompraPagoSub').textContent = `Cierra el ${formatFecha(compraHoy.cierre)} · ${diasPagoCompra === 0 ? 'vence hoy' : diasPagoCompra + ' días para pagar'}`;
-    
-    // Barra estratégica: avanza desde el cierre anterior hasta el próximo cierre
-    const cierreAnterior = fechaConDiaSeguro(cierre.getFullYear(), cierre.getMonth() - 1, state.tarjeta.diaCierre);
-    const hoyTarjeta = new Date();
-    hoyTarjeta.setHours(12, 0, 0, 0);
-    const duracionCicloTarjeta = Math.max(1, Math.round((cierre - cierreAnterior) / (1000 * 60 * 60 * 24)));
-    const diasTranscurridosTarjeta = Math.max(0, Math.round((hoyTarjeta - cierreAnterior) / (1000 * 60 * 60 * 24)));
-    const progresoTarjeta = Math.min(100, Math.max(0, (diasTranscurridosTarjeta / duracionCicloTarjeta) * 100));
-    let signalClass, signalTitle;
-    
-    if (diasCierre <= 4) {
-      // Cerca del cierre: mala compra
-      signalClass = 'bad';
-      signalTitle = `Mal día para tarjeta`;
-    } else if (diasCierre <= 10) {
-      // Media tabla
-      signalClass = 'mid';
-      signalTitle = `Día regular`;
-    } else {
-      // Buen día: recién pasó el cierre
-      signalClass = 'good';
-      signalTitle = `Buen día para tarjeta`;
-    }
-    
     const signalBar = document.getElementById('signalBar');
     const signalTrack = document.getElementById('signalTrack');
-    signalBar.className = 'tc-status-fill ' + signalClass;
-    signalBar.style.width = progresoTarjeta + '%';
-    signalTrack.setAttribute('aria-label', `${signalTitle}. Faltan ${diasCierre} día${diasCierre === 1 ? '' : 's'} para el cierre.`);
-    signalTrack.title = signalTitle;
+    if (compraHoy.pendiente) {
+      document.getElementById('ccProxCierre').textContent = 'Pendiente';
+      document.getElementById('ccProxPago').textContent = 'Pendiente';
+      document.getElementById('ccCierreSub').textContent = 'elige fecha';
+      document.getElementById('ccPagoSub').textContent = 'elige fecha';
+      document.getElementById('ccCompraPago').textContent = 'Próximo calendario pendiente';
+      document.getElementById('ccCompraPagoSub').textContent = 'Los nuevos DS quedarán separados hasta que ingreses cierre y pago';
+      signalBar.className = 'tc-status-fill mid';
+      signalBar.style.width = '100%';
+      signalTrack.setAttribute('aria-label', 'Faltan las fechas exactas del próximo ciclo de tarjeta.');
+      signalTrack.title = 'Configura el próximo ciclo';
+    } else {
+      const cierre = compraHoy.cierre;
+      const pago = compraHoy.pago;
+      const diasCierre = diasHasta(cierre);
+      const diasPago = diasHasta(pago);
+      document.getElementById('ccProxCierre').textContent = formatFecha(cierre);
+      document.getElementById('ccProxPago').textContent = formatFecha(pago);
+      document.getElementById('ccCierreSub').textContent = diasCierre === 0 ? 'hoy' : (diasCierre > 0 ? 'en ' + diasCierre + ' días' : 'cerró');
+      document.getElementById('ccPagoSub').textContent = diasPago === 0 ? 'hoy' : (diasPago > 0 ? 'en ' + diasPago + ' días' : 'venció');
+      document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(pago);
+      document.getElementById('ccCompraPagoSub').textContent = `Cierra el ${formatFecha(cierre)} · ${diasPago === 0 ? 'vence hoy' : diasPago + ' días para pagar'}`;
+
+      // Barra estratégica: usa el inicio y cierre exactos guardados para este ciclo.
+      const inicioTarjeta = compraHoy.inicio || (() => {
+        const anterior = fechaConDiaSeguro(cierre.getFullYear(), cierre.getMonth() - 1, state.tarjeta.diaCierre);
+        anterior.setDate(anterior.getDate() + 1);
+        return anterior;
+      })();
+      const hoyTarjeta = new Date();
+      hoyTarjeta.setHours(12, 0, 0, 0);
+      const duracionCicloTarjeta = Math.max(1, Math.round((cierre - inicioTarjeta) / MS_DIA) + 1);
+      const diasTranscurridosTarjeta = Math.max(0, Math.round((hoyTarjeta - inicioTarjeta) / MS_DIA));
+      const progresoTarjeta = Math.min(100, Math.max(0, (diasTranscurridosTarjeta / duracionCicloTarjeta) * 100));
+      let signalClass, signalTitle;
+      if (diasCierre <= 4) {
+        signalClass = 'bad';
+        signalTitle = 'Mal día para tarjeta';
+      } else if (diasCierre <= 10) {
+        signalClass = 'mid';
+        signalTitle = 'Día regular';
+      } else {
+        signalClass = 'good';
+        signalTitle = 'Buen día para tarjeta';
+      }
+      signalBar.className = 'tc-status-fill ' + signalClass;
+      signalBar.style.width = progresoTarjeta + '%';
+      signalTrack.setAttribute('aria-label', `${signalTitle}. Faltan ${Math.max(0, diasCierre)} día${diasCierre === 1 ? '' : 's'} para el cierre.`);
+      signalTrack.title = signalTitle;
+    }
 
     applyBalancePrivacy();
     applyFundPrivacy();
@@ -4655,28 +4823,33 @@
     });
   }
 
-  function gruposPagoTarjeta(tarjetaConfig = state.tarjeta) {
+  function gruposPagoTarjeta(tarjetaConfig = state.tarjeta, calendarios = state.tarjetaCalendarios) {
     const porFecha = new Map();
+    const exactos = calendariosTarjetaExactos(calendarios);
     movimientosTarjetaCombinados().forEach(entrada => {
       const { mov, origen, index, fechaInicioReferencia } = entrada;
       const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
       if (fechaPerteneceACicloPagado(fechaMovimiento)) return;
-      const calendario = fechaPagoParaCompra(fechaMovimiento, tarjetaConfig);
-      const key = fechaParaInput(calendario.pago);
+      const calendario = exactos.length > 0
+        ? calendarioExactoParaFecha(fechaMovimiento, exactos)
+        : fechaPagoParaCompra(fechaMovimiento, tarjetaConfig);
+      if (!calendario) return;
+      const key = calendario.pendiente
+        ? calendario.key
+        : `exacto-${calendario.id || fechaParaInput(calendario.pago)}`;
       if (!porFecha.has(key)) {
-        const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || 24));
-        const cierreAnterior = fechaConDiaSeguro(
-          calendario.cierre.getFullYear(),
-          calendario.cierre.getMonth() - 1,
-          diaCierre
-        );
-        const inicio = new Date(cierreAnterior);
-        inicio.setDate(inicio.getDate() + 1);
+        let inicio = calendario.inicio ? new Date(calendario.inicio) : null;
+        if (!inicio && calendario.cierre) {
+          const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || 24));
+          inicio = fechaConDiaSeguro(calendario.cierre.getFullYear(), calendario.cierre.getMonth() - 1, diaCierre);
+          inicio.setDate(inicio.getDate() + 1);
+        }
         porFecha.set(key, {
           key,
           inicio,
           pago: calendario.pago,
           cierre: calendario.cierre,
+          pendiente: !!calendario.pendiente,
           total: 0,
           totalFondo: 0,
           count: 0,
@@ -4699,9 +4872,9 @@
         ...grupo,
         total: redondearDinero(grupo.total),
         totalFondo: redondearDinero(grupo.totalFondo),
-        cerrado: hoy > grupo.cierre
+        cerrado: !grupo.pendiente && !!grupo.cierre && hoy > grupo.cierre
       }))
-      .sort((a, b) => a.pago - b.pago);
+      .sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
   }
 
   function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjeta()) {
@@ -4712,8 +4885,8 @@
     return redondearDinero((Number(state.deudaActual) || 0) - registrado);
   }
 
-  function resumenDeudaTarjeta(tarjetaConfig = state.tarjeta) {
-    const grupos = gruposPagoTarjeta(tarjetaConfig);
+  function resumenDeudaTarjeta(tarjetaConfig = state.tarjeta, calendarios = state.tarjetaCalendarios) {
+    const grupos = gruposPagoTarjeta(tarjetaConfig, calendarios);
     const registrado = redondearDinero(grupos.reduce((total, grupo) => total + grupo.total, 0));
     const cubiertoPorFondo = redondearDinero(grupos.reduce((total, grupo) => total + grupo.totalFondo, 0));
     const ajuste = ajusteDeudaTarjetaActual(grupos);
@@ -4731,7 +4904,9 @@
     const porIndice = new Map();
     grupos.forEach(grupo => {
       grupo.esAnterior = grupo.cerrado;
-      grupo.etiqueta = grupo.cerrado ? 'Próximo pago de tarjeta' : 'Ciclo abierto de tarjeta';
+      grupo.etiqueta = grupo.pendiente
+        ? 'Próximo ciclo · fechas pendientes'
+        : (grupo.cerrado ? 'Próximo pago de tarjeta' : 'Ciclo abierto de tarjeta');
       grupo.indices.forEach(index => porIndice.set(index, grupo));
     });
     return { grupos, porIndice };
@@ -4741,7 +4916,10 @@
     if (!esMovimientoTarjeta(mov)) return null;
     const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
     if (fechaPerteneceACicloPagado(fechaMovimiento)) return null;
-    const key = fechaParaInput(fechaPagoParaCompra(fechaMovimiento).pago);
+    const calendario = calendarioExactoParaFecha(fechaMovimiento);
+    const key = calendario
+      ? (calendario.pendiente ? calendario.key : `exacto-${calendario.id}`)
+      : `exacto-${fechaParaInput(fechaPagoParaCompra(fechaMovimiento).pago)}`;
     return grupos.find(grupo => grupo.key === key) || null;
   }
 
@@ -4771,6 +4949,15 @@
   function divisorCicloTarjeta(grupo) {
     const div = document.createElement('div');
     div.className = 'card-cycle-divider';
+    if (grupo.pendiente) {
+      div.innerHTML = `
+        <span class="card-cycle-divider-text">
+          <span class="card-cycle-divider-label">Próximo ciclo de tarjeta · fechas pendientes</span>
+          <span class="card-cycle-divider-date">Desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
+        </span>
+      `;
+      return div;
+    }
     div.innerHTML = `
       <span class="card-cycle-divider-text">
         <span class="card-cycle-divider-label">Ciclo de tarjeta · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
@@ -4781,7 +4968,10 @@
   }
 
   function badgePagoTarjeta(grupo) {
-    return grupo ? `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>` : '';
+    if (!grupo) return '';
+    return grupo.pendiente
+      ? '<span class="payment-badge">Fechas pendientes</span>'
+      : `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>`;
   }
 
   function badgeCuotaMovimiento(mov) {
@@ -5973,6 +6163,7 @@
   function openNewCycleSetup() {
     const inicioSugerido = inicioDelDia(new Date());
     const proximoSueldoSugerido = fechaSueldoEstimadaDesde(inicioSugerido);
+    const calendarioTarjetaSugerido = fechaPagoParaCompra(inicioSugerido, state.tarjeta);
     openModal(`
       <h2>Preparar <span class="accent">nuevo ciclo</span></h2>
       <p class="modal-sub">Paso 2 de 2 · La fecha real en que recibes el sueldo inicia el nuevo ciclo.</p>
@@ -5995,15 +6186,15 @@
       </div>
       <div class="manual-ranges-box" style="margin-bottom:18px;">
         <div class="manual-ranges-title">Calendario de la tarjeta</div>
-        <div class="manual-ranges-sub">Actualiza estos días si el banco cambió el próximo cierre o pago.</div>
+        <div class="manual-ranges-sub">Ingresa las fechas exactas que muestra el banco para este ciclo. No se repetirán en los meses siguientes.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
           <div class="modal-field" style="margin:0;">
-            <label>Día de cierre</label>
-            <input type="number" min="1" max="31" id="newCierre" value="${state.tarjeta.diaCierre}">
+            <label>Fecha de cierre</label>
+            <input class="calendar-date-input" type="date" id="newCierre" value="${fechaParaInput(calendarioTarjetaSugerido.cierre)}">
           </div>
           <div class="modal-field" style="margin:0;">
-            <label>Día de pago</label>
-            <input type="number" min="1" max="31" id="newPago" value="${state.tarjeta.diaPago}">
+            <label>Pago máximo</label>
+            <input class="calendar-date-input" type="date" id="newPago" value="${fechaParaInput(calendarioTarjetaSugerido.pago)}">
           </div>
         </div>
       </div>
@@ -6119,15 +6310,15 @@
     const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
     const intocable = parseFloat(document.getElementById('newIntocable')?.value);
     const deuda = parseFloat(document.getElementById('newDeuda')?.value);
-    const diaCierre = parseInt(document.getElementById('newCierre')?.value);
-    const diaPago = parseInt(document.getElementById('newPago')?.value);
+    const cierreTarjeta = fechaDesdeInput(document.getElementById('newCierre')?.value);
+    const pagoTarjeta = fechaDesdeInput(document.getElementById('newPago')?.value);
     const fechaInicio = document.getElementById('newFechaInicio')?.value;
     const fechaProximoSueldo = document.getElementById('newProximoSueldo')?.value;
     const modoManual = !!document.getElementById('newModoManual')?.checked;
     const numSem = parseInt(document.getElementById('newNumSem')?.value);
 
     if (isNaN(disponible) || disponible < 0 || isNaN(deuda) || deuda < 0
-      || !(diaCierre >= 1 && diaCierre <= 31) || !(diaPago >= 1 && diaPago <= 31)
+      || !cierreTarjeta || !pagoTarjeta || pagoTarjeta <= cierreTarjeta
       || !fechaInicio || (!modoManual && !fechaProximoSueldo)
       || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       toast('Revisa los datos del nuevo ciclo', true);
@@ -6141,8 +6332,24 @@
       return;
     }
 
-    const tarjetaNueva = { ...state.tarjeta, diaCierre, diaPago };
-    const resumenTarjeta = resumenDeudaTarjeta(tarjetaNueva);
+    const tarjetaNueva = {
+      ...state.tarjeta,
+      diaCierre: cierreTarjeta.getDate(),
+      diaPago: pagoTarjeta.getDate()
+    };
+    const calendariosTarjetaNuevos = calendarioTarjetaConRegistro(
+      cierreTarjeta,
+      pagoTarjeta,
+      fechaInicio,
+      state.tarjetaCalendarios
+    );
+    const registroTarjetaNuevo = calendariosTarjetaExactos(calendariosTarjetaNuevos)
+      .find(item => item.cicloSueldoId === fechaInicio);
+    if (!registroTarjetaNuevo || registroTarjetaNuevo.cierre < registroTarjetaNuevo.inicio) {
+      toast('El nuevo cierre debe ser posterior al cierre anterior', true);
+      return;
+    }
+    const resumenTarjeta = resumenDeudaTarjeta(tarjetaNueva, calendariosTarjetaNuevos);
     const deudaOficial = redondearDinero(deuda);
     const diferencia = redondearDinero(deudaOficial - resumenTarjeta.total);
     const candidatoPago = diferencia < -0.005
@@ -6163,6 +6370,9 @@
       nuevaFechaInicio,
       nuevoProximoSueldo,
       tarjetaNueva,
+      calendarioCierre: fechaParaInput(cierreTarjeta),
+      calendarioPago: fechaParaInput(pagoTarjeta),
+      calendariosTarjetaNuevos,
       resumenTarjeta,
       candidatoPago
     };
@@ -6214,8 +6424,8 @@
       newMeta: datos.meta,
       newIntocable: datos.intocable,
       newDeuda: datos.deuda,
-      newCierre: datos.tarjetaNueva.diaCierre,
-      newPago: datos.tarjetaNueva.diaPago,
+      newCierre: datos.calendarioCierre,
+      newPago: datos.calendarioPago,
       newFechaInicio: datos.fechaInicio,
       newProximoSueldo: datos.fechaProximoSueldo,
       newNumSem: datos.numSem
@@ -6302,6 +6512,7 @@
     );
     state.tarjetaAjusteDeuda = redondearDinero(datos.deuda - totalRegistradoDespues);
     state.tarjeta = datos.tarjetaNueva;
+    state.tarjetaCalendarios = datos.calendariosTarjetaNuevos;
 
     const { disponible, meta, intocable, deuda, fechaInicio, modoManual, numSem, nuevaFechaInicio, nuevoProximoSueldo } = datos;
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
@@ -7277,21 +7488,39 @@
     render();
   }
   
+  function proximaFechaRecurrente(day, desde = new Date()) {
+    const referencia = new Date(desde);
+    referencia.setHours(12, 0, 0, 0);
+    const dia = Math.max(1, Math.min(31, parseInt(day) || 1));
+    let fecha = fechaConDiaSeguro(referencia.getFullYear(), referencia.getMonth(), dia);
+    if (fecha < referencia) {
+      fecha = fechaConDiaSeguro(referencia.getFullYear(), referencia.getMonth() + 1, dia);
+    }
+    return fecha;
+  }
+
   function openCCConfig() {
+    const cicloSueldoId = claveCicloSueldo();
+    const exactos = calendariosTarjetaExactos();
+    const delCiclo = exactos.find(item => item.cicloSueldoId === cicloSueldoId);
+    const calendarioHoy = calendarioExactoParaFecha(new Date());
+    const recurrente = fechaPagoParaCompra(new Date(), state.tarjeta);
+    const calendarioActual = delCiclo || (!calendarioHoy?.pendiente ? calendarioHoy : null) || recurrente;
+    const proximoSueldo = proximaFechaRecurrente(diaSueldoConfigurado());
     openModal(`
       <h2>Calendario <span class="accent">tarjeta</span></h2>
-      <p class="modal-sub">Los DS pendientes se reorganizarán entre ciclos. La deuda total no cambiará por editar estas fechas.</p>
+      <p class="modal-sub">Elige las fechas exactas que te dio el banco para este ciclo. No se repetirán automáticamente: los ciclos anteriores quedarán intactos y los DS se reorganizarán sin cambiar la deuda total.</p>
       <div class="modal-field">
-        <label>Día de cierre</label>
-        <input type="number" min="1" max="31" id="setCierre" value="${state.tarjeta.diaCierre}">
+        <label for="setCierre">Fecha de cierre</label>
+        <input class="calendar-date-input" type="date" id="setCierre" value="${fechaParaInput(calendarioActual.cierre)}">
       </div>
       <div class="modal-field">
-        <label>Día de pago máximo</label>
-        <input type="number" min="1" max="31" id="setPago" value="${state.tarjeta.diaPago}">
+        <label for="setPago">Fecha de pago máximo</label>
+        <input class="calendar-date-input" type="date" id="setPago" value="${fechaParaInput(calendarioActual.pago)}">
       </div>
       <div class="modal-field">
-        <label>Día de sueldo</label>
-        <input type="number" min="1" max="31" id="setSueldo" value="${diaSueldoConfigurado()}">
+        <label for="setSueldo">Fecha de sueldo</label>
+        <input class="calendar-date-input" type="date" id="setSueldo" value="${fechaParaInput(proximoSueldo)}">
       </div>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -7301,13 +7530,25 @@
   }
   
   function saveCCConfig() {
-    const cierre = parseInt(document.getElementById('setCierre').value);
-    const pago = parseInt(document.getElementById('setPago').value);
-    const sueldo = parseInt(document.getElementById('setSueldo').value);
-    if (cierre >= 1 && cierre <= 31) state.tarjeta.diaCierre = cierre;
-    if (pago >= 1 && pago <= 31) state.tarjeta.diaPago = pago;
-    if (sueldo >= 1 && sueldo <= 31) state.tarjeta.diaSueldo = sueldo;
-    const registradoReorganizado = gruposPagoTarjeta(state.tarjeta)
+    const cierre = fechaDesdeInput(document.getElementById('setCierre')?.value);
+    const pago = fechaDesdeInput(document.getElementById('setPago')?.value);
+    const sueldo = fechaDesdeInput(document.getElementById('setSueldo')?.value);
+    if (!cierre || !pago || pago <= cierre) {
+      toast('El pago debe ser posterior al cierre', true);
+      return;
+    }
+    const nuevosCalendarios = calendarioTarjetaConRegistro(cierre, pago, claveCicloSueldo());
+    const registroActual = calendariosTarjetaExactos(nuevosCalendarios)
+      .find(item => item.cicloSueldoId === claveCicloSueldo());
+    if (!registroActual || registroActual.cierre < registroActual.inicio) {
+      toast('El cierre debe ser posterior al inicio de este ciclo de tarjeta', true);
+      return;
+    }
+    state.tarjeta.diaCierre = cierre.getDate();
+    state.tarjeta.diaPago = pago.getDate();
+    if (sueldo) state.tarjeta.diaSueldo = sueldo.getDate();
+    state.tarjetaCalendarios = nuevosCalendarios;
+    const registradoReorganizado = gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios)
       .reduce((total, grupo) => total + grupo.total, 0);
     state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registradoReorganizado);
     closeModal();
@@ -7723,7 +7964,10 @@
   }
 
   function escenarioCompra(fechaCompra, monto, fechaPlan, currencyInfo = null) {
-    const calendario = fechaPagoParaCompra(fechaCompra);
+    const calendarioExacto = calendarioExactoParaFecha(fechaCompra);
+    const calendario = calendarioExacto && !calendarioExacto.pendiente
+      ? calendarioExacto
+      : fechaPagoParaCompra(fechaCompra);
     const sueldos = fechasSueldoEntre(fechaPlan, calendario.pago);
     let nivel = 'bad';
     let margen = 'Poco margen';
