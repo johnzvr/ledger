@@ -1902,38 +1902,25 @@
   }
 
   .card-cycle-divider {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin: 14px 0 4px;
-    padding: 8px 10px;
-    border-radius: 11px;
-    background: rgba(223,211,232,0.52);
+    margin: 16px 0 6px;
+    padding: 4px 0 4px 14px;
+    border-left: 4px solid var(--line-hi);
     color: var(--ink);
   }
-  .card-cycle-divider.overdue { background: rgba(240,208,196,0.62); }
   .card-cycle-divider-text { min-width: 0; }
   .card-cycle-divider-label {
     display: block;
-    color: var(--ink-dim);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 1px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 650;
+    margin-bottom: 2px;
   }
   .card-cycle-divider-date {
     display: block;
-    font-size: 10px;
-    font-weight: 650;
+    font-size: 11px;
+    font-weight: 500;
   }
-  .card-cycle-divider-amount {
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 13px;
-    font-weight: 750;
-    white-space: nowrap;
-  }
+  .card-cycle-divider-date strong { font-weight: 800; }
   .log-meta .payment-badge {
     background: var(--lavender);
     color: var(--ink-dim);
@@ -1945,96 +1932,6 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
-  body.dark .card-cycle-divider { background: rgba(180,140,220,0.12); }
-  body.dark .card-cycle-divider.overdue { background: #2A1512; }
-
-  .card-debt-headsup {
-    background: var(--lavender-soft, #F0EAF5);
-    border: 1px solid var(--line);
-    border-radius: 13px;
-    padding: 10px 12px;
-    margin: 0 0 10px;
-  }
-  .card-debt-headsup-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 3px;
-  }
-  .card-debt-headsup-title {
-    font-size: 10px;
-    font-weight: 750;
-    color: var(--ink);
-  }
-  .card-debt-headsup-total {
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 15px;
-    font-weight: 800;
-    white-space: nowrap;
-  }
-  .card-debt-headsup-list { display: grid; gap: 7px; }
-  .card-debt-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 9px 10px;
-    background: rgba(255,255,255,0.55);
-    border-radius: 12px;
-  }
-  .card-debt-row-main { min-width: 0; }
-  .card-debt-row-label {
-    display: block;
-    font-size: 9px;
-    color: var(--ink-dim);
-    font-weight: 750;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-  .card-debt-row-date {
-    display: block;
-    font-size: 11px;
-    color: var(--ink);
-    font-weight: 650;
-    margin-top: 1px;
-  }
-  .card-debt-row-fund {
-    display: block;
-    color: #53768D;
-    font-size: 8px;
-    font-weight: 700;
-    margin-top: 2px;
-  }
-  .card-debt-row-side { text-align: right; flex-shrink: 0; }
-  .card-debt-row-amount {
-    display: block;
-    font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 13px;
-    font-weight: 800;
-  }
-  .card-debt-pay-btn {
-    border: 0;
-    background: var(--ink);
-    color: var(--bg);
-    border-radius: 7px;
-    padding: 4px 7px;
-    margin-top: 3px;
-    font: 700 8px/1 inherit;
-    cursor: pointer;
-  }
-  .card-debt-adjustment {
-    color: var(--ink-dim);
-    font-size: 8px;
-    padding: 0;
-  }
-  .card-debt-mismatch {
-    color: var(--danger);
-    font-size: 9px;
-    font-weight: 700;
-    margin-top: 8px;
-  }
-  body.dark .card-debt-headsup { background: rgba(180,140,220,0.10); }
-  body.dark .card-debt-row { background: rgba(255,255,255,0.045); }
   
   /* Log */
   .log-item {
@@ -3060,7 +2957,6 @@
           </div>
           <h2>Movimientos <span class="aside" id="movCount"></span></h2>
         </div>
-        <div id="cardDebtHeadsup"></div>
         <div id="logContainer"></div>
       </section>
 
@@ -4365,15 +4261,18 @@
     return formatFecha(fecha).replace(/\.$/, '');
   }
 
+  function fechaPagoSinAnio(fecha) {
+    return new Date(fecha).toLocaleDateString('es-PE', { day: 'numeric', month: 'long' });
+  }
+
   function divisorCicloTarjeta(grupo) {
     const div = document.createElement('div');
-    div.className = 'card-cycle-divider' + (grupo.esAnterior ? ' overdue' : '');
+    div.className = 'card-cycle-divider';
     div.innerHTML = `
       <span class="card-cycle-divider-text">
-        <span class="card-cycle-divider-label">${grupo.etiqueta} · ${etiquetaPagoCorta(grupo.inicio)}–${etiquetaPagoCorta(grupo.cierre)}</span>
-        <span class="card-cycle-divider-date">Paga hasta el ${formatFechaCompleta(grupo.pago)}</span>
+        <span class="card-cycle-divider-label">Ciclo ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
+        <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
       </span>
-      <span class="card-cycle-divider-amount">S/ ${fmt(grupo.total)}${grupo.totalFondo > 0 ? ` · F ${fmt(grupo.totalFondo)}` : ''}</span>
     `;
     return div;
   }
@@ -4382,36 +4281,10 @@
     return grupo ? `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>` : '';
   }
 
-  function renderCardDebtHeadsup() {
-    const container = document.getElementById('cardDebtHeadsup');
-    if (!container) return;
-    const resumen = resumenDeudaTarjeta();
-    const deudaOficial = redondearDinero(state.deudaActual);
-    if (resumen.grupos.length === 0 && Math.abs(deudaOficial) < 0.005) {
-      container.innerHTML = '';
-      return;
-    }
-
-    const diferencia = redondearDinero(resumen.total - deudaOficial);
-    container.innerHTML = `
-      <div class="card-debt-headsup">
-        <div class="card-debt-headsup-head">
-          <span class="card-debt-headsup-title">Deuda total de tarjeta</span>
-          <span class="card-debt-headsup-total">S/ ${fmt(deudaOficial)}</span>
-        </div>
-        <div class="card-debt-adjustment">
-          DS identificados: <strong>S/ ${fmt(resumen.registrado)}</strong>${Math.abs(resumen.ajuste) > 0.005 ? ` · ${resumen.ajuste > 0 ? 'deuda previa/ajuste' : 'pago/ajuste a favor'}: <strong>${resumen.ajuste > 0 ? '+' : '−'}S/ ${fmt(Math.abs(resumen.ajuste))}</strong>` : ''}${resumen.cubiertoPorFondo > 0 ? ` · F+DS: <strong>S/ ${fmt(resumen.cubiertoPorFondo)}</strong>` : ''}
-        </div>
-        ${Math.abs(diferencia) > 0.005 ? `<div class="card-debt-mismatch">Revisa los totales: el desglose difiere en S/ ${fmt(Math.abs(diferencia))}.</div>` : ''}
-      </div>
-    `;
-  }
-  
   function renderLog() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
     const recientesAnteriores = movimientosRecientesCicloAnterior();
-    renderCardDebtHeadsup();
     document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
     if (state.redoMovement) {
       if (!redoMovementIsValid()) state.redoMovement = null;
