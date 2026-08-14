@@ -1358,32 +1358,6 @@
     align-items: end;
   }
   .purchase-sim-actions .modal-field { margin-bottom: 0; }
-  .purchase-mode-switch {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-    padding: 4px;
-    margin-bottom: 16px;
-    border-radius: 14px;
-    background: var(--line);
-  }
-  .purchase-mode-option {
-    min-height: 40px;
-    border: none;
-    border-radius: 11px;
-    background: transparent;
-    color: var(--ink-dim);
-    font-family: inherit;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .purchase-mode-option.active {
-    background: var(--bg);
-    color: var(--ink);
-    box-shadow: 0 1px 6px rgba(0,0,0,0.08);
-  }
-  body.dark .purchase-mode-option.active { background: #2A2A2E; }
   .purchase-sim-field-head {
     display: flex;
     align-items: center;
@@ -7343,9 +7317,11 @@
 
   const PURCHASE_INSTALLMENT_TEA = Object.freeze({ PEN: 83.32, USD: 65.92 });
   const PURCHASE_INSTALLMENT_TERMS = Object.freeze(Array.from({ length: 35 }, (_, index) => index + 2));
+  const PURCHASE_RESULT_TERMS = Object.freeze([1, ...PURCHASE_INSTALLMENT_TERMS]);
   let purchaseSimulationCurrency = 'PEN';
   let purchaseSimulationMode = 'single';
-  let purchaseSimulationInstallments = 12;
+  let purchaseSimulationInstallments = 1;
+  let lastPurchaseSimulationInstallments = 12;
   let pendingPurchaseSimulation = null;
 
   function purchaseSimulationTea(currency = purchaseSimulationCurrency) {
@@ -7369,6 +7345,7 @@
       secondary.setAttribute('onclick', 'closeModal()');
       close.hidden = true;
       register.hidden = false;
+      register.textContent = purchaseSimulationMode === 'single' ? 'Registrar compra' : 'Registrar en cuotas';
     } else {
       secondary.textContent = 'Editar fechas';
       secondary.setAttribute('onclick', 'openCCConfig()');
@@ -7379,14 +7356,20 @@
 
   function updatePurchaseInstallmentUi() {
     const settings = document.getElementById('purchaseInstallmentSettings');
-    if (settings) settings.classList.toggle('visible', purchaseSimulationMode === 'installments');
+    if (settings) settings.classList.add('visible');
     const tea = document.getElementById('purchaseInstallmentTea');
-    if (tea) tea.textContent = `TEA ${purchaseSimulationTea().toFixed(2)}%`;
+    if (tea) {
+      tea.textContent = purchaseSimulationInstallments === 1
+        ? 'Sin intereses'
+        : `TEA ${purchaseSimulationTea().toFixed(2)}%`;
+    }
     const hint = document.getElementById('purchaseInstallmentHint');
     if (hint) {
-      hint.textContent = purchaseSimulationCurrency === 'USD'
-        ? 'La cuota se calcula en dólares. Su equivalente en soles usa el tipo de cambio actual.'
-        : 'La cuota se calcula con la tasa para compras en soles.';
+      hint.textContent = purchaseSimulationInstallments === 1
+        ? 'Pago único, sin intereses de financiamiento.'
+        : purchaseSimulationCurrency === 'USD'
+          ? 'La cuota se calcula en dólares. Su equivalente en soles usa el tipo de cambio actual.'
+          : 'La cuota se calcula con la tasa para compras en soles.';
     }
     const selector = document.getElementById('purchaseInstallmentSelect');
     if (selector) selector.value = String(purchaseSimulationInstallments);
@@ -7394,19 +7377,28 @@
     if (resultSelector) resultSelector.value = String(purchaseSimulationInstallments);
     const minus = document.querySelector('[data-installment-step="-1"]');
     const plus = document.querySelector('[data-installment-step="1"]');
-    if (minus) minus.disabled = purchaseSimulationInstallments <= PURCHASE_INSTALLMENT_TERMS[0];
+    if (minus) minus.disabled = purchaseSimulationInstallments <= PURCHASE_RESULT_TERMS[0];
     if (plus) plus.disabled = purchaseSimulationInstallments >= PURCHASE_INSTALLMENT_TERMS[PURCHASE_INSTALLMENT_TERMS.length - 1];
   }
 
   function setPurchaseSimulationMode(mode) {
+    const resultado = document.getElementById('purchaseSimulationResult');
+    const input = document.getElementById('simPurchaseAmount');
+    const monto = input ? parseFloat(String(input.value).replace(',', '.')) : 0;
+    const recalcularEnVivo = resultado
+      && resultado.innerHTML.trim().length > 0
+      && Number.isFinite(monto)
+      && monto > 0;
+    if (purchaseSimulationMode === 'installments' && purchaseSimulationInstallments >= 2) {
+      lastPurchaseSimulationInstallments = purchaseSimulationInstallments;
+    }
     purchaseSimulationMode = mode === 'installments' ? 'installments' : 'single';
-    document.querySelectorAll('.purchase-mode-option').forEach(btn => {
-      const active = btn.dataset.mode === purchaseSimulationMode;
-      btn.classList.toggle('active', active);
-      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-    });
+    purchaseSimulationInstallments = purchaseSimulationMode === 'single'
+      ? 1
+      : lastPurchaseSimulationInstallments;
     updatePurchaseInstallmentUi();
-    clearPurchaseSimulationResult();
+    if (recalcularEnVivo) calculatePurchaseSimulation();
+    else clearPurchaseSimulationResult();
   }
 
   function setPurchaseSimulationInstallments(months) {
@@ -7414,24 +7406,33 @@
     const resultado = document.getElementById('purchaseSimulationResult');
     const input = document.getElementById('simPurchaseAmount');
     const monto = input ? parseFloat(String(input.value).replace(',', '.')) : 0;
-    const recalcularEnVivo = purchaseSimulationMode === 'installments'
-      && resultado
+    const recalcularEnVivo = resultado
       && resultado.innerHTML.trim().length > 0
       && Number.isFinite(monto)
       && monto > 0;
-    purchaseSimulationInstallments = PURCHASE_INSTALLMENT_TERMS.includes(parsed) ? parsed : 12;
+    if (parsed === 1) {
+      if (purchaseSimulationMode === 'installments' && purchaseSimulationInstallments >= 2) {
+        lastPurchaseSimulationInstallments = purchaseSimulationInstallments;
+      }
+      purchaseSimulationMode = 'single';
+      purchaseSimulationInstallments = 1;
+    } else {
+      purchaseSimulationMode = 'installments';
+      purchaseSimulationInstallments = PURCHASE_INSTALLMENT_TERMS.includes(parsed) ? parsed : 12;
+      lastPurchaseSimulationInstallments = purchaseSimulationInstallments;
+    }
     updatePurchaseInstallmentUi();
     if (recalcularEnVivo) calculatePurchaseSimulation();
     else clearPurchaseSimulationResult();
   }
 
   function stepPurchaseSimulationInstallments(direction) {
-    const currentIndex = PURCHASE_INSTALLMENT_TERMS.indexOf(purchaseSimulationInstallments);
+    const currentIndex = PURCHASE_RESULT_TERMS.indexOf(purchaseSimulationInstallments);
     const nextIndex = Math.max(
       0,
-      Math.min(PURCHASE_INSTALLMENT_TERMS.length - 1, currentIndex + (direction < 0 ? -1 : 1))
+      Math.min(PURCHASE_RESULT_TERMS.length - 1, currentIndex + (direction < 0 ? -1 : 1))
     );
-    setPurchaseSimulationInstallments(PURCHASE_INSTALLMENT_TERMS[nextIndex]);
+    setPurchaseSimulationInstallments(PURCHASE_RESULT_TERMS[nextIndex]);
   }
 
   function setPurchaseSimulationCurrency(currency) {
@@ -7488,7 +7489,8 @@
   function openPurchaseSimulator() {
     purchaseSimulationCurrency = 'PEN';
     purchaseSimulationMode = 'single';
-    purchaseSimulationInstallments = 12;
+    purchaseSimulationInstallments = 1;
+    lastPurchaseSimulationInstallments = 12;
     pendingPurchaseSimulation = null;
     openModal(`
       <h2 class="purchase-modal-title">Simular compra</h2>
@@ -7496,10 +7498,6 @@
         Revisa cuánto cambia tu margen y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
         <span style="font-size:11px;">Cálculo con sueldo el día ${diaSueldoConfigurado()}.</span>
       </p>
-      <div class="purchase-mode-switch" role="group" aria-label="Modalidad de compra">
-        <button class="purchase-mode-option active" data-mode="single" aria-pressed="true" onclick="setPurchaseSimulationMode('single')">Un solo pago</button>
-        <button class="purchase-mode-option" data-mode="installments" aria-pressed="false" onclick="setPurchaseSimulationMode('installments')">En cuotas</button>
-      </div>
       <div class="purchase-sim-field-head">
         <label for="simPurchaseAmount">Monto que planeas gastar</label>
         <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
@@ -7516,20 +7514,20 @@
       <div class="purchase-conversion-preview" id="purchaseConversionPreview"></div>
       <div class="purchase-installment-settings" id="purchaseInstallmentSettings">
         <div class="purchase-installment-head">
-          <span>Cantidad de cuotas</span>
-          <strong id="purchaseInstallmentTea">TEA ${purchaseSimulationTea().toFixed(2)}%</strong>
+          <span>Forma de pago</span>
+          <strong id="purchaseInstallmentTea">Sin intereses</strong>
         </div>
-        <div class="purchase-installment-stepper" role="group" aria-label="Cantidad de cuotas">
-          <button class="purchase-installment-step" type="button" data-installment-step="-1" aria-label="Una cuota menos" onclick="stepPurchaseSimulationInstallments(-1)">−</button>
+        <div class="purchase-installment-stepper" role="group" aria-label="Forma de pago">
+          <button class="purchase-installment-step" type="button" data-installment-step="-1" aria-label="Reducir cantidad de pagos" onclick="stepPurchaseSimulationInstallments(-1)">−</button>
           <div class="purchase-installment-select-wrap">
-            <select class="purchase-installment-select" id="purchaseInstallmentSelect" aria-label="Seleccionar cantidad de cuotas" onchange="setPurchaseSimulationInstallments(this.value)">
-              ${PURCHASE_INSTALLMENT_TERMS.map(months => `<option value="${months}" ${months === 12 ? 'selected' : ''}>${months} cuotas</option>`).join('')}
+            <select class="purchase-installment-select" id="purchaseInstallmentSelect" aria-label="Seleccionar forma de pago" onchange="setPurchaseSimulationInstallments(this.value)">
+              ${PURCHASE_RESULT_TERMS.map(months => `<option value="${months}" ${months === 1 ? 'selected' : ''}>${months === 1 ? '1 pago' : `${months} cuotas`}</option>`).join('')}
             </select>
             <span class="purchase-installment-select-arrow" aria-hidden="true"></span>
           </div>
-          <button class="purchase-installment-step" type="button" data-installment-step="1" aria-label="Una cuota más" onclick="stepPurchaseSimulationInstallments(1)">+</button>
+          <button class="purchase-installment-step" type="button" data-installment-step="1" aria-label="Aumentar cantidad de pagos" onclick="stepPurchaseSimulationInstallments(1)">+</button>
         </div>
-        <div class="purchase-installment-hint" id="purchaseInstallmentHint">La cuota se calcula con la tasa para compras en soles.</div>
+        <div class="purchase-installment-hint" id="purchaseInstallmentHint">Pago único, sin intereses de financiamiento.</div>
       </div>
       <div id="purchaseSimulationResult"></div>
       <div class="modal-buttons">
@@ -7547,6 +7545,17 @@
   }
 
   function calcularPlanCuotas(montoOriginal, currency, meses) {
+    if (meses <= 1) {
+      const monto = redondearDinero(montoOriginal);
+      return {
+        meses: 1,
+        teaPct: 0,
+        tasaMensual: 0,
+        cuota: monto,
+        total: monto,
+        intereses: 0
+      };
+    }
     const teaPct = purchaseSimulationTea(currency);
     const tea = teaPct / 100;
     const tasaMensual = Math.pow(1 + tea, 1 / 12) - 1;
@@ -7582,6 +7591,9 @@
     const primera = escenario.calendario.pago;
     const ultima = fechaUltimaCuota(primera, plan.meses);
     const cuotaTexto = formatInstallmentMoney(plan.cuota, currencyInfo.currency);
+    if (plan.meses === 1) {
+      return `Pago único: ${cuotaTexto} el ${formatFechaCompleta(primera)}.`;
+    }
     return `Primera de ${plan.meses} cuotas: ${cuotaTexto} el ${formatFecha(primera)}. La última sería el ${formatFechaCompleta(ultima)}.`;
   }
 
@@ -7596,11 +7608,11 @@
     return `
       <div class="purchase-finance-summary">
         <div class="purchase-finance-top">
-          <span class="purchase-finance-kicker">Financiamiento estimado</span>
+          <span class="purchase-finance-kicker">${plan.meses === 1 ? 'Pago estimado' : 'Financiamiento estimado'}</span>
           <div class="purchase-finance-payment">
             <span class="purchase-result-term-wrap">
               <select class="purchase-result-term-select" id="purchaseResultInstallmentSelect" aria-label="Cambiar cantidad de cuotas y recalcular" onchange="setPurchaseSimulationInstallments(this.value)">
-                ${PURCHASE_INSTALLMENT_TERMS.map(months => `<option value="${months}" ${months === plan.meses ? 'selected' : ''}>${months} cuotas</option>`).join('')}
+                ${PURCHASE_RESULT_TERMS.map(months => `<option value="${months}" ${months === plan.meses ? 'selected' : ''}>${months === 1 ? '1 pago' : `${months} cuotas`}</option>`).join('')}
               </select>
               <span class="purchase-result-term-arrow" aria-hidden="true"></span>
             </span>
@@ -7622,7 +7634,7 @@
     `;
   }
 
-  function resumenRecomendacionCuotas(esperarHasta, compraEsperando) {
+  function resumenRecomendacionCuotas(esperarHasta, compraEsperando, plan) {
     const sueldosAntesDelPago = Array.isArray(compraEsperando.sueldos) ? compraEsperando.sueldos : [];
     const contextoAbonos = sueldosAntesDelPago.length
       ? `Antes de empezar a pagar recibirías ${sueldosAntesDelPago.length} abono${sueldosAntesDelPago.length === 1 ? '' : 's'} de sueldo: ${unirFechasCortas(sueldosAntesDelPago)}.`
@@ -7634,7 +7646,7 @@
           <span class="purchase-sim-badge good">Recomendado</span>
         </div>
         <div class="purchase-recommendation-title">Esperar al ${formatFecha(esperarHasta)}</div>
-        <div class="purchase-recommendation-copy">La primera cuota sería el ${formatFechaCompleta(compraEsperando.calendario.pago)}. ${contextoAbonos}</div>
+        <div class="purchase-recommendation-copy">${plan?.meses === 1 ? 'El pago sería' : 'La primera cuota sería'} el ${formatFechaCompleta(compraEsperando.calendario.pago)}. ${contextoAbonos}</div>
       </div>
     `;
   }
@@ -7685,8 +7697,8 @@
           <div class="purchase-compare-title">${titulo}</div>
           <span class="purchase-sim-badge ${escenario.nivel}">${escenario.margen}</span>
         </div>
-        <div class="purchase-compare-payment">Primera cuota · ${formatInstallmentMoney(plan.cuota, currencyInfo.currency)} · ${formatFechaCompleta(escenario.calendario.pago)}</div>
-        <div class="purchase-compare-meta">Cierra ${formatFecha(escenario.calendario.cierre)} · ${abonos} · Última cuota ${formatFechaCompleta(ultima)}.</div>
+        <div class="purchase-compare-payment">${plan.meses === 1 ? 'Pago único' : 'Primera cuota'} · ${formatInstallmentMoney(plan.cuota, currencyInfo.currency)} · ${formatFechaCompleta(escenario.calendario.pago)}</div>
+        <div class="purchase-compare-meta">Cierra ${formatFecha(escenario.calendario.cierre)} · ${abonos}${plan.meses === 1 ? '.' : ` · Última cuota ${formatFechaCompleta(ultima)}.`}</div>
       </div>
     `;
   }
@@ -7912,9 +7924,8 @@
       rate
     };
 
-    const planCuotas = purchaseSimulationMode === 'installments'
-      ? calcularPlanCuotas(montoIngresado, purchaseSimulationCurrency, purchaseSimulationInstallments)
-      : null;
+    const mesesSimulados = purchaseSimulationMode === 'installments' ? purchaseSimulationInstallments : 1;
+    const planCuotas = calcularPlanCuotas(montoIngresado, purchaseSimulationCurrency, mesesSimulados);
     const cuotaPen = planCuotas
       ? planCuotas.cuota * (purchaseSimulationCurrency === 'USD' ? rate : 1)
       : monto;
@@ -7935,7 +7946,7 @@
     const disponibleReal = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const disponibleDespues = disponibleReal - montoImpacto;
     const deudaDespues = state.deudaActual + monto;
-    const capacidad = analizarCapacidadCompra(montoImpacto, Boolean(planCuotas));
+    const capacidad = analizarCapacidadCompra(montoImpacto, planCuotas.meses > 1);
     const impactoTexto = planCuotas
       ? `Cuota por ciclo: ${formatInstallmentMoney(planCuotas.cuota, purchaseSimulationCurrency)} · Compromiso total: ${formatInstallmentMoney(planCuotas.total, purchaseSimulationCurrency)}`
       : balanceHidden
@@ -7970,7 +7981,7 @@
       resultado.innerHTML = `
         ${conversionResumen}
         ${resumenFinanciamiento(planCuotas, currencyInfo)}
-        ${resumenRecomendacionCuotas(esperarHasta, compraEsperando)}
+        ${resumenRecomendacionCuotas(esperarHasta, compraEsperando, planCuotas)}
         ${resumenImpactoCuota(capacidad)}
         <button class="purchase-comparison-toggle" type="button" aria-expanded="false" onclick="togglePurchaseComparison(this)">
           <span class="purchase-comparison-label">Ver comparación de fechas</span>
@@ -8019,8 +8030,15 @@
       return;
     }
     openPurchaseSimulator();
-    purchaseSimulationInstallments = Number(sim.plan?.meses) || 12;
-    setPurchaseSimulationMode('installments');
+    const meses = Number(sim.plan?.meses) || 1;
+    if (meses > 1) {
+      lastPurchaseSimulationInstallments = meses;
+      purchaseSimulationInstallments = meses;
+      setPurchaseSimulationMode('installments');
+    } else {
+      purchaseSimulationInstallments = 1;
+      setPurchaseSimulationMode('single');
+    }
     setPurchaseSimulationCurrency(sim.moneda || 'PEN');
     const input = document.getElementById('simPurchaseAmount');
     if (input) input.value = Number(sim.montoOriginal) || '';
@@ -8038,14 +8056,15 @@
     const simbolo = moneda === 'USD' ? 'US$' : 'S/';
     const primera = new Date(sim.primerPago);
     const ultima = fechaUltimaCuota(primera, sim.plan.meses);
+    const esPagoUnico = Number(sim.plan.meses) === 1;
     openModal(`
-      <h2>Confirmar compra <span class="accent">en cuotas</span></h2>
-      <p class="modal-sub">Este segundo paso sí modificará tus montos. Revisa la cuota real que te muestra el banco antes de confirmar.</p>
+      <h2>Confirmar <span class="accent">${esPagoUnico ? 'compra' : 'compra en cuotas'}</span></h2>
+      <p class="modal-sub">Este segundo paso sí modificará tus montos. Revisa ${esPagoUnico ? 'el monto real' : 'la cuota real'} que te muestra el banco antes de confirmar.</p>
       <div class="installment-confirm-summary">
-        <div class="installment-confirm-main">${sim.plan.meses} cuotas · primera el ${formatFechaCompleta(primera)}</div>
+        <div class="installment-confirm-main">${esPagoUnico ? `Un solo pago · vence el ${formatFechaCompleta(primera)}` : `${sim.plan.meses} cuotas · primera el ${formatFechaCompleta(primera)}`}</div>
         <div class="installment-confirm-meta">
-          Compra: ${montoPlanTexto(sim.montoOriginal, moneda)} · Última cuota estimada: ${formatFechaCompleta(ultima)}.<br>
-          Solo la primera cuota se registrará ahora; las siguientes se activarán en sus ciclos.
+          Compra: ${montoPlanTexto(sim.montoOriginal, moneda)}${esPagoUnico ? '.' : ` · Última cuota estimada: ${formatFechaCompleta(ultima)}.<br>
+          Solo la primera cuota se registrará ahora; las siguientes se activarán en sus ciclos.`}
         </div>
       </div>
       <div class="modal-field">
@@ -8053,7 +8072,7 @@
         <input type="text" id="installmentPurchaseDetail" placeholder="Ej. Laptop" autocomplete="off" autocapitalize="sentences">
       </div>
       <div class="modal-field">
-        <label>Cuota real del banco (${simbolo})</label>
+        <label>${esPagoUnico ? 'Monto real del banco' : 'Cuota real del banco'} (${simbolo})</label>
         <input type="number" id="installmentBankPayment" min="0.01" step="0.01" inputmode="decimal" value="${Number(sim.plan.cuota).toFixed(2)}" oninput="updateInstallmentConfirmationPreview()">
       </div>
       <div class="modal-field">
@@ -8090,11 +8109,12 @@
     const total = redondearDinero(cuota * sim.plan.meses);
     const intereses = Math.max(0, redondearDinero(total - sim.montoOriginal));
     const cuotaPen = redondearDinero(cuota * (sim.moneda === 'USD' ? Number(sim.rate) || 0 : 1));
+    const esPagoUnico = Number(sim.plan.meses) === 1;
     preview.innerHTML = `
-      <div class="installment-confirm-main">${montoPlanTexto(cuota, sim.moneda)} por ciclo</div>
+      <div class="installment-confirm-main">${montoPlanTexto(cuota, sim.moneda)} ${esPagoUnico ? 'en un solo pago' : 'por ciclo'}</div>
       <div class="installment-confirm-meta">
-        Total comprometido: ${montoPlanTexto(total, sim.moneda)} · Intereses: ${montoPlanTexto(intereses, sim.moneda)}
-        ${sim.moneda === 'USD' ? `<br>Primera cuota registrada como aprox. S/ ${fmt(cuotaPen)} con TC ${Number(sim.rate).toFixed(3)}.` : ''}
+        ${esPagoUnico ? 'Total de la compra' : 'Total comprometido'}: ${montoPlanTexto(total, sim.moneda)} · Intereses: ${montoPlanTexto(intereses, sim.moneda)}
+        ${sim.moneda === 'USD' ? `<br>${esPagoUnico ? 'Compra registrada' : 'Primera cuota registrada'} como aprox. S/ ${fmt(cuotaPen)} con TC ${Number(sim.rate).toFixed(3)}.` : ''}
       </div>
     `;
   }
@@ -8102,7 +8122,8 @@
   function confirmInstallmentRegistration() {
     const sim = pendingPurchaseSimulation;
     const cuotaOriginal = parseFloat(String(document.getElementById('installmentBankPayment')?.value || '').replace(',', '.'));
-    const detalle = document.getElementById('installmentPurchaseDetail')?.value.trim() || 'Compra en cuotas';
+    const esPagoUnico = Number(sim?.plan?.meses) === 1;
+    const detalle = document.getElementById('installmentPurchaseDetail')?.value.trim() || (esPagoUnico ? 'Compra' : 'Compra en cuotas');
     const tipo = document.querySelector('input[name="installmentPurchaseType"]:checked')?.value || 'DS';
     if (!sim?.plan || !Number.isFinite(cuotaOriginal) || cuotaOriginal <= 0) {
       toast('Revisa el valor real de la cuota', true);
@@ -8120,6 +8141,23 @@
     }
 
     const ahora = new Date(sim.fechaCompra || Date.now());
+    if (esPagoUnico) {
+      const ok = aplicarMovimiento(cuotaPen, tipo, null, detalle, {
+        fecha: ahora,
+        renderizar: false,
+        notificar: false
+      });
+      if (!ok) {
+        toast('No se pudo registrar la compra', true);
+        return;
+      }
+      pendingPurchaseSimulation = null;
+      closeModal();
+      toast(`Compra registrada · pago único por S/ ${fmt(cuotaPen)}`);
+      render();
+      return;
+    }
+
     const totalOriginal = redondearDinero(cuotaOriginal * sim.plan.meses);
     const plan = {
       id: 'plan-cuotas-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
