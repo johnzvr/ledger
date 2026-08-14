@@ -3053,6 +3053,7 @@
     gastoNoAdeudado: 4618.00,
     gastoTotal: 6374.94,
     presupuestoInicial: 1759.06,
+    deudaBaseCiclo: 1756.94, // deuda con la que empezó el ciclo; los DS se suman encima
     fechaInicioCiclo: null, // se setea la primera vez
     fechaProximoSueldo: null, // límite proyectado del ciclo automático
     bloquesAdaptables: true, // ciclos nuevos: 4 o 5 bloques según los días reales
@@ -4307,12 +4308,53 @@
     });
   }
   
+  function redondearDinero(valor) {
+    return Math.round(((Number(valor) || 0) + Number.EPSILON) * 100) / 100;
+  }
+
+  function totalesDesdeMovimientos() {
+    const movimientos = Array.isArray(state.log)
+      ? state.log.filter(mov => mov && mov.etiqueta !== 'recalcula')
+      : [];
+    const totalDS = redondearDinero(movimientos
+      .filter(mov => mov.tipo === 'DS')
+      .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
+    const totalS = redondearDinero(movimientos
+      .filter(mov => mov.tipo === 'S')
+      .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
+    return {
+      totalDS,
+      totalS,
+      totalGasto: redondearDinero(totalDS + totalS),
+      cantidad: movimientos.filter(mov => mov.tipo === 'DS' || mov.tipo === 'S').length
+    };
+  }
+
+  function deudaBaseCicloActual() {
+    if (Number.isFinite(Number(state.deudaBaseCiclo))) {
+      return redondearDinero(state.deudaBaseCiclo);
+    }
+
+    // Migración segura para ciclos guardados antes de separar la deuda base:
+    // el primer snapshot conserva la deuda que existía antes del primer gasto.
+    const primerSnapshot = Array.isArray(state.log)
+      ? state.log.find(mov => Number.isFinite(Number(mov?.snapshot?.deudaActual)))?.snapshot
+      : null;
+    if (primerSnapshot) return redondearDinero(primerSnapshot.deudaActual);
+
+    // Último recurso para historiales sin snapshots: conserva la diferencia
+    // actual como deuda previa en vez de asumir que el ciclo empezó en cero.
+    const totales = totalesDesdeMovimientos();
+    return redondearDinero((Number(state.deudaActual) || 0) - totales.totalDS);
+  }
+
   // ============ DESHACER ÚLTIMO ============
   function captureMovementState() {
     return {
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
       montoIntocable: state.montoIntocable,
+      deudaBaseCiclo: deudaBaseCicloActual(),
       deudaActual: state.deudaActual,
       gastoNoAdeudado: state.gastoNoAdeudado,
       gastoTotal: state.gastoTotal,
@@ -4326,6 +4368,9 @@
     if (Number.isFinite(Number(snapshot.montoIntocable))) {
       state.montoIntocable = Number(snapshot.montoIntocable);
     }
+    if (Number.isFinite(Number(snapshot.deudaBaseCiclo))) {
+      state.deudaBaseCiclo = Number(snapshot.deudaBaseCiclo);
+    }
     state.deudaActual = snapshot.deudaActual;
     state.gastoNoAdeudado = snapshot.gastoNoAdeudado;
     state.gastoTotal = snapshot.gastoTotal;
@@ -4338,6 +4383,7 @@
     return sameNumber(state.totalDisponible, snapshot.totalDisponible)
       && sameNumber(state.metaResidual || 0, snapshot.metaResidual || 0)
       && (!Number.isFinite(Number(snapshot.montoIntocable)) || sameNumber(state.montoIntocable, snapshot.montoIntocable))
+      && (!Number.isFinite(Number(snapshot.deudaBaseCiclo)) || sameNumber(deudaBaseCicloActual(), snapshot.deudaBaseCiclo))
       && sameNumber(state.deudaActual, snapshot.deudaActual)
       && sameNumber(state.gastoNoAdeudado, snapshot.gastoNoAdeudado)
       && sameNumber(state.gastoTotal, snapshot.gastoTotal)
@@ -4354,6 +4400,10 @@
       montoIntocable: Number.isFinite(Number(snapshot.montoIntocable))
         ? Number(snapshot.montoIntocable)
         : (Number(state.montoIntocable) || 0),
+      // Los historiales antiguos no guardaban la deuda base por separado.
+      deudaBaseCiclo: Number.isFinite(Number(snapshot.deudaBaseCiclo))
+        ? Number(snapshot.deudaBaseCiclo)
+        : deudaBaseCicloActual(),
       deudaActual: Number(snapshot.deudaActual) || 0,
       gastoNoAdeudado: Number(snapshot.gastoNoAdeudado) || 0,
       gastoTotal: Number(snapshot.gastoTotal) || 0,
@@ -4471,7 +4521,7 @@
       throw new Error('Historial incompatible');
     }
 
-    ['totalDisponible', 'metaResidual', 'montoIntocable', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
+    ['totalDisponible', 'metaResidual', 'montoIntocable', 'deudaBaseCiclo', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
       result[key] += to[key] - from[key];
     });
     result.semanas = result.semanas.map((sem, i) => ({
@@ -5226,6 +5276,7 @@
     state.metaResidual = Math.max(0, meta);
     if (!isNaN(intocable)) state.montoIntocable = intocable;
     if (!isNaN(deuda)) state.deudaActual = deuda;
+    state.deudaBaseCiclo = redondearDinero(state.deudaActual);
     state.gastoNoAdeudado = 0;
     state.gastoTotal = 0;
     state.log = [];
@@ -5325,6 +5376,7 @@
       totalDisponible: state.totalDisponible,
       metaResidual: state.metaResidual || 0,
       montoIntocable: state.montoIntocable,
+      deudaBaseCiclo: deudaBaseCicloActual(),
       deudaActual: state.deudaActual,
       gastoNoAdeudado: state.gastoNoAdeudado,
       gastoTotal: state.gastoTotal,
@@ -5489,6 +5541,7 @@
         totalDisponible: state.totalDisponible,
         metaResidual: state.metaResidual || 0,
         montoIntocable: state.montoIntocable,
+        deudaBaseCiclo: deudaBaseCicloActual(),
         deudaActual: state.deudaActual,
         gastoNoAdeudado: state.gastoNoAdeudado,
         gastoTotal: state.gastoTotal,
@@ -5687,6 +5740,15 @@
         <label>Gasto total acumulado</label>
         <input type="number" step="0.01" id="setGastoTotal" value="${state.gastoTotal.toFixed(2)}">
       </div>
+
+      <div class="manual-ranges-box" style="margin-bottom:18px;">
+        <div class="manual-ranges-title">¿Los totales no coinciden?</div>
+        <div class="manual-ranges-sub">Revísalos contra la lista de movimientos sin modificar tu disponible, la barra, el fondo ni los bloques.</div>
+        <button class="tc-btn" style="margin-top:10px;width:100%;padding:10px;" onclick="openTotalsSyncConfirm()">
+          Revisar totales →
+        </button>
+      </div>
+
       <div class="modal-field">
         <label>Fecha inicio del ciclo</label>
         <input type="date" id="setFechaInicio" value="${state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).toISOString().slice(0,10) : ''}" ${state.modoManualSemanas ? 'disabled style="opacity:0.4;"' : ''}>
@@ -5722,6 +5784,63 @@
         <button class="btn-primary" onclick="saveSettings()">Guardar</button>
       </div>
     `);
+  }
+
+  function openTotalsSyncConfirm() {
+    const totales = totalesDesdeMovimientos();
+    const deudaBase = deudaBaseCicloActual();
+    const deudaCalculada = redondearDinero(deudaBase + totales.totalDS);
+    const hayCambios = Math.abs((Number(state.deudaActual) || 0) - deudaCalculada) > 0.005
+      || Math.abs((Number(state.gastoNoAdeudado) || 0) - totales.totalS) > 0.005
+      || Math.abs((Number(state.gastoTotal) || 0) - totales.totalGasto) > 0.005;
+
+    openModal(`
+      <h2>Revisar <span class="accent">totales</span></h2>
+      <p class="modal-sub">Ledger volverá a sumar únicamente los movimientos S y DS de este ciclo.</p>
+
+      <div class="rollover-breakdown">
+        <div class="rollover-row">
+          <span class="rollover-week">Deuda actual</span>
+          <span class="rollover-amount">S/ ${fmt(state.deudaActual)} → S/ ${fmt(deudaCalculada)}</span>
+        </div>
+        <div class="rollover-row">
+          <span class="rollover-week">Gasto no adeudado</span>
+          <span class="rollover-amount">S/ ${fmt(state.gastoNoAdeudado)} → S/ ${fmt(totales.totalS)}</span>
+        </div>
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Gasto total</span>
+          <span class="rollover-amount">S/ ${fmt(state.gastoTotal)} → S/ ${fmt(totales.totalGasto)}</span>
+        </div>
+      </div>
+
+      <p class="modal-sub" style="font-size:11px;margin-top:14px;">
+        Deuda base del ciclo: <strong>S/ ${fmt(deudaBase)}</strong> · DS registrados: <strong>S/ ${fmt(totales.totalDS)}</strong>.<br>
+        ${totales.cantidad} movimiento${totales.cantidad === 1 ? '' : 's'} contabilizado${totales.cantidad === 1 ? '' : 's'}. Los retiros F y las redistribuciones no entran en esta suma.
+      </p>
+
+      <div class="manual-ranges-box" style="margin-top:14px;">
+        <div class="manual-ranges-title">Tu presupuesto queda intacto</div>
+        <div class="manual-ranges-sub">No cambia el disponible, el monto inicial de la barra, el fondo, las semanas ni sus montos.</div>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="openSettings()">Volver</button>
+        <button class="btn-primary" onclick="applyTotalsSync()" ${hayCambios ? '' : 'disabled style="opacity:0.45;"'}>${hayCambios ? 'Sincronizar' : 'Ya coincide'}</button>
+      </div>
+    `);
+  }
+
+  function applyTotalsSync() {
+    const totales = totalesDesdeMovimientos();
+    const deudaBase = deudaBaseCicloActual();
+    state.deudaBaseCiclo = deudaBase;
+    state.deudaActual = redondearDinero(deudaBase + totales.totalDS);
+    state.gastoNoAdeudado = totales.totalS;
+    state.gastoTotal = totales.totalGasto;
+    state.redoMovement = null;
+    closeModal();
+    toast('Totales sincronizados con los movimientos');
+    render();
   }
   
   function onToggleModoManual() {
@@ -5787,10 +5906,18 @@
     const modoManualEl = document.getElementById('setModoManual');
     
     state.redoMovement = null;
-    if (!isNaN(disp)) { state.totalDisponible = disp; state.presupuestoInicial = disp; }
+    // El disponible es el saldo de hoy; presupuestoInicial es la base fija de
+    // la barra y solo se redefine al cerrar e iniciar un ciclo nuevo.
+    if (!isNaN(disp)) state.totalDisponible = disp;
     if (!isNaN(meta)) state.metaResidual = Math.max(0, meta);
     if (!isNaN(intoc)) state.montoIntocable = intoc;
-    if (!isNaN(deuda)) state.deudaActual = deuda;
+    if (!isNaN(deuda)) {
+      const deudaAnterior = Number(state.deudaActual) || 0;
+      state.deudaActual = deuda;
+      if (Math.abs(deuda - deudaAnterior) > 0.005) {
+        state.deudaBaseCiclo = redondearDinero(deuda - totalesDesdeMovimientos().totalDS);
+      }
+    }
     if (!isNaN(gastoS)) state.gastoNoAdeudado = gastoS;
     if (!isNaN(gastoT)) state.gastoTotal = gastoT;
     if (modoManualEl) state.modoManualSemanas = modoManualEl.checked;
