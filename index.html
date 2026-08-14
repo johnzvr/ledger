@@ -1902,25 +1902,29 @@
   }
 
   .card-cycle-divider {
-    margin: 16px 0 6px;
-    padding: 4px 0 4px 14px;
-    border-left: 4px solid var(--line-hi);
+    margin: 14px 0 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(223, 211, 232, 0.58);
     color: var(--ink);
   }
-  .card-cycle-divider-text { min-width: 0; }
+  .card-cycle-divider-text { display: block; min-width: 0; }
   .card-cycle-divider-label {
     display: block;
-    color: var(--ink);
-    font-size: 12px;
-    font-weight: 650;
-    margin-bottom: 2px;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1px;
   }
   .card-cycle-divider-date {
     display: block;
-    font-size: 11px;
-    font-weight: 500;
+    font-size: 10px;
+    font-weight: 650;
   }
   .card-cycle-divider-date strong { font-weight: 800; }
+  body.dark .card-cycle-divider { background: rgba(180, 140, 220, 0.14); }
   .log-meta .payment-badge {
     background: var(--lavender);
     color: var(--ink-dim);
@@ -4270,7 +4274,7 @@
     div.className = 'card-cycle-divider';
     div.innerHTML = `
       <span class="card-cycle-divider-text">
-        <span class="card-cycle-divider-label">Ciclo ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
+        <span class="card-cycle-divider-label">Ciclo de tarjeta · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
         <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
       </span>
     `;
