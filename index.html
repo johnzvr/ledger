@@ -1805,6 +1805,7 @@
   .all-sum-item.S { background: var(--mint); }
   .all-sum-item.DS { background: var(--coral); }
   .all-sum-item.F { background: var(--sky); grid-column: 1 / -1; }
+  .all-sum-item.FDS { background: linear-gradient(135deg, var(--sky), var(--lavender)); grid-column: 1 / -1; }
   .all-sum-label {
     font-size: 9px;
     color: var(--ink-dim);
@@ -1946,6 +1947,94 @@
   }
   body.dark .card-cycle-divider { background: rgba(180,140,220,0.12); }
   body.dark .card-cycle-divider.overdue { background: #2A1512; }
+
+  .card-debt-headsup {
+    background: var(--lavender-soft, #F0EAF5);
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    padding: 10px 12px;
+    margin: 0 0 10px;
+  }
+  .card-debt-headsup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 3px;
+  }
+  .card-debt-headsup-title {
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--ink);
+  }
+  .card-debt-headsup-total {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .card-debt-headsup-list { display: grid; gap: 7px; }
+  .card-debt-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 10px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 12px;
+  }
+  .card-debt-row-main { min-width: 0; }
+  .card-debt-row-label {
+    display: block;
+    font-size: 9px;
+    color: var(--ink-dim);
+    font-weight: 750;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .card-debt-row-date {
+    display: block;
+    font-size: 11px;
+    color: var(--ink);
+    font-weight: 650;
+    margin-top: 1px;
+  }
+  .card-debt-row-fund {
+    display: block;
+    color: #53768D;
+    font-size: 8px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .card-debt-row-side { text-align: right; flex-shrink: 0; }
+  .card-debt-row-amount {
+    display: block;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .card-debt-pay-btn {
+    border: 0;
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 7px;
+    padding: 4px 7px;
+    margin-top: 3px;
+    font: 700 8px/1 inherit;
+    cursor: pointer;
+  }
+  .card-debt-adjustment {
+    color: var(--ink-dim);
+    font-size: 8px;
+    padding: 0;
+  }
+  .card-debt-mismatch {
+    color: var(--danger);
+    font-size: 9px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+  body.dark .card-debt-headsup { background: rgba(180,140,220,0.10); }
+  body.dark .card-debt-row { background: rgba(255,255,255,0.045); }
   
   /* Log */
   .log-item {
@@ -1983,6 +2072,30 @@
     background: #111A20;
     box-shadow: inset 3px 0 0 #7FB8E0;
   }
+  .log-item.fund-card-movement,
+  .log-swipe .log-item.fund-card-movement {
+    background: linear-gradient(90deg, #EEF4F7, #F3EDF7);
+    box-shadow: inset 3px 0 0 #8D86B8;
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  body.dark .log-item.fund-card-movement,
+  body.dark .log-swipe .log-item.fund-card-movement {
+    background: linear-gradient(90deg, #111A20, #1B1620);
+    box-shadow: inset 3px 0 0 #A99DE0;
+  }
+  .previous-cycle-marker {
+    margin: 16px 0 6px;
+    padding: 9px 12px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .log-item.previous-salary-movement { opacity: 0.66; }
+  body.dark .log-item.previous-salary-movement { opacity: 0.72; }
   .log-swipe.swipe-enabled .log-item { cursor: grab; }
   .log-swipe.swipe-enabled .log-item {
     -webkit-user-select: none;
@@ -2078,6 +2191,7 @@
   .log-dot.S { background: var(--mint); color: var(--gain); }
   .log-dot.DS { background: var(--coral); color: var(--danger); }
   .log-dot.F { background: var(--sky); color: #4A6F8A; }
+  .log-dot.FDS { background: linear-gradient(135deg, var(--sky), var(--lavender)); color: #4F456B; font-size: 8px; }
   .log-dot.RC { background: var(--lavender); color: var(--ink); }
   .log-info {
     flex: 1;
@@ -2943,6 +3057,7 @@
           </div>
           <h2>Movimientos <span class="aside" id="movCount"></span></h2>
         </div>
+        <div id="cardDebtHeadsup"></div>
         <div id="logContainer"></div>
       </section>
 
@@ -3031,7 +3146,7 @@
     <div class="chips-row">
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
       <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
-      <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Retirar del fondo">F</div>
+      <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Fondo; combínalo con DS para pagar con tarjeta">F</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
       <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')" role="button" aria-label="Redistribuir presupuesto">redistrib.</div>
     </div>
@@ -3069,6 +3184,9 @@
       { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
     tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 },
+    tarjetaAjusteDeuda: 1756.94,
+    tarjetaCiclosPagados: [],
+    tarjetaMovimientosArrastrados: [],
     log: [],
     redoMovement: null
   };
@@ -3368,18 +3486,20 @@
   }
 
   // Cierre y pago del estado de cuenta donde entraría una compra en una fecha dada.
-  function fechaPagoParaCompra(fechaCompra = new Date()) {
+  function fechaPagoParaCompra(fechaCompra = new Date(), tarjetaConfig = state.tarjeta) {
     const compra = new Date(fechaCompra);
     compra.setHours(12, 0, 0, 0);
-    let cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth(), state.tarjeta.diaCierre);
+    const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || 24));
+    const diaPago = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaPago) || 20));
+    let cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth(), diaCierre);
     if (compra > cierreCompra) {
-      cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth() + 1, state.tarjeta.diaCierre);
+      cierreCompra = fechaConDiaSeguro(compra.getFullYear(), compra.getMonth() + 1, diaCierre);
     }
-    const sumaMes = state.tarjeta.diaPago <= state.tarjeta.diaCierre ? 1 : 0;
+    const sumaMes = diaPago <= diaCierre ? 1 : 0;
     const pagoCompra = fechaConDiaSeguro(
       cierreCompra.getFullYear(),
       cierreCompra.getMonth() + sumaMes,
-      state.tarjeta.diaPago
+      diaPago
     );
     return { cierre: cierreCompra, pago: pagoCompra };
   }
@@ -3768,7 +3888,13 @@
   function render({ markModified = true, sync = true } = {}) {
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
+    if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
+    if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
     initFechaCiclo();
+    if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
+      const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
+      state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
+    }
     const huboCambioAutomatico = detectarCambioSemana();
     actualizarSemanaActual();
     
@@ -3998,9 +4124,39 @@
     return mov?.etiqueta === 'recalcula' ? 'Presupuesto' : `S/ ${fmt(mov?.monto)}`;
   }
 
+  function normalizarTipoMovimiento(tipo) {
+    return tipo === 'F+DS' ? 'FDS' : tipo;
+  }
+
+  function esMovimientoTarjeta(movOTipo) {
+    const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
+    return tipo === 'DS' || tipo === 'FDS';
+  }
+
+  function esMovimientoFondo(movOTipo) {
+    const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
+    return tipo === 'F' || tipo === 'FDS';
+  }
+
+  function afectaPresupuestoSalarial(movOTipo) {
+    const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
+    return tipo === 'S' || tipo === 'DS';
+  }
+
+  function etiquetaTipoMovimiento(tipo) {
+    return normalizarTipoMovimiento(tipo) === 'FDS' ? 'F+DS' : normalizarTipoMovimiento(tipo);
+  }
+
+  function claseEspecialMovimiento(mov) {
+    const tipo = normalizarTipoMovimiento(mov?.tipo);
+    if (tipo === 'FDS') return ' fund-card-movement';
+    if (tipo === 'F') return ' fund-movement';
+    return '';
+  }
+
   // Los movimientos nuevos guardan un timestamp. Para los anteriores, recuperamos
   // la fecha corta que ya muestran e inferimos el año desde el inicio del ciclo.
-  function fechaDeMovimiento(mov, index = 0) {
+  function fechaDeMovimiento(mov, index = 0, fechaInicioReferencia = state.fechaInicioCiclo) {
     const timestamp = Number(mov?.timestamp);
     if (Number.isFinite(timestamp) && timestamp > 0) {
       const fecha = new Date(timestamp);
@@ -4026,7 +4182,7 @@
       const mesTexto = partes[2].normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       const mes = meses[mesTexto] ?? meses[mesTexto.slice(0, 3)];
       if (Number.isInteger(mes)) {
-        const inicio = new Date(state.fechaInicioCiclo || Date.now());
+        const inicio = new Date(fechaInicioReferencia || Date.now());
         const baseYear = Number.isNaN(inicio.getTime()) ? new Date().getFullYear() : inicio.getFullYear();
         const referencia = Number.isNaN(inicio.getTime()) ? new Date() : inicio;
         const candidatos = [baseYear - 1, baseYear, baseYear + 1].map(year =>
@@ -4037,23 +4193,69 @@
       }
     }
 
-    const fallback = new Date(state.fechaInicioCiclo || Date.now());
+    const fallback = new Date(fechaInicioReferencia || Date.now());
     if (Number.isNaN(fallback.getTime())) return new Date();
     fallback.setMilliseconds(fallback.getMilliseconds() + index);
     return fallback;
   }
 
-  function gruposPagoTarjeta() {
+  function claveMovimientoTarjeta(mov, origen = '') {
+    if (mov?.id) return String(mov.id);
+    return [origen, Number(mov?.timestamp) || '', mov?.fecha || '', normalizarTipoMovimiento(mov?.tipo), Number(mov?.monto) || 0, mov?.detalle || ''].join('|');
+  }
+
+  function movimientosTarjetaCombinados() {
+    const combinados = [];
+    const vistos = new Set();
+    const agregar = (mov, origen, index, fechaInicioReferencia) => {
+      if (!mov || mov.etiqueta === 'recalcula' || !esMovimientoTarjeta(mov)) return;
+      const clave = claveMovimientoTarjeta(mov, origen);
+      if (vistos.has(clave)) return;
+      vistos.add(clave);
+      combinados.push({ mov, origen, index, fechaInicioReferencia });
+    };
+
+    (Array.isArray(state.tarjetaMovimientosArrastrados) ? state.tarjetaMovimientosArrastrados : [])
+      .forEach((mov, index) => agregar(mov, 'arrastrado', index, mov.fechaInicioCiclo || state.fechaInicioCiclo));
+
+    getArchivedCycles().slice().reverse().forEach(ciclo => {
+      (Array.isArray(ciclo.movimientos) ? ciclo.movimientos : [])
+        .forEach((mov, index) => agregar(mov, `archivo-${ciclo.id || ciclo.fechaFin || ''}`, index, ciclo.fechaInicio));
+    });
+
+    (Array.isArray(state.log) ? state.log : [])
+      .forEach((mov, index) => agregar(mov, 'actual', index, state.fechaInicioCiclo));
+    return combinados;
+  }
+
+  function ciclosTarjetaPagados() {
+    return Array.isArray(state.tarjetaCiclosPagados) ? state.tarjetaCiclosPagados : [];
+  }
+
+  function fechaPerteneceACicloPagado(fecha) {
+    const tiempo = new Date(fecha).getTime();
+    if (!Number.isFinite(tiempo)) return false;
+    return ciclosTarjetaPagados().some(ciclo => {
+      const inicio = new Date(ciclo.inicio).getTime();
+      const cierre = new Date(ciclo.cierre).getTime();
+      return Number.isFinite(inicio) && Number.isFinite(cierre) && tiempo >= inicio && tiempo <= cierre;
+    });
+  }
+
+  function gruposPagoTarjeta(tarjetaConfig = state.tarjeta) {
     const porFecha = new Map();
-    state.log.forEach((mov, index) => {
-      if (!mov) return;
-      const calendario = fechaPagoParaCompra(fechaDeMovimiento(mov, index));
+    movimientosTarjetaCombinados().forEach(entrada => {
+      const { mov, origen, index, fechaInicioReferencia } = entrada;
+      const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
+      if (fechaPerteneceACicloPagado(fechaMovimiento)) return;
+      const calendario = fechaPagoParaCompra(fechaMovimiento, tarjetaConfig);
       const key = fechaParaInput(calendario.pago);
       if (!porFecha.has(key)) {
+        const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || 24));
         const cierreAnterior = fechaConDiaSeguro(
           calendario.cierre.getFullYear(),
           calendario.cierre.getMonth() - 1,
-          state.tarjeta.diaCierre
+          diaCierre
         );
         const inicio = new Date(cierreAnterior);
         inicio.setDate(inicio.getDate() + 1);
@@ -4063,30 +4265,86 @@
           pago: calendario.pago,
           cierre: calendario.cierre,
           total: 0,
+          totalFondo: 0,
           count: 0,
-          indices: []
+          indices: [],
+          movimientos: []
         });
       }
       const grupo = porFecha.get(key);
-      if (mov.tipo === 'DS' && mov.etiqueta !== 'recalcula') {
-        grupo.total += Number(mov.monto) || 0;
-        grupo.count += 1;
-      }
-      grupo.indices.push(index);
+      const monto = Number(mov.monto) || 0;
+      grupo.total += monto;
+      if (normalizarTipoMovimiento(mov.tipo) === 'FDS') grupo.totalFondo += monto;
+      grupo.count += 1;
+      grupo.movimientos.push(entrada);
+      if (origen === 'actual') grupo.indices.push(index);
     });
-    return [...porFecha.values()].sort((a, b) => a.pago - b.pago);
+    const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+    return [...porFecha.values()]
+      .map(grupo => ({
+        ...grupo,
+        total: redondearDinero(grupo.total),
+        totalFondo: redondearDinero(grupo.totalFondo),
+        cerrado: hoy > grupo.cierre
+      }))
+      .sort((a, b) => a.pago - b.pago);
+  }
+
+  function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjeta()) {
+    if (Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
+      return redondearDinero(state.tarjetaAjusteDeuda);
+    }
+    const registrado = grupos.reduce((total, grupo) => total + grupo.total, 0);
+    return redondearDinero((Number(state.deudaActual) || 0) - registrado);
+  }
+
+  function resumenDeudaTarjeta(tarjetaConfig = state.tarjeta) {
+    const grupos = gruposPagoTarjeta(tarjetaConfig);
+    const registrado = redondearDinero(grupos.reduce((total, grupo) => total + grupo.total, 0));
+    const cubiertoPorFondo = redondearDinero(grupos.reduce((total, grupo) => total + grupo.totalFondo, 0));
+    const ajuste = ajusteDeudaTarjetaActual(grupos);
+    return {
+      grupos,
+      registrado,
+      cubiertoPorFondo,
+      ajuste,
+      total: redondearDinero(registrado + ajuste)
+    };
   }
 
   function contextoPagosTarjeta() {
     const grupos = gruposPagoTarjeta();
-    const ultimoCiclo = grupos.at(-1)?.key;
     const porIndice = new Map();
     grupos.forEach(grupo => {
-      grupo.esAnterior = grupo.key !== ultimoCiclo;
-      grupo.etiqueta = grupo.esAnterior ? 'Ciclo anterior de tarjeta' : 'Nuevo ciclo de tarjeta';
+      grupo.esAnterior = grupo.cerrado;
+      grupo.etiqueta = grupo.cerrado ? 'Próximo pago de tarjeta' : 'Ciclo abierto de tarjeta';
       grupo.indices.forEach(index => porIndice.set(index, grupo));
     });
     return { grupos, porIndice };
+  }
+
+  function grupoPagoParaMovimiento(mov, index, fechaInicioReferencia, grupos = gruposPagoTarjeta()) {
+    if (!esMovimientoTarjeta(mov)) return null;
+    const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
+    if (fechaPerteneceACicloPagado(fechaMovimiento)) return null;
+    const key = fechaParaInput(fechaPagoParaCompra(fechaMovimiento).pago);
+    return grupos.find(grupo => grupo.key === key) || null;
+  }
+
+  function movimientosRecientesCicloAnterior() {
+    const ciclo = getArchivedCycles()[0];
+    if (!ciclo || !Array.isArray(ciclo.movimientos) || ciclo.movimientos.length === 0) return [];
+    const inicioActual = new Date(state.fechaInicioCiclo);
+    if (Number.isNaN(inicioActual.getTime())) return [];
+    const corte = new Date(inicioActual);
+    corte.setDate(corte.getDate() - 14);
+    return ciclo.movimientos
+      .map((mov, index) => ({ mov, index, fecha: fechaDeMovimiento(mov, index, ciclo.fechaInicio), ciclo }))
+      .filter(entrada => entrada.mov?.etiqueta !== 'recalcula'
+        && entrada.fecha >= corte
+        && entrada.fecha < inicioActual)
+      .sort((a, b) => b.fecha - a.fecha);
   }
 
   function etiquetaPagoCorta(fecha) {
@@ -4101,7 +4359,7 @@
         <span class="card-cycle-divider-label">${grupo.etiqueta} · ${etiquetaPagoCorta(grupo.inicio)}–${etiquetaPagoCorta(grupo.cierre)}</span>
         <span class="card-cycle-divider-date">Paga hasta el ${formatFechaCompleta(grupo.pago)}</span>
       </span>
-      <span class="card-cycle-divider-amount">DS · S/ ${fmt(grupo.total)}</span>
+      <span class="card-cycle-divider-amount">S/ ${fmt(grupo.total)}${grupo.totalFondo > 0 ? ` · F ${fmt(grupo.totalFondo)}` : ''}</span>
     `;
     return div;
   }
@@ -4109,10 +4367,37 @@
   function badgePagoTarjeta(grupo) {
     return grupo ? `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>` : '';
   }
+
+  function renderCardDebtHeadsup() {
+    const container = document.getElementById('cardDebtHeadsup');
+    if (!container) return;
+    const resumen = resumenDeudaTarjeta();
+    const deudaOficial = redondearDinero(state.deudaActual);
+    if (resumen.grupos.length === 0 && Math.abs(deudaOficial) < 0.005) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const diferencia = redondearDinero(resumen.total - deudaOficial);
+    container.innerHTML = `
+      <div class="card-debt-headsup">
+        <div class="card-debt-headsup-head">
+          <span class="card-debt-headsup-title">Deuda total de tarjeta</span>
+          <span class="card-debt-headsup-total">S/ ${fmt(deudaOficial)}</span>
+        </div>
+        <div class="card-debt-adjustment">
+          DS identificados: <strong>S/ ${fmt(resumen.registrado)}</strong>${Math.abs(resumen.ajuste) > 0.005 ? ` · ${resumen.ajuste > 0 ? 'deuda previa/ajuste' : 'pago/ajuste a favor'}: <strong>${resumen.ajuste > 0 ? '+' : '−'}S/ ${fmt(Math.abs(resumen.ajuste))}</strong>` : ''}${resumen.cubiertoPorFondo > 0 ? ` · F+DS: <strong>S/ ${fmt(resumen.cubiertoPorFondo)}</strong>` : ''}
+        </div>
+        ${Math.abs(diferencia) > 0.005 ? `<div class="card-debt-mismatch">Revisa los totales: el desglose difiere en S/ ${fmt(Math.abs(diferencia))}.</div>` : ''}
+      </div>
+    `;
+  }
   
   function renderLog() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
+    const recientesAnteriores = movimientosRecientesCicloAnterior();
+    renderCardDebtHeadsup();
     document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
     if (state.redoMovement) {
       const redo = state.redoMovement;
@@ -4128,7 +4413,7 @@
     const btnHistory = document.getElementById('btnCycleHistory');
     if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
-    if (state.log.length === 0) {
+    if (state.log.length === 0 && recientesAnteriores.length === 0) {
       logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
       return;
     }
@@ -4152,8 +4437,8 @@
       div.dataset.canUndo = canUndo ? '1' : '0';
       div.dataset.canEdit = canEdit ? '1' : '0';
       
-      let dotType = mov.tipo;
-      let dotLabel = mov.tipo;
+      let dotType = normalizarTipoMovimiento(mov.tipo);
+      let dotLabel = etiquetaTipoMovimiento(mov.tipo);
       if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
       
       let badge = '';
@@ -4162,12 +4447,12 @@
       div.innerHTML = `
         ${canUndo ? `<button class="swipe-action undo" onclick="confirmDelete(${idx})">Deshacer</button>` : ''}
         ${canEdit ? `<button class="swipe-action edit" onclick="openEditMovement(${idx})">Editar</button>` : ''}
-        <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}" ${canSwipe ? `data-swipe-index="${idx}"` : ''}>
+        <div class="log-item${claseEspecialMovimiento(mov)}" ${canSwipe ? `data-swipe-index="${idx}"` : ''}>
         <div class="log-left">
           <div class="log-dot ${dotType}">${dotLabel}</div>
           <div class="log-info">
             <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-            <div class="log-meta">${badge}${mov.tipo === 'DS' ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
+            <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
           </div>
         </div>
         <div class="log-right">
@@ -4178,6 +4463,37 @@
       `;
       logEl.appendChild(div);
     });
+
+    if (recientesAnteriores.length > 0) {
+      const marker = document.createElement('div');
+      marker.className = 'previous-cycle-marker';
+      marker.textContent = 'Ciclo de sueldo anterior · últimos 14 días';
+      logEl.appendChild(marker);
+
+      recientesAnteriores.forEach(({ mov, index, ciclo }) => {
+        const grupoPago = grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos);
+        if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
+          logEl.appendChild(divisorCicloTarjeta(grupoPago));
+          ciclosMostrados.add(grupoPago.key);
+        }
+        let dotType = normalizarTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
+        const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+        const div = document.createElement('div');
+        div.className = `log-item previous-salary-movement${claseEspecialMovimiento(mov)}`;
+        div.innerHTML = `
+          <div class="log-left">
+            <div class="log-dot ${dotType}">${dotLabel}</div>
+            <div class="log-info">
+              <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+              <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha || '')}</span></div>
+            </div>
+          </div>
+          <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+        `;
+        logEl.appendChild(div);
+      });
+    }
     initSwipeRows(logEl);
   }
 
@@ -4319,14 +4635,19 @@
     const totalDS = redondearDinero(movimientos
       .filter(mov => mov.tipo === 'DS')
       .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
+    const totalFDS = redondearDinero(movimientos
+      .filter(mov => normalizarTipoMovimiento(mov.tipo) === 'FDS')
+      .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
     const totalS = redondearDinero(movimientos
       .filter(mov => mov.tipo === 'S')
       .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
     return {
       totalDS,
+      totalFDS,
+      totalTarjeta: redondearDinero(totalDS + totalFDS),
       totalS,
       totalGasto: redondearDinero(totalDS + totalS),
-      cantidad: movimientos.filter(mov => mov.tipo === 'DS' || mov.tipo === 'S').length
+      cantidad: movimientos.filter(mov => afectaPresupuestoSalarial(mov) || normalizarTipoMovimiento(mov.tipo) === 'FDS').length
     };
   }
 
@@ -4345,7 +4666,7 @@
     // Último recurso para historiales sin snapshots: conserva la diferencia
     // actual como deuda previa en vez de asumir que el ciclo empezó en cero.
     const totales = totalesDesdeMovimientos();
-    return redondearDinero((Number(state.deudaActual) || 0) - totales.totalDS);
+    return redondearDinero((Number(state.deudaActual) || 0) - totales.totalTarjeta);
   }
 
   // ============ DESHACER ÚLTIMO ============
@@ -4482,20 +4803,22 @@
   function applyMovementToSnapshot(snapshot, mov) {
     const next = cloneMovementSnapshot(snapshot);
     const monto = Number(mov?.monto);
-    if (!next || !Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F'].includes(mov?.tipo) || mov?.etiqueta === 'recalcula') {
+    const tipo = normalizarTipoMovimiento(mov?.tipo);
+    if (!next || !Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F', 'FDS'].includes(tipo) || mov?.etiqueta === 'recalcula') {
       throw new Error('Movimiento no editable');
     }
 
-    if (mov.tipo === 'F') {
+    if (tipo === 'F' || tipo === 'FDS') {
       if (monto > next.montoIntocable + 0.005) throw new Error('Fondo insuficiente');
       next.montoIntocable -= monto;
+      if (tipo === 'FDS') next.deudaActual += monto;
       return next;
     }
 
     next.totalDisponible -= monto;
     next.gastoTotal += monto;
-    if (mov.tipo === 'S') next.gastoNoAdeudado += monto;
-    if (mov.tipo === 'DS') next.deudaActual += monto;
+    if (tipo === 'S') next.gastoNoAdeudado += monto;
+    if (tipo === 'DS') next.deudaActual += monto;
 
     aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta);
     return next;
@@ -4572,6 +4895,10 @@
             <input type="radio" name="editMovementType" value="F" ${mov.tipo === 'F' ? 'checked' : ''}>
             <span>F · Fondo</span>
           </label>
+          <label class="edit-type-option">
+            <input type="radio" name="editMovementType" value="FDS" ${normalizarTipoMovimiento(mov.tipo) === 'FDS' ? 'checked' : ''}>
+            <span>F+DS · Fondo con tarjeta</span>
+          </label>
         </div>
       </div>
       <div class="modal-field">
@@ -4597,7 +4924,7 @@
     const sem = document.getElementById('editMovementSem');
     const row = document.getElementById('editMovementSemRow');
     if (!sem || !row) return;
-    const esFondo = tipo === 'F';
+    const esFondo = tipo === 'F' || tipo === 'FDS';
     if (esFondo) sem.checked = false;
     sem.disabled = esFondo;
     row.style.opacity = esFondo ? '0.42' : '1';
@@ -4612,8 +4939,8 @@
     const monto = parseFloat(document.getElementById('editMovementAmount')?.value);
     const tipo = document.querySelector('input[name="editMovementType"]:checked')?.value;
     const detalle = document.getElementById('editMovementDetail')?.value.trim() || '';
-    const etiqueta = tipo !== 'F' && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
-    if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F'].includes(tipo)) {
+    const etiqueta = afectaPresupuestoSalarial(tipo) && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
+    if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F', 'FDS'].includes(tipo)) {
       toast('Revisa el monto y el tipo', true);
       return;
     }
@@ -4697,7 +5024,7 @@
     openModal(`
       <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'último movimiento'}</span></h2>
       <p class="modal-sub">
-        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov.tipo)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
@@ -4752,6 +5079,7 @@
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
+    const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const count = soloGastos.length;
     
     const editableIndices = new Set(getEditableMovementIndices());
@@ -4770,20 +5098,20 @@
         const canUndo = originalIdx === state.log.length - 1;
         const canEdit = editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
-        let dotType = mov.tipo;
-        let dotLabel = mov.tipo;
+        let dotType = normalizarTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
           ${canEdit ? `<button class="swipe-action edit" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
-          <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}" ${canSwipe ? `data-swipe-index="${originalIdx}"` : ''}>
+          <div class="log-item${claseEspecialMovimiento(mov)}" ${canSwipe ? `data-swipe-index="${originalIdx}"` : ''}>
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${mov.tipo === 'DS' ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
@@ -4828,6 +5156,10 @@
         ${totalF > 0 ? `<div class="all-sum-item F">
           <div class="all-sum-label">Retirado del fondo (F)</div>
           <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div>
+        </div>` : ''}
+        ${totalFDS > 0 ? `<div class="all-sum-item FDS">
+          <div class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div>
         </div>` : ''}
       </div>
       
@@ -4946,12 +5278,12 @@
       listaHTML = `<div class="all-empty">${ciclo.detalleDisponible === false ? 'Esta versión solo conserva el resumen del ciclo.' : 'Este ciclo no tuvo movimientos.'}</div>`;
     } else {
       movimientos.slice().reverse().forEach(mov => {
-        let dotType = mov.tipo;
-        let dotLabel = mov.tipo;
+        let dotType = normalizarTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         const badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         listaHTML += `
-          <div class="log-item${mov.tipo === 'F' ? ' fund-movement' : ''}">
+          <div class="log-item${claseEspecialMovimiento(mov)}">
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
@@ -4981,6 +5313,10 @@
           <div class="all-sum-label">Retirado del fondo (F)</div>
           <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalF)}</div>
         </div>` : ''}
+        ${Number(ciclo.totalFDS) > 0 ? `<div class="all-sum-item FDS">
+          <div class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</div>
+          <div class="all-sum-value"><span class="cur">S/</span>${fmt(ciclo.totalFDS)}</div>
+        </div>` : ''}
       </div>
       <div class="rollover-breakdown" style="margin-bottom:14px;">
         <div class="rollover-row highlight">
@@ -5006,7 +5342,7 @@
     const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = movimientos.map(m => [
       m.fecha || '',
-      m.tipo || '',
+      etiquetaTipoMovimiento(m.tipo) || '',
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
       Number(m.monto || 0).toFixed(2)
@@ -5030,6 +5366,7 @@
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
+    const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const totalGastado = totalS + totalDS;
 
     openModal(`
@@ -5051,6 +5388,10 @@
         ${totalF > 0 ? `<div class="rollover-row">
           <span class="rollover-week">Retirado del fondo</span>
           <span class="rollover-amount">S/ ${fmt(totalF)}</span>
+        </div>` : ''}
+        ${totalFDS > 0 ? `<div class="rollover-row">
+          <span class="rollover-week">F+DS · tarjeta cubierta por fondo</span>
+          <span class="rollover-amount">S/ ${fmt(totalFDS)}</span>
         </div>` : ''}
         <div class="rollover-row highlight">
           <span class="rollover-week">Total gastado</span>
@@ -5089,8 +5430,22 @@
         <input type="number" step="0.01" id="newIntocable" value="${state.montoIntocable.toFixed(2)}">
       </div>
       <div class="modal-field">
-        <label>Deuda que continúa</label>
+        <label>Deuda total que muestra el banco</label>
         <input type="number" step="0.01" id="newDeuda" value="${state.deudaActual.toFixed(2)}">
+      </div>
+      <div class="manual-ranges-box" style="margin-bottom:18px;">
+        <div class="manual-ranges-title">Calendario de la tarjeta</div>
+        <div class="manual-ranges-sub">Actualiza estos días si el banco cambió el próximo cierre o pago.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+          <div class="modal-field" style="margin:0;">
+            <label>Día de cierre</label>
+            <input type="number" min="1" max="31" id="newCierre" value="${state.tarjeta.diaCierre}">
+          </div>
+          <div class="modal-field" style="margin:0;">
+            <label>Día de pago</label>
+            <input type="number" min="1" max="31" id="newPago" value="${state.tarjeta.diaPago}">
+          </div>
+        </div>
       </div>
       <div class="modal-field">
         <label>Fecha de inicio</label>
@@ -5197,17 +5552,24 @@
     `).join('');
   }
   
+  let pendingNewCycleData = null;
+
   function ejecutarNuevoCiclo() {
     const disponible = parseFloat(document.getElementById('newDisponible')?.value);
     const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
     const intocable = parseFloat(document.getElementById('newIntocable')?.value);
     const deuda = parseFloat(document.getElementById('newDeuda')?.value);
+    const diaCierre = parseInt(document.getElementById('newCierre')?.value);
+    const diaPago = parseInt(document.getElementById('newPago')?.value);
     const fechaInicio = document.getElementById('newFechaInicio')?.value;
     const fechaProximoSueldo = document.getElementById('newProximoSueldo')?.value;
     const modoManual = !!document.getElementById('newModoManual')?.checked;
     const numSem = parseInt(document.getElementById('newNumSem')?.value);
 
-    if (isNaN(disponible) || disponible < 0 || !fechaInicio || (!modoManual && !fechaProximoSueldo) || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
+    if (isNaN(disponible) || disponible < 0 || isNaN(deuda) || deuda < 0
+      || !(diaCierre >= 1 && diaCierre <= 31) || !(diaPago >= 1 && diaPago <= 31)
+      || !fechaInicio || (!modoManual && !fechaProximoSueldo)
+      || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       toast('Revisa los datos del nuevo ciclo', true);
       return;
     }
@@ -5219,10 +5581,169 @@
       return;
     }
 
+    const tarjetaNueva = { ...state.tarjeta, diaCierre, diaPago };
+    const resumenTarjeta = resumenDeudaTarjeta(tarjetaNueva);
+    const deudaOficial = redondearDinero(deuda);
+    const diferencia = redondearDinero(deudaOficial - resumenTarjeta.total);
+    const candidatoPago = diferencia < -0.005
+      ? resumenTarjeta.grupos
+          .filter(grupo => grupo.cerrado)
+          .find(grupo => Math.abs(grupo.total - Math.abs(diferencia)) < 0.05) || null
+      : null;
+
+    pendingNewCycleData = {
+      disponible,
+      meta,
+      intocable,
+      deuda: deudaOficial,
+      fechaInicio,
+      fechaProximoSueldo,
+      modoManual,
+      numSem,
+      nuevaFechaInicio,
+      nuevoProximoSueldo,
+      tarjetaNueva,
+      resumenTarjeta,
+      candidatoPago
+    };
+
+    if (Math.abs(diferencia) <= 0.005) {
+      finalizarNuevoCiclo('coincide');
+      return;
+    }
+
+    openModal(`
+      <h2>Conciliar <span class="accent">deuda</span></h2>
+      <p class="modal-sub">La deuda que ingresaste no coincide con el seguimiento actual de la tarjeta. Ledger no cambiará nada sin tu confirmación.</p>
+      <div class="rollover-breakdown">
+        <div class="rollover-row">
+          <span class="rollover-week">Deuda ingresada</span>
+          <span class="rollover-amount">S/ ${fmt(deudaOficial)}</span>
+        </div>
+        <div class="rollover-row">
+          <span class="rollover-week">Desglose registrado</span>
+          <span class="rollover-amount">S/ ${fmt(resumenTarjeta.total)}</span>
+        </div>
+        <div class="rollover-row ${diferencia > 0 ? 'danger' : 'highlight'}">
+          <span class="rollover-week">Diferencia</span>
+          <span class="rollover-amount">${diferencia > 0 ? '+' : '−'}S/ ${fmt(Math.abs(diferencia))}</span>
+        </div>
+      </div>
+      ${candidatoPago ? `
+        <div class="manual-ranges-box" style="margin-top:14px;">
+          <div class="manual-ranges-title">Parece un ciclo pagado</div>
+          <div class="manual-ranges-sub">La diferencia coincide con el pago de S/ ${fmt(candidatoPago.total)} que vencía el ${formatFechaCompleta(candidatoPago.pago)}.</div>
+        </div>
+      ` : `
+        <p class="modal-sub" style="font-size:11px;margin-top:14px;">Puedes usar la deuda del banco como dato oficial. La diferencia quedará visible como deuda previa o ajuste a favor, sin afectar disponible, fondo ni bloques.</p>
+      `}
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="volverAConfigNuevoCiclo()">Revisar</button>
+        ${candidatoPago ? `<button class="btn-secondary" onclick="finalizarNuevoCiclo('ajuste')">Usar ajuste</button>` : ''}
+        <button class="btn-primary" onclick="finalizarNuevoCiclo('${candidatoPago ? 'pago' : 'ajuste'}')">${candidatoPago ? 'Marcar pagado' : 'Usar deuda ingresada'}</button>
+      </div>
+    `);
+  }
+
+  function volverAConfigNuevoCiclo() {
+    const datos = pendingNewCycleData;
+    openNewCycleSetup();
+    if (!datos) return;
+    const valores = {
+      newDisponible: datos.disponible,
+      newMeta: datos.meta,
+      newIntocable: datos.intocable,
+      newDeuda: datos.deuda,
+      newCierre: datos.tarjetaNueva.diaCierre,
+      newPago: datos.tarjetaNueva.diaPago,
+      newFechaInicio: datos.fechaInicio,
+      newProximoSueldo: datos.fechaProximoSueldo,
+      newNumSem: datos.numSem
+    };
+    Object.entries(valores).forEach(([id, valor]) => {
+      const input = document.getElementById(id);
+      if (input && valor !== undefined && valor !== null) input.value = valor;
+    });
+    const manual = document.getElementById('newModoManual');
+    if (manual) manual.checked = datos.modoManual;
+    previewNuevoCiclo();
+  }
+
+  function registrarCicloTarjetaPagado(grupo) {
+    if (!grupo) return;
+    if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
+    const registro = {
+      key: grupo.key,
+      inicio: grupo.inicio.toISOString(),
+      cierre: grupo.cierre.toISOString(),
+      pago: grupo.pago.toISOString(),
+      total: redondearDinero(grupo.total),
+      pagadoEn: new Date().toISOString()
+    };
+    state.tarjetaCiclosPagados = [
+      registro,
+      ...state.tarjetaCiclosPagados.filter(item => item.key !== registro.key)
+    ].slice(0, 12);
+  }
+
+  function compactarMovimientoTarjeta(mov, fechaInicioCiclo = null) {
+    return {
+      id: mov.id || null,
+      monto: Number(mov.monto) || 0,
+      tipo: normalizarTipoMovimiento(mov.tipo),
+      etiqueta: mov.etiqueta || null,
+      detalle: mov.detalle || '',
+      fecha: mov.fecha || '',
+      fechaISO: mov.fechaISO || null,
+      timestamp: Number(mov.timestamp) || null,
+      fechaInicioCiclo
+    };
+  }
+
+  function actualizarArrastreTarjeta(ciclosDescartados) {
+    const acumulados = [
+      ...(Array.isArray(state.tarjetaMovimientosArrastrados) ? state.tarjetaMovimientosArrastrados : [])
+    ];
+    ciclosDescartados.forEach(ciclo => {
+      (Array.isArray(ciclo.movimientos) ? ciclo.movimientos : []).forEach(mov => {
+        if (esMovimientoTarjeta(mov)) acumulados.push(compactarMovimientoTarjeta(mov, ciclo.fechaInicio));
+      });
+    });
+
+    const vistos = new Set();
+    state.tarjetaMovimientosArrastrados = acumulados.filter((mov, index) => {
+      if (!esMovimientoTarjeta(mov)) return false;
+      const fecha = fechaDeMovimiento(mov, index, mov.fechaInicioCiclo || state.fechaInicioCiclo);
+      if (fechaPerteneceACicloPagado(fecha)) return false;
+      const clave = claveMovimientoTarjeta(mov, 'arrastrado');
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    }).slice(-300);
+  }
+
+  function finalizarNuevoCiclo(modoConciliacion = 'ajuste') {
+    const datos = pendingNewCycleData;
+    if (!datos) {
+      toast('Vuelve a completar el nuevo ciclo', true);
+      return;
+    }
+    if (modoConciliacion === 'pago' && datos.candidatoPago) {
+      registrarCicloTarjetaPagado(datos.candidatoPago);
+    }
+
+    const totalRegistradoDespues = redondearDinero(
+      datos.resumenTarjeta.registrado - (modoConciliacion === 'pago' && datos.candidatoPago ? datos.candidatoPago.total : 0)
+    );
+    state.tarjetaAjusteDeuda = redondearDinero(datos.deuda - totalRegistradoDespues);
+    state.tarjeta = datos.tarjetaNueva;
+
+    const { disponible, meta, intocable, deuda, fechaInicio, modoManual, numSem, nuevaFechaInicio, nuevoProximoSueldo } = datos;
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
+    const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const rangosAnteriores = calcularRangoSemanas();
     const fechaFinCiclo = new Date().toISOString();
 
@@ -5234,6 +5755,7 @@
       totalS,
       totalDS,
       totalF,
+      totalFDS,
       totalGastado: totalS + totalDS,
       numMovimientos: soloGastos.length,
       dias: diasEnCiclo(),
@@ -5244,20 +5766,24 @@
       }) : null),
       detalleDisponible: true,
       movimientos: state.log.map(m => ({
+        id: m.id || null,
         monto: Number(m.monto) || 0,
-        tipo: m.tipo,
+        tipo: normalizarTipoMovimiento(m.tipo),
         etiqueta: m.etiqueta || null,
         detalle: m.detalle || '',
         fecha: m.fecha || '',
+        fechaISO: m.fechaISO || null,
         timestamp: Number(m.timestamp) || null
       }))
     };
 
     const anteriores = getArchivedCycles();
-    state.historialCiclos = [
+    const historialCompleto = [
       cicloCerrado,
       ...anteriores.filter(c => c.id !== cicloCerrado.id)
-    ].slice(0, 2);
+    ];
+    actualizarArrastreTarjeta(historialCompleto.slice(2));
+    state.historialCiclos = historialCompleto.slice(0, 2);
 
     // Resumen usado por la comparación del ciclo actual.
     state.cicloAnterior = {
@@ -5275,7 +5801,7 @@
     state.presupuestoInicial = disponible;
     state.metaResidual = Math.max(0, meta);
     if (!isNaN(intocable)) state.montoIntocable = intocable;
-    if (!isNaN(deuda)) state.deudaActual = deuda;
+    state.deudaActual = deuda;
     state.deudaBaseCiclo = redondearDinero(state.deudaActual);
     state.gastoNoAdeudado = 0;
     state.gastoTotal = 0;
@@ -5301,7 +5827,10 @@
     saveUiSections();
     
     closeModal();
-    toast(`Nuevo ciclo · ${state.semanas.length} bloques según sus días`);
+    pendingNewCycleData = null;
+    toast(modoConciliacion === 'pago'
+      ? `Nuevo ciclo · pago anterior conciliado`
+      : `Nuevo ciclo · ${state.semanas.length} bloques según sus días`);
     render();
   }
   
@@ -5314,7 +5843,7 @@
     const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = state.log.map(m => [
       m.fecha,
-      m.tipo,
+      etiquetaTipoMovimiento(m.tipo),
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
       m.monto.toFixed(2)
@@ -5337,14 +5866,24 @@
   let selectedMod = null;
   
   function setType(tipo) {
-    selectedType = (selectedType === tipo) ? null : tipo;
-    if (selectedType === 'F') selectedMod = null;
+    if (tipo === 'S') {
+      selectedType = selectedType === 'S' ? null : 'S';
+    } else if (tipo === 'DS') {
+      if (selectedType === 'F') selectedType = 'FDS';
+      else if (selectedType === 'FDS') selectedType = 'F';
+      else selectedType = selectedType === 'DS' ? null : 'DS';
+    } else if (tipo === 'F') {
+      if (selectedType === 'DS') selectedType = 'FDS';
+      else if (selectedType === 'FDS') selectedType = 'DS';
+      else selectedType = selectedType === 'F' ? null : 'F';
+    }
+    if (selectedType === 'F' || selectedType === 'FDS') selectedMod = null;
     updateChipsUI();
   }
   
   function setMod(mod) {
     if (mod === 'recalcula') { ejecutarRecalculo(); return; }
-    if (selectedType === 'F') {
+    if (selectedType === 'F' || selectedType === 'FDS') {
       toast('El fondo no usa reparto por bloques', true);
       return;
     }
@@ -5354,7 +5893,8 @@
   
   function updateChipsUI() {
     document.querySelectorAll('.chip[data-type]').forEach(el => {
-      el.classList.toggle('active', el.dataset.type === selectedType);
+      const activoCombinado = selectedType === 'FDS' && (el.dataset.type === 'F' || el.dataset.type === 'DS');
+      el.classList.toggle('active', el.dataset.type === selectedType || activoCombinado);
     });
     document.querySelectorAll('.chip[data-mod]').forEach(el => {
       if (el.dataset.mod === 'recalcula') el.classList.remove('active');
@@ -5412,7 +5952,7 @@
     const detalleEl = document.getElementById('inputDetalle');
     const montoRaw = parseFloat(amountEl.value);
     if (isNaN(montoRaw) || montoRaw <= 0) { toast('Ingresa un monto válido', true); amountEl.focus(); return; }
-    if (!selectedType) { toast('Elige tipo: S, DS o F', true); return; }
+    if (!selectedType) { toast('Elige tipo: S, DS, F o F+DS', true); return; }
     
     let detalle = detalleEl.value.trim();
     let monto = montoRaw;
@@ -5430,13 +5970,13 @@
       detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
     }
 
-    if (selectedType === 'F' && monto > state.montoIntocable + 0.005) {
+    if ((selectedType === 'F' || selectedType === 'FDS') && monto > state.montoIntocable + 0.005) {
       toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
       return;
     }
     
     // Si es un gasto normal (no sem) y excede el bloque actual → confirmación previa
-    if (selectedType !== 'F' && selectedMod !== 'sem') {
+    if (afectaPresupuestoSalarial(selectedType) && selectedMod !== 'sem') {
       const semActual = state.semanas.find(s => s.isCurrent);
       if (semActual && monto > semActual.presupuesto) {
         confirmarRollover(monto, selectedType, selectedMod, detalle);
@@ -5533,9 +6073,12 @@
   function aplicarMovimiento(monto, tipo, etiqueta, detalle) {
     state.redoMovement = null;
     const ahora = new Date();
+    tipo = normalizarTipoMovimiento(tipo);
     const mov = {
+      id: 'mov-' + ahora.getTime() + '-' + Math.random().toString(36).slice(2, 7),
       monto, tipo, etiqueta, detalle,
       fecha: ahora.toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      fechaISO: ahora.toISOString(),
       timestamp: ahora.getTime(),
       snapshot: {
         totalDisponible: state.totalDisponible,
@@ -5549,14 +6092,17 @@
       }
     };
 
-    if (tipo === 'F') {
+    if (tipo === 'F' || tipo === 'FDS') {
       if (monto > state.montoIntocable + 0.005) {
         toast(`El fondo solo tiene S/ ${fmt(state.montoIntocable)}`, true);
         return;
       }
       state.montoIntocable -= monto;
+      if (tipo === 'FDS') state.deudaActual += monto;
       state.log.push(mov);
-      toast(`−S/ ${fmt(monto)} retirado del fondo`);
+      toast(tipo === 'FDS'
+        ? `F+DS · S/ ${fmt(monto)} cubiertos por el fondo`
+        : `−S/ ${fmt(monto)} retirado del fondo`);
       render();
       return;
     }
@@ -5600,7 +6146,7 @@
     openModal(`
       <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'movimiento'}</span></h2>
       <p class="modal-sub">
-        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${mov.tipo}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov.tipo)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
@@ -5635,7 +6181,7 @@
       afterSnapshot,
       logLength: state.log.length
     };
-    if (mov.tipo !== 'F' && mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
+    if (afectaPresupuestoSalarial(mov) && mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
       // Si el gasto pertenecía a un bloque anterior, rehacer el reparto actual
       // después de restaurar el dinero para no regresar a presupuestos vencidos.
       state.ultimoBloqueProcesado = null;
@@ -5669,6 +6215,13 @@
           <span class="help-item-title">Retiro del fondo</span>
         </div>
         <div class="help-item-desc">Resta únicamente del Fondo. No cambia tu disponible, deuda, gasto acumulado ni presupuesto por bloques.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip F">F+DS</span>
+          <span class="help-item-title">Fondo pagado con tarjeta</span>
+        </div>
+        <div class="help-item-desc">Activa F y DS juntos. Reduce el Fondo y aumenta la deuda, pero no toca el disponible, el gasto salarial ni los bloques.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -5788,15 +6341,15 @@
 
   function openTotalsSyncConfirm() {
     const totales = totalesDesdeMovimientos();
-    const deudaBase = deudaBaseCicloActual();
-    const deudaCalculada = redondearDinero(deudaBase + totales.totalDS);
+    const resumenTarjeta = resumenDeudaTarjeta();
+    const deudaCalculada = resumenTarjeta.total;
     const hayCambios = Math.abs((Number(state.deudaActual) || 0) - deudaCalculada) > 0.005
       || Math.abs((Number(state.gastoNoAdeudado) || 0) - totales.totalS) > 0.005
       || Math.abs((Number(state.gastoTotal) || 0) - totales.totalGasto) > 0.005;
 
     openModal(`
       <h2>Revisar <span class="accent">totales</span></h2>
-      <p class="modal-sub">Ledger volverá a sumar únicamente los movimientos S y DS de este ciclo.</p>
+      <p class="modal-sub">Ledger volverá a sumar S y DS del ciclo salarial; F+DS se conciliará únicamente dentro de la deuda de tarjeta.</p>
 
       <div class="rollover-breakdown">
         <div class="rollover-row">
@@ -5814,8 +6367,8 @@
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        Deuda base del ciclo: <strong>S/ ${fmt(deudaBase)}</strong> · DS registrados: <strong>S/ ${fmt(totales.totalDS)}</strong>.<br>
-        ${totales.cantidad} movimiento${totales.cantidad === 1 ? '' : 's'} contabilizado${totales.cantidad === 1 ? '' : 's'}. Los retiros F y las redistribuciones no entran en esta suma.
+        Tarjeta registrada: <strong>S/ ${fmt(resumenTarjeta.registrado)}</strong> · ajuste: <strong>${resumenTarjeta.ajuste >= 0 ? '+' : '−'}S/ ${fmt(Math.abs(resumenTarjeta.ajuste))}</strong>.<br>
+        ${totales.cantidad} movimiento${totales.cantidad === 1 ? '' : 's'} contabilizado${totales.cantidad === 1 ? '' : 's'}. F+DS entra en la deuda, pero no en el gasto salarial.
       </p>
 
       <div class="manual-ranges-box" style="margin-top:14px;">
@@ -5832,9 +6385,9 @@
 
   function applyTotalsSync() {
     const totales = totalesDesdeMovimientos();
-    const deudaBase = deudaBaseCicloActual();
-    state.deudaBaseCiclo = deudaBase;
-    state.deudaActual = redondearDinero(deudaBase + totales.totalDS);
+    const resumenTarjeta = resumenDeudaTarjeta();
+    state.deudaActual = resumenTarjeta.total;
+    state.deudaBaseCiclo = redondearDinero(state.deudaActual - totales.totalTarjeta);
     state.gastoNoAdeudado = totales.totalS;
     state.gastoTotal = totales.totalGasto;
     state.redoMovement = null;
@@ -5915,7 +6468,9 @@
       const deudaAnterior = Number(state.deudaActual) || 0;
       state.deudaActual = deuda;
       if (Math.abs(deuda - deudaAnterior) > 0.005) {
-        state.deudaBaseCiclo = redondearDinero(deuda - totalesDesdeMovimientos().totalDS);
+        state.deudaBaseCiclo = redondearDinero(deuda - totalesDesdeMovimientos().totalTarjeta);
+        const registradoTarjeta = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
+        state.tarjetaAjusteDeuda = redondearDinero(deuda - registradoTarjeta);
       }
     }
     if (!isNaN(gastoS)) state.gastoNoAdeudado = gastoS;
@@ -6090,7 +6645,7 @@
   function openCCConfig() {
     openModal(`
       <h2>Calendario <span class="accent">tarjeta</span></h2>
-      <p class="modal-sub">Los días clave de tu ciclo y de tu sueldo. Solo referenciales — tus gastos se siguen registrando como DS.</p>
+      <p class="modal-sub">Los DS pendientes se reorganizarán entre ciclos. La deuda total no cambiará por editar estas fechas.</p>
       <div class="modal-field">
         <label>Día de cierre</label>
         <input type="number" min="1" max="31" id="setCierre" value="${state.tarjeta.diaCierre}">
@@ -6117,8 +6672,11 @@
     if (cierre >= 1 && cierre <= 31) state.tarjeta.diaCierre = cierre;
     if (pago >= 1 && pago <= 31) state.tarjeta.diaPago = pago;
     if (sueldo >= 1 && sueldo <= 31) state.tarjeta.diaSueldo = sueldo;
+    const registradoReorganizado = gruposPagoTarjeta(state.tarjeta)
+      .reduce((total, grupo) => total + grupo.total, 0);
+    state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registradoReorganizado);
     closeModal();
-    toast('Calendario actualizado');
+    toast('Calendario actualizado · deuda total conservada');
     render();
   }
 
