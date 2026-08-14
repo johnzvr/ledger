@@ -1358,7 +1358,6 @@
     font-size: 11px;
     line-height: 1.45;
   }
-
   /* Simulador de compra */
   .purchase-sim-actions {
     display: grid;
@@ -2855,6 +2854,55 @@
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   }
+  .nested-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    background: rgba(26, 26, 26, 0.28);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .nested-modal-overlay.active { display: flex; }
+  .nested-modal {
+    width: 100%;
+    max-width: 350px;
+    max-height: 78vh;
+    overflow-y: auto;
+    padding: 22px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 20px;
+    background: var(--bg);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.3);
+  }
+  .nested-modal-kicker {
+    display: inline-flex;
+    margin-bottom: 9px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: var(--lavender);
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .nested-modal h3 {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 23px;
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+  }
+  body.dark .nested-modal {
+    border-color: rgba(255,255,255,0.12);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+  }
   .modal h2 {
     font-family: 'Bricolage Grotesque', sans-serif;
     font-weight: 700;
@@ -3570,6 +3618,9 @@
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modalContent"></div>
+  <div class="nested-modal-overlay" id="nestedModalOverlay">
+    <div class="nested-modal" id="nestedModalContent" role="dialog" aria-modal="true" aria-label="Nuevo ciclo de tarjeta"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -7498,24 +7549,22 @@
     render();
   }
   
-  function openCCConfig(editarId = '', forzarNuevo = false) {
+  function openCCConfig(editarId = '') {
     const exactos = calendariosTarjetaExactos();
     const calendarioHoy = calendarioExactoParaFecha(new Date());
     const ultimoGuardado = exactos.length > 0 ? exactos[exactos.length - 1] : null;
-    const calendarioActual = forzarNuevo
-      ? null
-      : (exactos.find(item => item.id === editarId) || (!calendarioHoy?.pendiente ? calendarioHoy : null));
+    const calendarioActual = exactos.find(item => item.id === editarId)
+      || (!calendarioHoy?.pendiente ? calendarioHoy : ultimoGuardado);
     const agregando = !calendarioActual;
+    const tituloModal = agregando
+      ? 'Fechas del ciclo de tarjeta'
+      : 'Editar estado de cuenta';
+    const descripcionModal = agregando
+      ? 'Ingresa las fechas exactas que ya aparecen en tu banco. La deuda total no cambiará.'
+      : 'Corrige las fechas de este estado de cuenta. La deuda total no cambiará.';
     openModal(`
-      <h2>${agregando ? 'Añadir' : 'Editar'} <span class="accent">estado de cuenta</span></h2>
-      <p class="modal-sub">Ingresa únicamente las fechas que ya aparecen en tu banco. Cada estado de cuenta se guarda por separado y la deuda total no cambia.</p>
-      ${agregando && ultimoGuardado ? `
-        <div class="manual-ranges-box" style="margin-bottom:18px;">
-          <div class="manual-ranges-title">Último estado guardado</div>
-          <div class="manual-ranges-sub">Cerró el ${formatFechaCompleta(ultimoGuardado.cierre)} · paga hasta el ${formatFechaCompleta(ultimoGuardado.pago)}.</div>
-          <button class="tc-btn" style="margin-top:10px;width:100%;padding:10px;" onclick="openCCConfig('${ultimoGuardado.id}')">Editar último guardado</button>
-        </div>
-      ` : ''}
+      <h2>${tituloModal}</h2>
+      <p class="modal-sub">${descripcionModal}</p>
       <input type="hidden" id="setCalendarId" value="${calendarioActual?.id || ''}">
       <div class="modal-field">
         <label for="setCierre">Cierre de facturación</label>
@@ -7527,21 +7576,38 @@
         <input class="calendar-date-input" type="date" id="setPago" value="${calendarioActual ? fechaParaInput(calendarioActual.pago) : ''}">
         <div class="modal-field-help">Fecha límite para pagar este estado de cuenta. Copia la fecha exacta mostrada por el banco.</div>
       </div>
-      ${!agregando ? `<button class="tc-btn" style="width:100%;padding:10px;margin-bottom:4px;" onclick="openCCConfig('', true)">Ingresar fechas del siguiente ciclo</button>` : ''}
+      ${!agregando ? `<button class="tc-btn" style="width:100%;padding:10px;margin-bottom:4px;" onclick="openNextCardCyclePopup()">Ingresar fechas del siguiente ciclo</button>` : ''}
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick="saveCCConfig()">${agregando ? 'Guardar estado' : 'Guardar cambios'}</button>
+        <button class="btn-primary" onclick="saveCCConfig()">${agregando ? 'Guardar fechas' : 'Guardar cambios'}</button>
+      </div>
+    `);
+  }
+
+  function openNextCardCyclePopup() {
+    openNestedModal(`
+      <div class="nested-modal-kicker">Nuevo registro</div>
+      <h3>Nuevo ciclo de tarjeta</h3>
+      <p class="modal-sub">Las fechas actuales se conservarán. Ingresa únicamente las nuevas fechas que ya aparecen en tu banco.</p>
+      <div class="modal-field">
+        <label for="setNextCierre">Cierre de facturación</label>
+        <input class="calendar-date-input" type="date" id="setNextCierre" value="">
+      </div>
+      <div class="modal-field">
+        <label for="setNextPago">Último día de pago</label>
+        <input class="calendar-date-input" type="date" id="setNextPago" value="">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeNestedModal()">Volver</button>
+        <button class="btn-primary" onclick="saveNextCCConfig()">Guardar fechas</button>
       </div>
     `);
   }
   
-  function saveCCConfig() {
-    const cierre = fechaDesdeInput(document.getElementById('setCierre')?.value);
-    const pago = fechaDesdeInput(document.getElementById('setPago')?.value);
-    const editarId = document.getElementById('setCalendarId')?.value || '';
+  function guardarCalendarioTarjeta(cierre, pago, editarId = '') {
     if (!cierre || !pago || pago <= cierre) {
       toast('El pago debe ser posterior al cierre', true);
-      return;
+      return false;
     }
     const nuevosCalendarios = calendarioTarjetaConRegistro(cierre, pago, state.tarjetaCalendarios, editarId);
     const exactosNuevos = calendariosTarjetaExactos(nuevosCalendarios);
@@ -7549,7 +7615,7 @@
       || exactosNuevos.find(item => fechaParaInput(item.cierre) === fechaParaInput(cierre));
     if (!registroActual || registroActual.cierre < registroActual.inicio) {
       toast('El cierre debe ser posterior al inicio de este ciclo de tarjeta', true);
-      return;
+      return false;
     }
     state.tarjetaCalendarios = nuevosCalendarios;
     const ultimoCalendario = exactosNuevos[exactosNuevos.length - 1];
@@ -7561,8 +7627,22 @@
       .reduce((total, grupo) => total + grupo.total, 0);
     state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registradoReorganizado);
     closeModal();
-    toast(`${editarId ? 'Estado actualizado' : 'Estado guardado'} · deuda total conservada`);
+    toast(`${editarId ? 'Fechas actualizadas' : 'Fechas guardadas'} · deuda total conservada`);
     render();
+    return true;
+  }
+
+  function saveCCConfig() {
+    const cierre = fechaDesdeInput(document.getElementById('setCierre')?.value);
+    const pago = fechaDesdeInput(document.getElementById('setPago')?.value);
+    const editarId = document.getElementById('setCalendarId')?.value || '';
+    guardarCalendarioTarjeta(cierre, pago, editarId);
+  }
+
+  function saveNextCCConfig() {
+    const cierre = fechaDesdeInput(document.getElementById('setNextCierre')?.value);
+    const pago = fechaDesdeInput(document.getElementById('setNextPago')?.value);
+    guardarCalendarioTarjeta(cierre, pago);
   }
 
   const PURCHASE_INSTALLMENT_TEA = Object.freeze({ PEN: 83.32, USD: 65.92 });
@@ -8466,12 +8546,31 @@
   }
   
   function openModal(html) {
+    closeNestedModal();
     document.getElementById('modalContent').innerHTML = html;
     document.getElementById('modalOverlay').classList.add('active');
   }
+  function openNestedModal(html) {
+    const content = document.getElementById('nestedModalContent');
+    const overlay = document.getElementById('nestedModalOverlay');
+    if (!content || !overlay) return;
+    content.innerHTML = html;
+    overlay.classList.add('active');
+    requestAnimationFrame(() => content.querySelector('input')?.focus());
+  }
+  function closeNestedModal() {
+    const overlay = document.getElementById('nestedModalOverlay');
+    const content = document.getElementById('nestedModalContent');
+    overlay?.classList.remove('active');
+    if (content) content.innerHTML = '';
+  }
   function closeModal() {
+    closeNestedModal();
     document.getElementById('modalOverlay').classList.remove('active');
   }
+  document.getElementById('nestedModalOverlay').addEventListener('click', (e) => {
+    if (e.target.id === 'nestedModalOverlay') closeNestedModal();
+  });
   document.getElementById('modalOverlay').addEventListener('click', (e) => {
     if (e.target.id === 'modalOverlay') closeModal();
   });
