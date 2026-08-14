@@ -2550,6 +2550,9 @@
     position: relative;
     cursor: pointer;
   }
+  .edit-type-option.fds {
+    grid-column: 2;
+  }
   .edit-type-option input {
     position: absolute;
     opacity: 0;
@@ -4120,6 +4123,17 @@
     return indices;
   }
 
+  function getDeletableMovementIndices() {
+    const indices = [];
+    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
+      // Para recalcular con seguridad, todas las entradas posteriores deben
+      // conservar el snapshot que se guarda al crear cada movimiento.
+      if (!state.log[i]?.snapshot) break;
+      indices.unshift(i);
+    }
+    return indices;
+  }
+
   function logAmountText(mov) {
     return mov?.etiqueta === 'recalcula' ? 'Presupuesto' : `S/ ${fmt(mov?.monto)}`;
   }
@@ -4400,9 +4414,7 @@
     renderCardDebtHeadsup();
     document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
     if (state.redoMovement) {
-      const redo = state.redoMovement;
-      const stillValid = state.log.length === redo.logLength && currentStateMatchesSnapshot(redo.movement?.snapshot);
-      if (!stillValid) state.redoMovement = null;
+      if (!redoMovementIsValid()) state.redoMovement = null;
     }
     
     // Estado de Deshacer y Rehacer
@@ -4420,6 +4432,7 @@
     
     logEl.innerHTML = '';
     const editableIndices = new Set(getEditableMovementIndices());
+    const deletableIndices = new Set(getDeletableMovementIndices());
     const ciclosMostrados = new Set();
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
@@ -4430,7 +4443,7 @@
         ciclosMostrados.add(grupoPago.key);
       }
       const div = document.createElement('div');
-      const canUndo = idx === state.log.length - 1;
+      const canUndo = deletableIndices.has(idx);
       const canEdit = editableIndices.has(idx);
       const canSwipe = canUndo || canEdit;
       div.className = 'log-swipe' + (canSwipe ? ' swipe-enabled' : '');
@@ -4711,6 +4724,17 @@
       && JSON.stringify(state.semanas) === JSON.stringify(snapshot.semanas);
   }
 
+  function redoMovementIsValid(redo = state.redoMovement) {
+    if (!redo) return false;
+    if (redo.kind === 'restore-deleted') {
+      return currentStateMatchesSnapshot(redo.afterDeleteState)
+        && JSON.stringify(state.log) === redo.afterDeleteLog;
+    }
+    return !!redo.movement
+      && state.log.length === redo.logLength
+      && currentStateMatchesSnapshot(redo.movement.snapshot);
+  }
+
   function cloneMovementSnapshot(snapshot) {
     if (!snapshot || !Array.isArray(snapshot.semanas)) return null;
     return {
@@ -4895,7 +4919,7 @@
             <input type="radio" name="editMovementType" value="F" ${mov.tipo === 'F' ? 'checked' : ''}>
             <span>F · Fondo</span>
           </label>
-          <label class="edit-type-option">
+          <label class="edit-type-option fds">
             <input type="radio" name="editMovementType" value="FDS" ${normalizarTipoMovimiento(mov.tipo) === 'FDS' ? 'checked' : ''}>
             <span>F+DS · Fondo con tarjeta</span>
           </label>
@@ -5040,12 +5064,31 @@
 
   function redoLast() {
     const redo = state.redoMovement;
-    if (!redo?.movement || !redo?.afterSnapshot) {
+    if (!redo) {
+      toast('No hay movimientos que rehacer', true);
+      return;
+    }
+    if (redo.kind === 'restore-deleted') {
+      if (!redoMovementIsValid(redo)) {
+        state.redoMovement = null;
+        toast('Ya hubo otros cambios; no se puede rehacer', true);
+        render({ markModified: false, sync: false });
+        return;
+      }
+      restoreMovementState(redo.beforeDeleteState);
+      state.log = JSON.parse(redo.beforeDeleteLog);
+      state.redoMovement = null;
+      toast(redo.movement?.etiqueta === 'recalcula' ? 'Redistribución recuperada' : 'Movimiento recuperado');
+      render();
+      return;
+    }
+    if (!redo.movement || !redo.afterSnapshot) {
+      state.redoMovement = null;
       toast('No hay movimientos que rehacer', true);
       return;
     }
     const beforeSnapshot = redo.movement.snapshot;
-    const safeToRedo = state.log.length === redo.logLength && currentStateMatchesSnapshot(beforeSnapshot);
+    const safeToRedo = redoMovementIsValid(redo);
     if (!safeToRedo) {
       state.redoMovement = null;
       toast('Ya hubo otros cambios; no se puede rehacer', true);
@@ -5083,6 +5126,7 @@
     const count = soloGastos.length;
     
     const editableIndices = new Set(getEditableMovementIndices());
+    const deletableIndices = new Set(getDeletableMovementIndices());
     let listaHTML = '';
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
@@ -5095,7 +5139,7 @@
           listaHTML += divisorCicloTarjeta(grupoPago).outerHTML;
           ciclosMostrados.add(grupoPago.key);
         }
-        const canUndo = originalIdx === state.log.length - 1;
+        const canUndo = deletableIndices.has(originalIdx);
         const canEdit = editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
         let dotType = normalizarTipoMovimiento(mov.tipo);
@@ -6134,10 +6178,61 @@
     state.log.push(mov);
     render();
   }
+
+  function reconstruirSinMovimiento(idx) {
+    const originalLog = JSON.parse(JSON.stringify(state.log));
+    const originalCurrent = captureMovementState();
+    const target = originalLog[idx];
+    const targetBefore = cloneMovementSnapshot(target?.snapshot);
+    const actualTargetAfter = idx + 1 < originalLog.length
+      ? cloneMovementSnapshot(originalLog[idx + 1].snapshot)
+      : cloneMovementSnapshot(originalCurrent);
+    if (!target || !targetBefore || !actualTargetAfter) throw new Error('Historial incompleto');
+
+    const expectedTargetAfter = target.etiqueta === 'recalcula'
+      ? applyRecalculationToSnapshot(targetBefore).snapshot
+      : applyMovementToSnapshot(targetBefore, target);
+    // Quita únicamente el efecto de la entrada elegida y conserva cualquier
+    // ajuste automático o manual que ocurrió antes de la siguiente.
+    let rebuiltState = applySnapshotTransition(targetBefore, expectedTargetAfter, actualTargetAfter);
+    const rebuiltLog = originalLog.slice(0, idx);
+
+    for (let i = idx + 1; i < originalLog.length; i++) {
+      const originalBefore = cloneMovementSnapshot(originalLog[i].snapshot);
+      const originalAfter = i + 1 < originalLog.length
+        ? cloneMovementSnapshot(originalLog[i + 1].snapshot)
+        : cloneMovementSnapshot(originalCurrent);
+      if (!originalBefore || !originalAfter) throw new Error('Historial incompleto');
+
+      const replayedMov = {
+        ...originalLog[i],
+        snapshot: cloneMovementSnapshot(rebuiltState)
+      };
+      let expectedOriginalAfter;
+      let expectedRebuiltAfter;
+      if (originalLog[i].etiqueta === 'recalcula') {
+        const originalRecalc = applyRecalculationToSnapshot(originalBefore);
+        const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState);
+        expectedOriginalAfter = originalRecalc.snapshot;
+        expectedRebuiltAfter = rebuiltRecalc.snapshot;
+        replayedMov.monto = rebuiltRecalc.monto;
+        replayedMov.detalle = rebuiltState.metaResidual > 0
+          ? `Redistribución proporcional (${rebuiltRecalc.restantes} bloques · meta S/ ${fmt(rebuiltState.metaResidual)} protegida)`
+          : `Redistribución proporcional en ${rebuiltRecalc.restantes} bloques restantes`;
+      } else {
+        expectedOriginalAfter = applyMovementToSnapshot(originalBefore, originalLog[i]);
+        expectedRebuiltAfter = applyMovementToSnapshot(rebuiltState, originalLog[i]);
+      }
+      rebuiltLog.push(replayedMov);
+      rebuiltState = applySnapshotTransition(expectedRebuiltAfter, expectedOriginalAfter, originalAfter);
+    }
+
+    return { originalLog, originalCurrent, target, rebuiltLog, rebuiltState };
+  }
   
   function confirmDelete(idx) {
-    if (idx !== state.log.length - 1) {
-      toast('Solo puedes deshacer el último movimiento', true);
+    if (!getDeletableMovementIndices().includes(idx)) {
+      toast('Solo puedes eliminar las últimas 10 entradas', true);
       return;
     }
     const mov = state.log[idx];
@@ -6150,45 +6245,44 @@
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
-      <p class="modal-sub" style="font-size:11px;">Se restaura el estado exacto anterior al movimiento.</p>
+      <p class="modal-sub" style="font-size:11px;">Ledger quitará esta entrada y recalculará las posteriores. Podrás recuperarla inmediatamente con “Rehacer”.</p>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-danger" onclick="doDelete(${idx})">Deshacer</button>
+        <button class="btn-danger" onclick="doDelete(${idx})">Eliminar</button>
       </div>
     `);
   }
   
   function doDelete(idx) {
-    if (idx !== state.log.length - 1) {
+    if (!getDeletableMovementIndices().includes(idx)) {
       closeModal();
-      toast('Solo puedes deshacer el último movimiento', true);
+      toast('Solo puedes eliminar las últimas 10 entradas', true);
       return;
     }
-    const mov = state.log[idx];
-    if (!mov || !mov.snapshot) { closeModal(); return; }
-    const bloqueDelSnapshot = Array.isArray(mov.snapshot.semanas)
-      ? mov.snapshot.semanas.findIndex(sem => sem.isCurrent)
-      : -1;
-    const bloqueCalendario = calcularSemanaActualIdx();
-    const afterSnapshot = captureMovementState();
-    const beforeSnapshot = cloneMovementSnapshot(mov.snapshot) || mov.snapshot;
-    restoreMovementState(beforeSnapshot);
-    state.log.splice(idx, 1);
-    const redoMovementCopy = JSON.parse(JSON.stringify(mov));
-    redoMovementCopy.snapshot = cloneMovementSnapshot(beforeSnapshot) || beforeSnapshot;
-    state.redoMovement = {
-      movement: redoMovementCopy,
-      afterSnapshot,
-      logLength: state.log.length
-    };
-    if (afectaPresupuestoSalarial(mov) && mov.etiqueta !== 'recalcula' && bloqueDelSnapshot !== bloqueCalendario) {
-      // Si el gasto pertenecía a un bloque anterior, rehacer el reparto actual
-      // después de restaurar el dinero para no regresar a presupuestos vencidos.
-      state.ultimoBloqueProcesado = null;
+    const eraUltimo = idx === state.log.length - 1;
+    try {
+      const reconstruido = reconstruirSinMovimiento(idx);
+      restoreMovementState(reconstruido.rebuiltState);
+      state.log = reconstruido.rebuiltLog;
+      const afterDeleteState = captureMovementState();
+      state.redoMovement = {
+        kind: 'restore-deleted',
+        movement: reconstruido.target,
+        deletedIndex: idx,
+        beforeDeleteState: reconstruido.originalCurrent,
+        beforeDeleteLog: JSON.stringify(reconstruido.originalLog),
+        afterDeleteState,
+        afterDeleteLog: JSON.stringify(state.log)
+      };
+      closeModal();
+      toast(reconstruido.target.etiqueta === 'recalcula'
+        ? 'Redistribución eliminada'
+        : (eraUltimo ? 'Movimiento deshecho' : 'Movimiento eliminado · posteriores recalculados'));
+      render();
+    } catch(e) {
+      closeModal();
+      toast('No se pudo recalcular este movimiento', true);
     }
-    closeModal();
-    toast(mov.etiqueta === 'recalcula' ? 'Redistribución deshecha' : 'Movimiento deshecho');
-    render();
   }
   
   function showHelp() {
