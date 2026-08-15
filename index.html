@@ -1735,12 +1735,28 @@
   }
   .purchase-budget-values {
     display: flex;
+    align-items: center;
     justify-content: flex-start;
     margin-top: 7px;
     color: var(--ink-dim);
     font-size: 10px;
   }
+  .purchase-budget-values > span {
+    display: inline-flex;
+    align-items: center;
+  }
   .purchase-budget-values strong { color: var(--ink); font-weight: 700; }
+  .purchase-budget-arrow {
+    display: inline-block;
+    margin: 0 6px;
+    color: var(--ink);
+    font-family: Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1;
+    transform: translateY(-1px);
+    -webkit-text-stroke: 0.35px currentColor;
+  }
   .purchase-impact-section + .purchase-impact-section {
     margin-top: 13px;
     padding-top: 13px;
@@ -1772,6 +1788,21 @@
     letter-spacing: -0.02em;
     line-height: 1.15;
   }
+  .purchase-total-status {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #D6E8CA;
+    color: var(--ink);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .purchase-total-status.bad { background: #F2C7BC; }
+  body.dark .purchase-total-status { background: rgba(168,204,143,0.2); }
+  body.dark .purchase-total-status.bad { background: rgba(230,107,82,0.22); }
   .purchase-impact-section.block .purchase-impact-heading {
     font-size: 15px;
     letter-spacing: -0.015em;
@@ -8381,13 +8412,10 @@
       : capacidad.nuevoExceso > 0
         ? `Faltan S/ ${fmtSim(capacidad.nuevoExceso)}`
         : 'Sin datos del bloque';
-    const tituloTotal = balanceHidden
-      ? totalFaltante > 0
-        ? 'No alcanza'
-        : 'Sí alcanza'
-      : totalFaltante > 0
-        ? `Faltan S/ ${fmtSim(totalFaltante)}`
-        : `Quedan S/ ${fmtSim(totalDespues)}`;
+    const tituloTotal = totalFaltante > 0
+      ? `Faltan S/ ${fmtSim(totalFaltante)}`
+      : `Quedan S/ ${fmtSim(totalDespues)}`;
+    const estadoTotal = totalFaltante > 0 ? 'No alcanza' : 'Sí alcanza';
     const etiquetaBloque = capacidad.rangoBloqueActual
       ? `Presupuesto · ${capacidad.rangoBloqueActual}`
       : 'Presupuesto actual';
@@ -8413,7 +8441,10 @@
         <section class="purchase-impact-section total">
           <span class="purchase-impact-eyebrow">Total disponible</span>
           <div class="purchase-impact-heading-row">
-            <div class="purchase-impact-heading">${tituloTotal}</div>
+            <div>
+              <div class="purchase-impact-heading">${tituloTotal}</div>
+              <span class="purchase-total-status ${totalFaltante > 0 ? 'bad' : ''}">${estadoTotal}</span>
+            </div>
             <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
           </div>
           ${balanceHidden ? '' : `
@@ -8421,7 +8452,7 @@
               <div class="purchase-budget-fill" style="width:${porcentajeTotal.toFixed(1)}%"></div>
             </div>
             <div class="purchase-budget-values">
-              <span><strong>S/ ${fmtSim(totalAntes)}</strong> → <strong>S/ ${fmtSim(totalDespues)}</strong></span>
+              <span><strong>S/ ${fmtSim(totalAntes)}</strong><span class="purchase-budget-arrow" aria-hidden="true">→</span><strong>S/ ${fmtSim(totalDespues)}</strong></span>
             </div>
           `}
         </section>
@@ -8433,7 +8464,7 @@
               <div class="purchase-budget-fill" style="width:${porcentajeBloque.toFixed(1)}%"></div>
             </div>
             <div class="purchase-budget-values">
-              <span><strong>S/ ${fmtSim(antes)}</strong> → <strong>S/ ${fmtSim(despues)}</strong></span>
+              <span><strong>S/ ${fmtSim(antes)}</strong><span class="purchase-budget-arrow" aria-hidden="true">→</span><strong>S/ ${fmtSim(despues)}</strong></span>
             </div>
           ` : `<div class="purchase-recommendation-copy">${capacidad.detalle}</div>`}
         </section>
