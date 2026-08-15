@@ -2289,7 +2289,13 @@
     background: rgba(223, 211, 232, 0.58);
     color: var(--ink);
   }
-  .card-cycle-divider-text { display: block; min-width: 0; }
+  .card-cycle-divider-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .card-cycle-divider-text { display: block; min-width: 0; flex: 1; }
   .card-cycle-divider-label {
     display: block;
     color: var(--ink-dim);
@@ -2305,7 +2311,42 @@
     font-weight: 650;
   }
   .card-cycle-divider-date strong { font-weight: 800; }
+  .card-cycle-divider-action {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 9px;
+    background: var(--ink);
+    color: var(--bg);
+    min-height: 30px;
+    padding: 7px 10px;
+    font-family: inherit;
+    font-size: 8px;
+    line-height: 1.1;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .card-cycle-divider.payment-marked {
+    background: rgba(207, 228, 197, 0.72);
+  }
+  .card-cycle-divider.payment-marked .card-cycle-divider-action {
+    background: rgba(255,255,255,0.66);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px rgba(23,23,22,0.09);
+  }
+  .card-cycle-divider-status {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 700;
+  }
   body.dark .card-cycle-divider { background: rgba(180, 140, 220, 0.14); }
+  body.dark .card-cycle-divider.payment-marked { background: rgba(132, 178, 111, 0.16); }
+  @media (max-width: 430px) {
+    .card-cycle-divider-main { align-items: flex-start; }
+    .card-cycle-divider-action { padding: 7px 8px; }
+  }
   .log-meta .payment-badge {
     background: var(--lavender);
     color: var(--ink-dim);
@@ -2316,6 +2357,10 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     white-space: nowrap;
+  }
+  .log-meta .payment-badge.paid {
+    background: rgba(183, 215, 164, 0.78);
+    color: #314528;
   }
   .log-meta .installment-badge {
     background: rgba(223, 211, 232, 0.72);
@@ -3059,6 +3104,13 @@
     font-size: 13px;
     min-height: 44px;
   }
+  .modal-buttons.modal-buttons-three {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .modal-buttons.modal-buttons-three .btn-primary {
+    grid-column: 1 / -1;
+  }
   .btn-primary { background: var(--ink); color: var(--bg); }
   .btn-secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--line-hi) !important; }
   .btn-danger { background: var(--coral-deep); color: var(--ink); }
@@ -3649,6 +3701,7 @@
     tarjetaCalendarioPresetVersion: null,
     tarjetaAjusteDeuda: 1756.94,
     tarjetaCiclosPagados: [],
+    tarjetaPagosPendientesConciliar: [], // marca visual; no cambia la deuda de Inicio
     tarjetaMovimientosArrastrados: [],
     planesCuotas: [], // compromisos financiados; cada ciclo activa solo su cuota
     log: [],
@@ -4572,6 +4625,7 @@
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
+    if (!Array.isArray(state.tarjetaPagosPendientesConciliar)) state.tarjetaPagosPendientesConciliar = [];
     if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
     if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
     initFechaCiclo();
@@ -4965,6 +5019,52 @@
     return Array.isArray(state.tarjetaCiclosPagados) ? state.tarjetaCiclosPagados : [];
   }
 
+  function pagosTarjetaPendientesConciliar() {
+    return Array.isArray(state.tarjetaPagosPendientesConciliar)
+      ? state.tarjetaPagosPendientesConciliar
+      : [];
+  }
+
+  function pagoPendienteParaGrupo(grupo) {
+    if (!grupo) return null;
+    const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
+    const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
+    return pagosTarjetaPendientesConciliar().find(item =>
+      item?.key === grupo.key
+      || (inicio && cierre && item?.inicio === inicio && item?.cierre === cierre)
+    ) || null;
+  }
+
+  function registrarPagoPendienteConciliar(grupo) {
+    if (!grupo || grupo.pendiente || !grupo.cerrado) return false;
+    const registro = {
+      key: grupo.key,
+      inicio: fechaParaInput(grupo.inicio),
+      cierre: fechaParaInput(grupo.cierre),
+      pago: fechaParaInput(grupo.pago),
+      total: redondearDinero(grupo.total),
+      marcadoEn: new Date().toISOString()
+    };
+    state.tarjetaPagosPendientesConciliar = [
+      registro,
+      ...pagosTarjetaPendientesConciliar().filter(item =>
+        item?.key !== registro.key
+        && !(item?.inicio === registro.inicio && item?.cierre === registro.cierre)
+      )
+    ].slice(0, 12);
+    return true;
+  }
+
+  function quitarPagoPendienteConciliar(grupo) {
+    if (!grupo) return;
+    const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
+    const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
+    state.tarjetaPagosPendientesConciliar = pagosTarjetaPendientesConciliar().filter(item =>
+      item?.key !== grupo.key
+      && !(inicio && cierre && item?.inicio === inicio && item?.cierre === cierre)
+    );
+  }
+
   function fechaPerteneceACicloPagado(fecha) {
     const tiempo = new Date(fecha).getTime();
     if (!Number.isFinite(tiempo)) return false;
@@ -5111,27 +5211,114 @@
 
   function divisorCicloTarjeta(grupo) {
     const div = document.createElement('div');
-    div.className = 'card-cycle-divider';
+    const pagoPendiente = pagoPendienteParaGrupo(grupo);
+    div.className = 'card-cycle-divider' + (pagoPendiente ? ' payment-marked' : '');
     if (grupo.pendiente) {
       div.innerHTML = `
-        <span class="card-cycle-divider-text">
-          <span class="card-cycle-divider-label">Ciclo en curso · fechas aún no informadas</span>
-          <span class="card-cycle-divider-date">Compras desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
-        </span>
+        <div class="card-cycle-divider-main">
+          <span class="card-cycle-divider-text">
+            <span class="card-cycle-divider-label">Ciclo en curso · fechas aún no informadas</span>
+            <span class="card-cycle-divider-date">Compras desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
+          </span>
+        </div>
       `;
       return div;
     }
+    const keySeguro = encodeURIComponent(grupo.key || '');
+    const accionPago = grupo.cerrado
+      ? `<button class="card-cycle-divider-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`
+      : '';
     div.innerHTML = `
-      <span class="card-cycle-divider-text">
-        <span class="card-cycle-divider-label">Ciclo de tarjeta · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
-        <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
-      </span>
+      <div class="card-cycle-divider-main">
+        <span class="card-cycle-divider-text">
+          <span class="card-cycle-divider-label">Ciclo de tarjeta · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
+          <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
+          ${pagoPendiente ? '<span class="card-cycle-divider-status">Pagado · pendiente de conciliar con Inicio</span>' : ''}
+        </span>
+        ${accionPago}
+      </div>
     `;
     return div;
   }
 
+  function grupoTarjetaPorKeyCodificada(keyCodificada) {
+    let key = '';
+    try { key = decodeURIComponent(keyCodificada || ''); } catch(e) { key = keyCodificada || ''; }
+    return gruposPagoTarjeta().find(grupo => grupo.key === key) || null;
+  }
+
+  function abrirEstadoPagoTarjeta(keyCodificada) {
+    const grupo = grupoTarjetaPorKeyCodificada(keyCodificada);
+    if (!grupo || grupo.pendiente || !grupo.cerrado) {
+      toast('Este estado de cuenta todavía no puede marcarse como pagado', true);
+      return;
+    }
+    const pagoPendiente = pagoPendienteParaGrupo(grupo);
+    const keySeguro = encodeURIComponent(grupo.key || '');
+    if (pagoPendiente) {
+      openModal(`
+        <h2>Pago <span class="accent">marcado</span></h2>
+        <p class="modal-sub">Este estado de cuenta figura como pagado, pero la deuda de Inicio todavía conserva su valor manual.</p>
+        <div class="rollover-breakdown">
+          <div class="rollover-row">
+            <span class="rollover-week">Estado de cuenta</span>
+            <span class="rollover-amount">S/ ${fmt(grupo.total)}</span>
+          </div>
+          <div class="rollover-row highlight">
+            <span class="rollover-week">Marcado el</span>
+            <span class="rollover-amount">${formatFechaCompleta(new Date(pagoPendiente.marcadoEn))}</span>
+          </div>
+        </div>
+        <p class="modal-sub" style="font-size:11px;margin-top:14px;">Se conciliará cuando ingreses la deuda real del banco al iniciar tu siguiente ciclo. Disponible, Fondo y bloques no han cambiado.</p>
+        <div class="modal-buttons">
+          <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+          <button class="btn-danger" onclick="desmarcarPagoTarjeta('${keySeguro}')">Deshacer marca</button>
+        </div>
+      `);
+      return;
+    }
+    openModal(`
+      <h2>Marcar <span class="accent">pagado</span></h2>
+      <p class="modal-sub">¿Pagaste el estado de cuenta de S/ ${fmt(grupo.total)} que vence el ${formatFechaCompleta(grupo.pago)}?</p>
+      <div class="manual-ranges-box" style="margin-top:14px;">
+        <div class="manual-ranges-title">Solo cambia el heads-up</div>
+        <div class="manual-ranges-sub">La deuda de Inicio seguirá igual hasta que ingreses el monto real del banco en tu siguiente ciclo.</div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="marcarPagoTarjeta('${keySeguro}')">Sí, marcar pagado</button>
+      </div>
+    `);
+  }
+
+  function marcarPagoTarjeta(keyCodificada) {
+    const grupo = grupoTarjetaPorKeyCodificada(keyCodificada);
+    if (!registrarPagoPendienteConciliar(grupo)) {
+      toast('No se pudo marcar este estado de cuenta', true);
+      return;
+    }
+    closeModal();
+    toast('Pago marcado · la deuda de Inicio no cambió');
+    render();
+  }
+
+  function desmarcarPagoTarjeta(keyCodificada) {
+    const grupo = grupoTarjetaPorKeyCodificada(keyCodificada);
+    if (!grupo) {
+      toast('No se encontró el estado de cuenta', true);
+      return;
+    }
+    quitarPagoPendienteConciliar(grupo);
+    closeModal();
+    toast('Marca de pago eliminada');
+    render();
+  }
+
   function badgePagoTarjeta(grupo) {
     if (!grupo) return '';
+    if (pagoPendienteParaGrupo(grupo)) {
+      return '<span class="payment-badge paid">Pago marcado</span>';
+    }
     return grupo.pendiente
       ? '<span class="payment-badge">Ciclo en curso</span>'
       : `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>`;
@@ -6452,6 +6639,7 @@
   }
   
   let pendingNewCycleData = null;
+  const TOLERANCIA_CONCILIACION_PAGO = 5;
 
   function ejecutarNuevoCiclo() {
     const disponible = parseFloat(document.getElementById('newDisponible')?.value);
@@ -6481,11 +6669,25 @@
     const resumenTarjeta = resumenDeudaTarjeta(tarjetaNueva, state.tarjetaCalendarios);
     const deudaOficial = redondearDinero(deuda);
     const diferencia = redondearDinero(deudaOficial - resumenTarjeta.total);
-    const candidatoPago = diferencia < -0.005
+    const gruposMarcadosPagados = resumenTarjeta.grupos
+      .filter(grupo => grupo.cerrado && !!pagoPendienteParaGrupo(grupo));
+    const candidatoPorMonto = diferencia < -0.005
       ? resumenTarjeta.grupos
           .filter(grupo => grupo.cerrado)
-          .find(grupo => Math.abs(grupo.total - Math.abs(diferencia)) < 0.05) || null
+          .find(grupo => Math.abs(grupo.total - Math.abs(diferencia)) <= TOLERANCIA_CONCILIACION_PAGO) || null
       : null;
+    const candidatosPago = gruposMarcadosPagados.length > 0
+      ? gruposMarcadosPagados
+      : (candidatoPorMonto ? [candidatoPorMonto] : []);
+    const candidatoPago = candidatosPago[0] || null;
+    const pagoMarcadoVisual = gruposMarcadosPagados.length > 0;
+    const totalCandidatosPago = redondearDinero(
+      candidatosPago.reduce((total, grupo) => total + grupo.total, 0)
+    );
+    const deudaEsperadaTrasPago = redondearDinero(resumenTarjeta.total - totalCandidatosPago);
+    const diferenciaTrasPago = redondearDinero(deudaOficial - deudaEsperadaTrasPago);
+    const pagoMarcadoCoincide = pagoMarcadoVisual
+      && Math.abs(diferenciaTrasPago) <= TOLERANCIA_CONCILIACION_PAGO;
 
     pendingNewCycleData = {
       disponible,
@@ -6500,11 +6702,50 @@
       nuevoProximoSueldo,
       tarjetaNueva,
       resumenTarjeta,
-      candidatoPago
+      candidatoPago,
+      candidatosPago,
+      pagoMarcadoVisual,
+      totalCandidatosPago,
+      deudaEsperadaTrasPago,
+      diferenciaTrasPago
     };
 
-    if (Math.abs(diferencia) <= 0.005) {
+    if (pagoMarcadoCoincide) {
+      finalizarNuevoCiclo('pago');
+      return;
+    }
+
+    if (!pagoMarcadoVisual && Math.abs(diferencia) <= 0.005) {
       finalizarNuevoCiclo('coincide');
+      return;
+    }
+
+    if (pagoMarcadoVisual) {
+      const cantidadPagos = candidatosPago.length;
+      openModal(`
+        <h2>Conciliar <span class="accent">pago</span></h2>
+        <p class="modal-sub">Marcaste ${cantidadPagos === 1 ? 'un estado de cuenta' : cantidadPagos + ' estados de cuenta'} como pagado, pero la deuda ingresada difiere en más de S/ ${fmtInt(TOLERANCIA_CONCILIACION_PAGO)} del resultado esperado.</p>
+        <div class="rollover-breakdown">
+          <div class="rollover-row">
+            <span class="rollover-week">Deuda ingresada</span>
+            <span class="rollover-amount">S/ ${fmt(deudaOficial)}</span>
+          </div>
+          <div class="rollover-row">
+            <span class="rollover-week">Esperada después del pago</span>
+            <span class="rollover-amount">S/ ${fmt(deudaEsperadaTrasPago)}</span>
+          </div>
+          <div class="rollover-row ${Math.abs(diferenciaTrasPago) <= TOLERANCIA_CONCILIACION_PAGO ? 'highlight' : 'danger'}">
+            <span class="rollover-week">Diferencia</span>
+            <span class="rollover-amount">${diferenciaTrasPago >= 0 ? '+' : '−'}S/ ${fmt(Math.abs(diferenciaTrasPago))}</span>
+          </div>
+        </div>
+        <p class="modal-sub" style="font-size:11px;margin-top:14px;">Puedes mantener el pago pendiente o usar la deuda del banco como dato oficial. Ninguna opción modifica disponible, Fondo ni bloques.</p>
+        <div class="modal-buttons modal-buttons-three">
+          <button class="btn-secondary" onclick="volverAConfigNuevoCiclo()">Revisar</button>
+          <button class="btn-secondary" onclick="finalizarNuevoCiclo('ajuste')">Mantener pendiente</button>
+          <button class="btn-primary" onclick="finalizarNuevoCiclo('pago')">Usar deuda del banco</button>
+        </div>
+      `);
       return;
     }
 
@@ -6528,7 +6769,7 @@
       ${candidatoPago ? `
         <div class="manual-ranges-box" style="margin-top:14px;">
           <div class="manual-ranges-title">Parece un ciclo pagado</div>
-          <div class="manual-ranges-sub">La diferencia coincide con el pago de S/ ${fmt(candidatoPago.total)} que vencía el ${formatFechaCompleta(candidatoPago.pago)}.</div>
+          <div class="manual-ranges-sub">La diferencia coincide, con una tolerancia de hasta S/ ${fmtInt(TOLERANCIA_CONCILIACION_PAGO)}, con el pago de S/ ${fmt(candidatoPago.total)} que vencía el ${formatFechaCompleta(candidatoPago.pago)}.</div>
         </div>
       ` : `
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">Puedes usar la deuda del banco como dato oficial. La diferencia quedará visible como deuda previa o ajuste a favor, sin afectar disponible, fondo ni bloques.</p>
@@ -6627,12 +6868,20 @@
       toast('Vuelve a completar el nuevo ciclo', true);
       return;
     }
-    if (modoConciliacion === 'pago' && datos.candidatoPago) {
-      registrarCicloTarjetaPagado(datos.candidatoPago);
+    const candidatosPago = Array.isArray(datos.candidatosPago) && datos.candidatosPago.length > 0
+      ? datos.candidatosPago
+      : (datos.candidatoPago ? [datos.candidatoPago] : []);
+    if (modoConciliacion === 'pago') {
+      candidatosPago.forEach(grupo => {
+        registrarCicloTarjetaPagado(grupo);
+        quitarPagoPendienteConciliar(grupo);
+      });
     }
 
     const totalRegistradoDespues = redondearDinero(
-      datos.resumenTarjeta.registrado - (modoConciliacion === 'pago' && datos.candidatoPago ? datos.candidatoPago.total : 0)
+      datos.resumenTarjeta.registrado - (modoConciliacion === 'pago'
+        ? candidatosPago.reduce((total, grupo) => total + grupo.total, 0)
+        : 0)
     );
     state.tarjetaAjusteDeuda = redondearDinero(datos.deuda - totalRegistradoDespues);
     state.tarjeta = datos.tarjetaNueva;
