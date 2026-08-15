@@ -1589,45 +1589,16 @@
     align-items: center;
     min-height: 36px;
   }
-  .purchase-result-term-wrap {
-    position: relative;
+  .purchase-finance-term {
     display: inline-flex;
-  }
-  .purchase-result-term-select {
-    width: 112px;
+    align-items: center;
     min-height: 36px;
-    padding: 4px 24px 4px 9px;
-    border: none;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.7);
     color: var(--ink);
     font-family: 'Bricolage Grotesque', sans-serif;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 750;
-    letter-spacing: -0.02em;
-    text-align: center;
-    text-align-last: center;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
+    letter-spacing: -0.03em;
     line-height: 1;
-  }
-  .purchase-result-term-arrow {
-    position: absolute;
-    top: 50%;
-    right: 9px;
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid var(--ink);
-    transform: translateY(-35%);
-    pointer-events: none;
-  }
-  body.dark .purchase-result-term-select {
-    background: rgba(255,255,255,0.08);
-    color: var(--ink);
   }
   .purchase-finance-rate {
     flex: 0 0 auto;
@@ -1715,6 +1686,13 @@
     margin-top: 5px;
     color: var(--ink-dim);
     font-size: 10px;
+    line-height: 1.45;
+  }
+  .purchase-recommendation-income {
+    margin-top: 5px;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 650;
     line-height: 1.45;
   }
   .purchase-budget-card {
@@ -3695,6 +3673,7 @@
   ]);
   
   let state = loadState();
+  let lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
   // Limpia el respaldo temporal usado por una versión anterior.
   try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
   let uiSections = loadUiSections();
@@ -3931,13 +3910,26 @@
     } catch(e) {}
     return JSON.parse(JSON.stringify(DEFAULT_STATE));
   }
+
+  function syncRelevantFingerprint(source = state) {
+    const {
+      lastModified,
+      darkMode,
+      tcCache,
+      ...syncRelevantState
+    } = source || {};
+    return JSON.stringify(syncRelevantState);
+  }
   
   function saveState({ markModified = true, sync = true } = {}) {
+    const fingerprint = syncRelevantFingerprint(state);
+    const realFinancialChange = markModified && fingerprint !== lastPersistedSyncFingerprint;
     try {
-      if (markModified) state.lastModified = Date.now();
+      if (realFinancialChange) state.lastModified = Date.now();
       localStorage.setItem('ledger-state-v2', JSON.stringify(state));
     } catch(e) { toast('Error guardando', true); }
-    if (markModified && sync) scheduleSyncUpload();
+    lastPersistedSyncFingerprint = fingerprint;
+    if (realFinancialChange && sync) scheduleSyncUpload();
   }
   
   function fmt(n) {
@@ -4585,13 +4577,15 @@
     initFechaCiclo();
     // Migración estructural: se guarda localmente sin fingir una edición financiera.
     migrarCalendarioTarjetaExacto();
-    const calendarioOficialAplicado = aplicarCalendarioInterbankPago20_2026();
+    // La precarga oficial es una migración técnica: se conserva localmente,
+    // pero no debe aparentar que el usuario editó montos en este dispositivo.
+    aplicarCalendarioInterbankPago20_2026();
     if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
     }
     const cambioSemana = detectarCambioSemana();
-    let huboCambioAutomatico = calendarioOficialAplicado || cambioSemana;
+    let huboCambioAutomatico = cambioSemana;
     actualizarSemanaActual();
     const cuotasActivadas = activarCuotasPendientes();
     if (cuotasActivadas > 0) {
@@ -7772,8 +7766,6 @@
     }
     const selector = document.getElementById('purchaseInstallmentSelect');
     if (selector) selector.value = String(purchaseSimulationInstallments);
-    const resultSelector = document.getElementById('purchaseResultInstallmentSelect');
-    if (resultSelector) resultSelector.value = String(purchaseSimulationInstallments);
     const minus = document.querySelector('[data-installment-step="-1"]');
     const plus = document.querySelector('[data-installment-step="1"]');
     if (minus) minus.disabled = purchaseSimulationInstallments <= PURCHASE_RESULT_TERMS[0];
@@ -8010,12 +8002,7 @@
         <div class="purchase-finance-top">
           <span class="purchase-finance-kicker">${plan.meses === 1 ? 'Pago estimado' : 'Financiamiento estimado'}</span>
           <div class="purchase-finance-payment">
-            <span class="purchase-result-term-wrap">
-              <select class="purchase-result-term-select" id="purchaseResultInstallmentSelect" aria-label="Cambiar cantidad de cuotas y recalcular" onchange="setPurchaseSimulationInstallments(this.value)">
-                ${PURCHASE_RESULT_TERMS.map(months => `<option value="${months}" ${months === plan.meses ? 'selected' : ''}>${months === 1 ? '1 pago' : `${months} cuotas`}</option>`).join('')}
-              </select>
-              <span class="purchase-result-term-arrow" aria-hidden="true"></span>
-            </span>
+            <span class="purchase-finance-term">${plan.meses === 1 ? '1 pago' : `${plan.meses} cuotas`}</span>
             <span>de ${cuota}</span>
           </div>
         </div>
@@ -8049,7 +8036,8 @@
           <span class="purchase-sim-badge good">Recomendado</span>
         </div>
         <div class="purchase-recommendation-title">Esperar al ${formatFecha(esperarHasta)}</div>
-        <div class="purchase-recommendation-copy">${referenciaFecha}${plan?.meses === 1 ? 'el pago sería' : 'la primera cuota sería'} el ${formatFechaCompleta(compraEsperando.calendario.pago)}. ${contextoAbonos}</div>
+        <div class="purchase-recommendation-copy">${referenciaFecha}${plan?.meses === 1 ? 'El pago sería' : 'La primera cuota sería'} el ${formatFechaCompleta(compraEsperando.calendario.pago)}.</div>
+        <div class="purchase-recommendation-income">${contextoAbonos}</div>
       </div>
     `;
   }
@@ -8804,7 +8792,7 @@
   async function findDriveFile() {
     const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
     const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&fields=files(id,modifiedTime)`,
+      `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     if (res.status === 401) { handleTokenExpired(); return null; }
@@ -9113,15 +9101,15 @@
       return;
     }
     const remoteState = pendingRemoteState;
-    const remoteModified = remoteState.lastModified || Date.now();
+    const remoteModified = remoteState.lastModified || null;
     const localDarkMode = state.darkMode;
     pauseAutoUpload = true;
     state = { ...remoteState, darkMode: localDarkMode };
+    state.lastModified = remoteModified;
+    lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
     closeModal();
     applyTheme();
     render({ markModified: false, sync: false });
-    state.lastModified = remoteModified;
-    try { localStorage.setItem('ledger-state-v2', JSON.stringify(state)); } catch(e) {}
     pauseAutoUpload = false;
     pendingRemoteState = null;
     updateSyncUI('ok');
