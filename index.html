@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="theme-color" content="#FAF8F3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -1826,6 +1829,12 @@
     color: var(--ink);
   }
   body.dark .purchase-plan-period { background: rgba(255,255,255,0.06); }
+  .purchase-plan-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
   .purchase-plan-date {
     display: block;
     overflow: hidden;
@@ -1838,6 +1847,19 @@
     text-transform: uppercase;
     white-space: nowrap;
   }
+  .purchase-plan-current {
+    flex: 0 0 auto;
+    padding: 2px 5px;
+    border-radius: 999px;
+    background: var(--bg);
+    color: var(--ink-dim);
+    font-size: 7px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  body.dark .purchase-plan-current { background: rgba(255,255,255,0.08); }
   .purchase-plan-amount {
     display: block;
     margin-top: 3px;
@@ -1846,6 +1868,14 @@
     font-weight: 750;
     letter-spacing: -0.015em;
     line-height: 1.15;
+  }
+  .purchase-plan-days {
+    display: block;
+    margin-top: 3px;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 600;
+    line-height: 1.2;
   }
   .purchase-comparison-toggle {
     width: 100%;
@@ -3773,6 +3803,9 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  const LEDGER_BUILD = '86';
+  document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
+
   const DEFAULT_STATE = {
     totalDisponible: 1759.06,
     montoIntocable: 9200.00,
@@ -4679,20 +4712,37 @@
     const pesos = pesosDeBloquesRestantes(rangos, desdeIdx, fechaReferencia);
     const totalPeso = pesos.slice(desdeIdx, semanas.length).reduce((s, peso) => s + peso, 0);
     if (totalPeso <= 0) return [];
+    const totalCentavos = Math.max(0, Math.round((Number(monto) || 0) * 100));
     const asignaciones = [];
+    let pesoAcumulado = 0;
+    let centavosAsignados = 0;
     for (let i = desdeIdx; i < semanas.length; i++) {
-      const presupuesto = Math.max(0, monto) * pesos[i] / totalPeso;
+      pesoAcumulado += pesos[i];
+      const objetivoAcumulado = Math.round(totalCentavos * pesoAcumulado / totalPeso);
+      const centavos = Math.max(0, objetivoAcumulado - centavosAsignados);
+      const presupuesto = centavos / 100;
+      centavosAsignados += centavos;
       semanas[i].presupuesto = presupuesto;
       asignaciones.push({ index: i, presupuesto, dias: pesos[i] });
     }
     return asignaciones;
   }
+
+  function redistribuirPresupuestoRestante(semanas, totalDisponible, metaResidual = 0, fechaReferencia = new Date()) {
+    if (!Array.isArray(semanas) || semanas.length === 0) return [];
+    let currentIdx = semanas.findIndex(sem => sem.isCurrent);
+    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), semanas.length - 1);
+    if (currentIdx < 0 || currentIdx >= semanas.length) return [];
+    const gastable = Math.max(0, (Number(totalDisponible) || 0) - (Number(metaResidual) || 0));
+    return distribuirEntreBloques(semanas, gastable, currentIdx, calcularRangoSemanas(), fechaReferencia);
+  }
   
   function autoRecalcRestantes() {
-    const currentIdx = calcularSemanaActualIdx();
-    if (currentIdx < 0 || currentIdx >= state.semanas.length) return [];
-    const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
-    return distribuirEntreBloques(state.semanas, gastable, currentIdx);
+    return redistribuirPresupuestoRestante(
+      state.semanas,
+      state.totalDisponible,
+      state.metaResidual || 0
+    );
   }
   
   function formatRangoCorto(r) {
@@ -5994,7 +6044,16 @@
     if (tipo === 'S') next.gastoNoAdeudado += monto;
     if (tipo === 'DS') next.deudaActual += monto;
 
-    aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta);
+    if (mov.redistribucionSimulador) {
+      redistribuirPresupuestoRestante(
+        next.semanas,
+        next.totalDisponible,
+        next.metaResidual,
+        mov.fechaISO ? new Date(mov.fechaISO) : new Date()
+      );
+    } else {
+      aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta);
+    }
     return next;
   }
 
@@ -7346,6 +7405,7 @@
         cuotaOriginal: Number(metadata.cuotaOriginal) || 0,
         cuotaAutomatica: !!metadata.cuotaAutomatica
       } : {}),
+      ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       snapshot: {
         totalDisponible: state.totalDisponible,
         metaResidual: state.metaResidual || 0,
@@ -7380,13 +7440,24 @@
     if (tipo === 'S') state.gastoNoAdeudado += monto;
     if (tipo === 'DS') state.deudaActual += monto;
 
-    const resultadoBloques = aplicarGastoEnBloques(
-      state.semanas,
-      monto,
-      state.totalDisponible,
-      state.metaResidual || 0,
-      etiqueta
-    );
+    const resultadoBloques = opciones.redistribuirRestantes
+      ? {
+          currentIdx: Math.max(0, state.semanas.findIndex(sem => sem.isCurrent)),
+          exceso: 0,
+          futuros: redistribuirPresupuestoRestante(
+            state.semanas,
+            state.totalDisponible,
+            state.metaResidual || 0,
+            ahora
+          )
+        }
+      : aplicarGastoEnBloques(
+          state.semanas,
+          monto,
+          state.totalDisponible,
+          state.metaResidual || 0,
+          etiqueta
+        );
     if (notificar && etiqueta === 'sem') {
       if (resultadoBloques.exceso > 0) {
         toast(`Gasto dividido · faltaron S/ ${fmt(resultadoBloques.exceso)} por cubrir`, true);
@@ -8399,38 +8470,25 @@
     const porcentajeTotal = totalAntes > 0
       ? Math.max(0, Math.min(100, (totalDespues / totalAntes) * 100))
       : (totalDespues > 0 ? 100 : 0);
-    const antes = Math.max(0, Number(capacidad.margenAntes) || 0);
-    const despues = Math.max(0, Number(capacidad.margenDespues) || 0);
-    const puedeCompararBloque = antes > 0 || despues > 0 || capacidad.nuevoExceso > 0;
-    const porcentajeBloque = antes > 0
-      ? Math.max(0, Math.min(100, (despues / antes) * 100))
-      : (despues > 0 ? 100 : 0);
-    const diasPeriodo = Math.max(0, Number(capacidad.diasBloqueRestantes) || 0);
-    const mostrarPeriodoDirecto = puedeCompararBloque && capacidad.nuevoExceso <= 0 && diasPeriodo > 0;
-    const tituloBloque = mostrarPeriodoDirecto
-      ? `S/ ${fmtSim(despues)} · ${diasPeriodo} día${diasPeriodo === 1 ? '' : 's'}`
-      : capacidad.nuevoExceso > 0
-        ? `Faltan S/ ${fmtSim(capacidad.nuevoExceso)}`
-        : 'Sin datos del bloque';
     const tituloTotal = totalFaltante > 0
       ? `Faltan S/ ${fmtSim(totalFaltante)}`
       : `Quedan S/ ${fmtSim(totalDespues)}`;
     const estadoTotal = totalFaltante > 0 ? 'No alcanza' : 'Sí alcanza';
-    const etiquetaBloque = capacidad.rangoBloqueActual
-      ? `Presupuesto · ${capacidad.rangoBloqueActual}`
-      : 'Presupuesto actual';
     const periodosPlan = Array.isArray(capacidad.presupuestosDespues)
-      ? capacidad.presupuestosDespues.slice(1)
+      ? capacidad.presupuestosDespues
       : [];
-    const etiquetaPlan = periodosPlan.length === 1 ? 'Próximo periodo' : 'Próximos periodos';
     const resumenPlan = periodosPlan.length ? `
       <div class="purchase-plan-overview">
-        <span class="purchase-impact-eyebrow">${etiquetaPlan}</span>
+        <span class="purchase-impact-eyebrow">Nueva distribución hasta el cierre</span>
         <div class="purchase-plan-grid">
           ${periodosPlan.map(periodo => `
-            <div class="purchase-plan-period">
-              <span class="purchase-plan-date">${periodo.rango ? formatRangoCorto(periodo.rango) : `Periodo ${periodo.index + 1}`}</span>
+            <div class="purchase-plan-period${periodo.esActual ? ' is-current' : ''}">
+              <div class="purchase-plan-header">
+                <span class="purchase-plan-date">${periodo.rango ? formatRangoCorto(periodo.rango) : `Periodo ${periodo.index + 1}`}</span>
+                ${periodo.esActual ? '<span class="purchase-plan-current">Actual</span>' : ''}
+              </div>
               <strong class="purchase-plan-amount">S/ ${fmtSim(periodo.presupuesto)}</strong>
+              <span class="purchase-plan-days">${periodo.dias} día${periodo.dias === 1 ? '' : 's'}</span>
             </div>
           `).join('')}
         </div>
@@ -8455,18 +8513,6 @@
               <span><strong>S/ ${fmtSim(totalAntes)}</strong><span class="purchase-budget-arrow" aria-hidden="true">→</span><strong>S/ ${fmtSim(totalDespues)}</strong></span>
             </div>
           `}
-        </section>
-        <section class="purchase-impact-section block">
-          <span class="purchase-impact-eyebrow">${etiquetaBloque}</span>
-          <div class="purchase-impact-heading">${tituloBloque}</div>
-          ${puedeCompararBloque ? `
-            <div class="purchase-budget-track" aria-label="Disponible del bloque después de ${capacidad.esCuota ? 'la primera cuota' : 'la compra'}">
-              <div class="purchase-budget-fill" style="width:${porcentajeBloque.toFixed(1)}%"></div>
-            </div>
-            <div class="purchase-budget-values">
-              <span><strong>S/ ${fmtSim(antes)}</strong><span class="purchase-budget-arrow" aria-hidden="true">→</span><strong>S/ ${fmtSim(despues)}</strong></span>
-            </div>
-          ` : `<div class="purchase-recommendation-copy">${capacidad.detalle}</div>`}
         </section>
         ${resumenPlan}
       </div>
@@ -8571,18 +8617,29 @@
     const rangoBloqueActual = rangos[currentIdx] || null;
     const diasBloqueRestantes = diasRestantesParaBloque(rangoBloqueActual);
     let semanasDespues = JSON.parse(JSON.stringify(state.semanas));
+    let asignacionesDespues = [];
     try {
-      const simulado = applyMovementToSnapshot(captureMovementState(), { monto, tipo: 'DS', etiqueta: null });
+      const simulado = cloneMovementSnapshot(captureMovementState());
+      simulado.totalDisponible -= monto;
+      simulado.gastoTotal += monto;
+      simulado.deudaActual += monto;
+      asignacionesDespues = redistribuirPresupuestoRestante(
+        simulado.semanas,
+        simulado.totalDisponible,
+        simulado.metaResidual
+      );
       semanasDespues = simulado.semanas;
     } catch(e) {}
     const margenDespues = Math.max(0, Number(semanasDespues[currentIdx]?.presupuesto) || 0);
     const excesoAntes = Math.max(0, Number(state.semanas[currentIdx]?.exceso) || 0);
     const excesoDespues = Math.max(0, Number(semanasDespues[currentIdx]?.exceso) || 0);
     const nuevoExceso = Math.max(0, excesoDespues - excesoAntes);
-    const presupuestosDespues = semanasDespues.slice(Math.max(0, currentIdx)).map((sem, offset) => ({
-      index: currentIdx + offset,
-      presupuesto: Math.max(0, Number(sem.presupuesto) || 0),
-      rango: rangos[currentIdx + offset] || null
+    const presupuestosDespues = asignacionesDespues.map(asignacion => ({
+      index: asignacion.index,
+      presupuesto: Math.max(0, Number(asignacion.presupuesto) || 0),
+      dias: Math.max(0, Number(asignacion.dias) || 0),
+      esActual: asignacion.index === currentIdx,
+      rango: rangos[asignacion.index] || null
     }));
 
     let nivel = 'neutral';
@@ -8924,7 +8981,8 @@
       const ok = aplicarMovimiento(cuotaPen, tipo, null, detalle, {
         fecha: ahora,
         renderizar: false,
-        notificar: false
+        notificar: false,
+        redistribuirRestantes: tipo === 'DS'
       });
       if (!ok) {
         toast('No se pudo registrar la compra', true);
@@ -8964,6 +9022,7 @@
       fecha: ahora,
       renderizar: false,
       notificar: false,
+      redistribuirRestantes: tipo === 'DS',
       metadata: {
         planCuotasId: plan.id,
         cuotaNumero: 1,
