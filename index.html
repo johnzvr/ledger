@@ -1735,17 +1735,86 @@
   }
   .purchase-budget-values {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
+    justify-content: flex-start;
     margin-top: 7px;
     color: var(--ink-dim);
     font-size: 10px;
   }
   .purchase-budget-values strong { color: var(--ink); font-weight: 700; }
-  .purchase-budget-context {
-    margin-top: 6px;
+  .purchase-impact-section + .purchase-impact-section {
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid var(--line);
+  }
+  body.dark .purchase-impact-section + .purchase-impact-section {
+    border-top-color: rgba(255,255,255,0.08);
+  }
+  .purchase-impact-eyebrow {
+    display: block;
+    margin-bottom: 5px;
     color: var(--ink-dim);
     font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .purchase-impact-heading-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .purchase-impact-heading {
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 18px;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .purchase-impact-section.block .purchase-impact-heading {
+    font-size: 15px;
+    letter-spacing: -0.015em;
+  }
+  .purchase-plan-overview {
+    margin-top: 13px;
+    padding-top: 13px;
+    border-top: 1px solid var(--line);
+  }
+  body.dark .purchase-plan-overview { border-top-color: rgba(255,255,255,0.08); }
+  .purchase-plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 7px;
+  }
+  .purchase-plan-period {
+    min-width: 0;
+    padding: 9px 10px;
+    border-radius: 11px;
+    background: var(--line);
+    color: var(--ink);
+  }
+  body.dark .purchase-plan-period { background: rgba(255,255,255,0.06); }
+  .purchase-plan-date {
+    display: block;
+    overflow: hidden;
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .purchase-plan-amount {
+    display: block;
+    margin-top: 3px;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 13px;
+    font-weight: 750;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
   }
   .purchase-comparison-toggle {
     width: 100%;
@@ -8292,36 +8361,83 @@
   }
 
   function resumenImpactoCuota(capacidad) {
+    const totalAntes = Math.max(0, Number(capacidad.disponibleAntes) || 0);
+    const totalDespuesReal = Number(capacidad.disponibleDespues) || 0;
+    const totalDespues = Math.max(0, totalDespuesReal);
+    const totalFaltante = Math.max(0, -totalDespuesReal);
+    const porcentajeTotal = totalAntes > 0
+      ? Math.max(0, Math.min(100, (totalDespues / totalAntes) * 100))
+      : (totalDespues > 0 ? 100 : 0);
     const antes = Math.max(0, Number(capacidad.margenAntes) || 0);
     const despues = Math.max(0, Number(capacidad.margenDespues) || 0);
-    const puedeComparar = antes > 0 || despues > 0;
-    const porcentaje = antes > 0 ? Math.max(0, Math.min(100, (despues / antes) * 100)) : (despues > 0 ? 100 : 0);
+    const puedeCompararBloque = antes > 0 || despues > 0 || capacidad.nuevoExceso > 0;
+    const porcentajeBloque = antes > 0
+      ? Math.max(0, Math.min(100, (despues / antes) * 100))
+      : (despues > 0 ? 100 : 0);
     const diasPeriodo = Math.max(0, Number(capacidad.diasBloqueRestantes) || 0);
-    const mostrarPeriodoDirecto = puedeComparar && capacidad.nuevoExceso <= 0 && diasPeriodo > 0;
-    const titulo = mostrarPeriodoDirecto
-      ? `Te quedarían S/ ${fmtSim(despues)} para ${diasPeriodo === 1 ? 'el próximo día' : `los próximos ${diasPeriodo} días`}`
-      : capacidad.titulo.replace(/^El bloque actual/i, 'Este periodo').replace(/\.$/, '');
-    const contexto = mostrarPeriodoDirecto && capacidad.rangoBloqueActual
-      ? `Periodo presupuestado: ${capacidad.rangoBloqueActual}.`
-      : capacidad.diasRestantes > 0
-        ? `${capacidad.diasRestantes} día${capacidad.diasRestantes === 1 ? '' : 's'} restante${capacidad.diasRestantes === 1 ? '' : 's'} en el ciclo.`
-        : capacidad.detalle;
+    const mostrarPeriodoDirecto = puedeCompararBloque && capacidad.nuevoExceso <= 0 && diasPeriodo > 0;
+    const tituloBloque = mostrarPeriodoDirecto
+      ? `S/ ${fmtSim(despues)} · ${diasPeriodo} día${diasPeriodo === 1 ? '' : 's'}`
+      : capacidad.nuevoExceso > 0
+        ? `Faltan S/ ${fmtSim(capacidad.nuevoExceso)}`
+        : 'Sin datos del bloque';
+    const tituloTotal = balanceHidden
+      ? totalFaltante > 0
+        ? 'No alcanza'
+        : 'Sí alcanza'
+      : totalFaltante > 0
+        ? `Faltan S/ ${fmtSim(totalFaltante)}`
+        : `Quedan S/ ${fmtSim(totalDespues)}`;
+    const etiquetaBloque = capacidad.rangoBloqueActual
+      ? `Presupuesto · ${capacidad.rangoBloqueActual}`
+      : 'Presupuesto actual';
+    const periodosPlan = Array.isArray(capacidad.presupuestosDespues)
+      ? capacidad.presupuestosDespues.slice(1)
+      : [];
+    const etiquetaPlan = periodosPlan.length === 1 ? 'Próximo periodo' : 'Próximos periodos';
+    const resumenPlan = periodosPlan.length ? `
+      <div class="purchase-plan-overview">
+        <span class="purchase-impact-eyebrow">${etiquetaPlan}</span>
+        <div class="purchase-plan-grid">
+          ${periodosPlan.map(periodo => `
+            <div class="purchase-plan-period">
+              <span class="purchase-plan-date">${periodo.rango ? formatRangoCorto(periodo.rango) : `Periodo ${periodo.index + 1}`}</span>
+              <strong class="purchase-plan-amount">S/ ${fmtSim(periodo.presupuesto)}</strong>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : '';
     return `
       <div class="purchase-budget-card">
-        <div class="purchase-budget-head">
-          <div class="purchase-budget-title">${titulo}</div>
-          <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
-        </div>
-        ${puedeComparar ? `
-          <div class="purchase-budget-track" aria-label="Disponible del bloque después de la cuota">
-            <div class="purchase-budget-fill" style="width:${porcentaje.toFixed(1)}%"></div>
+        <section class="purchase-impact-section total">
+          <span class="purchase-impact-eyebrow">Total disponible</span>
+          <div class="purchase-impact-heading-row">
+            <div class="purchase-impact-heading">${tituloTotal}</div>
+            <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
           </div>
-          <div class="purchase-budget-values">
-            <span>Antes <strong>S/ ${fmtSim(antes)}</strong></span>
-            <span>Después <strong>S/ ${fmtSim(despues)}</strong></span>
-          </div>
-        ` : `<div class="purchase-recommendation-copy">${capacidad.detalle}</div>`}
-        <div class="purchase-budget-context">${contexto}</div>
+          ${balanceHidden ? '' : `
+            <div class="purchase-budget-track" aria-label="Disponible total después de ${capacidad.esCuota ? 'la primera cuota' : 'la compra'}">
+              <div class="purchase-budget-fill" style="width:${porcentajeTotal.toFixed(1)}%"></div>
+            </div>
+            <div class="purchase-budget-values">
+              <span><strong>S/ ${fmtSim(totalAntes)}</strong> → <strong>S/ ${fmtSim(totalDespues)}</strong></span>
+            </div>
+          `}
+        </section>
+        <section class="purchase-impact-section block">
+          <span class="purchase-impact-eyebrow">${etiquetaBloque}</span>
+          <div class="purchase-impact-heading">${tituloBloque}</div>
+          ${puedeCompararBloque ? `
+            <div class="purchase-budget-track" aria-label="Disponible del bloque después de ${capacidad.esCuota ? 'la primera cuota' : 'la compra'}">
+              <div class="purchase-budget-fill" style="width:${porcentajeBloque.toFixed(1)}%"></div>
+            </div>
+            <div class="purchase-budget-values">
+              <span><strong>S/ ${fmtSim(antes)}</strong> → <strong>S/ ${fmtSim(despues)}</strong></span>
+            </div>
+          ` : `<div class="purchase-recommendation-copy">${capacidad.detalle}</div>`}
+        </section>
+        ${resumenPlan}
       </div>
     `;
   }
@@ -8484,7 +8600,9 @@
       titulo,
       detalle,
       meta,
+      esCuota,
       diasRestantes,
+      disponibleAntes: disponible,
       disponibleDespues,
       margenAntes,
       margenDespues,
@@ -8590,11 +8708,6 @@
     const disponibleDespues = disponibleReal - montoImpacto;
     const deudaDespues = state.deudaActual + monto;
     const capacidad = analizarCapacidadCompra(montoImpacto, planCuotas.meses > 1);
-    const impactoTexto = planCuotas
-      ? `Cuota por ciclo: ${formatInstallmentMoney(planCuotas.cuota, purchaseSimulationCurrency)} · Compromiso total: ${formatInstallmentMoney(planCuotas.total, purchaseSimulationCurrency)}`
-      : balanceHidden
-        ? `Disponible oculto · Deuda: S/ ${fmtSim(deudaDespues)}`
-        : `Disponible: S/ ${fmtSim(disponibleDespues)} · Deuda: S/ ${fmtSim(deudaDespues)}`;
     let ritmoSemanalTexto;
     if (disponibleDespues < 0) {
       ritmoSemanalTexto = 'No quedaría disponible para repartir hasta el cierre.';
@@ -8644,18 +8757,10 @@
 
     resultado.innerHTML = `
       ${conversionResumen}
-      <div class="purchase-capacity-card">
-        <div class="purchase-capacity-head">
-          <div class="purchase-result-heading">Impacto en tu margen</div>
-          <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
-        </div>
-        <div class="purchase-capacity-title">${capacidad.titulo}</div>
-        <div class="purchase-capacity-copy">${capacidad.detalle}</div>
-        <div class="purchase-capacity-meta">${capacidad.meta}</div>
-      </div>
+      ${resumenImpactoCuota(capacidad)}
       <div class="purchase-impact ${disponibleDespues < 0 ? 'warning' : ''}">
         <span class="purchase-impact-label">Si la registraras como DS</span>
-        <strong>${impactoTexto}</strong>
+        <strong>Deuda después de registrarla: S/ ${fmtSim(deudaDespues)}</strong>
         <span class="purchase-impact-weekly">${ritmoSemanalTexto}</span>
       </div>
       <div class="purchase-section-label">Margen de pago</div>
