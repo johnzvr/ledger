@@ -398,6 +398,18 @@
     background: var(--coral);
     color: var(--danger);
   }
+  .sync-badge.remote-newer {
+    background: #F5DEA0;
+    color: #72540A;
+  }
+  .sync-badge.local-newer {
+    background: var(--sky);
+    color: #3F6682;
+  }
+  .sync-badge.conflict {
+    background: var(--coral);
+    color: var(--danger);
+  }
   
   /* Sync mini buttons (dentro del input bar) */
   .sync-row {
@@ -513,6 +525,21 @@
     display: inline-block;
   }
   .sync-connect.error {
+    background: rgba(224, 168, 150, 0.22);
+    border-color: rgba(224, 168, 150, 0.35);
+    color: #E0A896;
+  }
+  .sync-connect.remote-newer {
+    background: rgba(245, 222, 160, 0.22);
+    border-color: rgba(245, 222, 160, 0.4);
+    color: #F5DEA0;
+  }
+  .sync-connect.local-newer {
+    background: rgba(207, 222, 232, 0.22);
+    border-color: rgba(207, 222, 232, 0.35);
+    color: #B0C5D6;
+  }
+  .sync-connect.conflict {
     background: rgba(224, 168, 150, 0.22);
     border-color: rgba(224, 168, 150, 0.35);
     color: #E0A896;
@@ -3803,7 +3830,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '86';
+  const LEDGER_BUILD = '87';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -3838,7 +3865,9 @@
     tarjetaMovimientosArrastrados: [],
     planesCuotas: [], // compromisos financiados; cada ciclo activa solo su cuota
     log: [],
-    redoMovement: null
+    redoMovement: null,
+    dataRevision: 0, // solo aumenta cuando cambia información financiera real
+    dataVersionId: null // identifica exactamente el contenido de esta revisión
   };
 
   const INTERBANK_PAGO_20_2026_VERSION = 'interbank-pago20-2026-v1';
@@ -3859,6 +3888,7 @@
   ]);
   
   let state = loadState();
+  ensureSyncMetadata(state);
   let lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
   // Limpia el respaldo temporal usado por una versión anterior.
   try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
@@ -4100,18 +4130,109 @@
   function syncRelevantFingerprint(source = state) {
     const {
       lastModified,
+      dataRevision,
+      dataVersionId,
       darkMode,
       tcCache,
       ...syncRelevantState
     } = source || {};
-    return JSON.stringify(syncRelevantState);
+    return stableStringify(syncRelevantState);
+  }
+
+  function stableStringify(value) {
+    if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+    if (value && typeof value === 'object') {
+      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+    }
+    return JSON.stringify(value);
+  }
+
+  function syncFingerprintHash(value) {
+    const input = String(value || '');
+    let hash = 2166136261;
+    for (let i = 0; i < input.length; i++) {
+      hash ^= input.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+  }
+
+  function createDataVersionId(revision, fingerprint) {
+    const randomPart = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+    return `r${revision}-${Date.now().toString(36)}-${syncFingerprintHash(fingerprint)}-${randomPart}`;
+  }
+
+  function ensureSyncMetadata(target) {
+    if (!target || typeof target !== 'object') return target;
+    const revision = Math.max(0, parseInt(target.dataRevision, 10) || 0);
+    target.dataRevision = revision;
+    if (!target.dataVersionId) {
+      const fingerprint = syncRelevantFingerprint(target);
+      target.dataVersionId = `legacy-${Number(target.lastModified) || 0}-${syncFingerprintHash(fingerprint)}`;
+    }
+    return target;
+  }
+
+  function getDataVersionInfo(source) {
+    const target = source || {};
+    const fingerprint = syncRelevantFingerprint(target);
+    return {
+      revision: Math.max(0, parseInt(target.dataRevision, 10) || 0),
+      versionId: target.dataVersionId || `legacy-${Number(target.lastModified) || 0}-${syncFingerprintHash(fingerprint)}`,
+      modified: Number(target.lastModified) || 0,
+      hash: syncFingerprintHash(fingerprint)
+    };
+  }
+
+  function getLastSyncedVersionInfo() {
+    try {
+      return JSON.parse(localStorage.getItem('ledger-last-synced-data-v1') || 'null');
+    } catch(e) {
+      return null;
+    }
+  }
+
+  function rememberSyncedVersion(source) {
+    const info = getDataVersionInfo(source);
+    try {
+      localStorage.setItem('ledger-last-synced-data-v1', JSON.stringify(info));
+    } catch(e) {}
+    return info;
+  }
+
+  function compareDataVersions(localSource, remoteSource) {
+    const local = getDataVersionInfo(localSource);
+    const remote = getDataVersionInfo(remoteSource);
+    if (local.hash === remote.hash) return { status: 'equal', local, remote };
+
+    const base = getLastSyncedVersionInfo();
+    if (base) {
+      const localIsBase = local.versionId === base.versionId || local.hash === base.hash;
+      const remoteIsBase = remote.versionId === base.versionId || remote.hash === base.hash;
+      if (localIsBase && !remoteIsBase) return { status: 'remote-newer', local, remote };
+      if (remoteIsBase && !localIsBase) return { status: 'local-newer', local, remote };
+      if (!localIsBase && !remoteIsBase) return { status: 'conflict', local, remote };
+    }
+
+    if (remote.revision > local.revision) return { status: 'remote-newer', local, remote };
+    if (local.revision > remote.revision) return { status: 'local-newer', local, remote };
+    if (local.revision === 0 && remote.revision === 0 && local.modified !== remote.modified) {
+      return { status: remote.modified > local.modified ? 'remote-newer' : 'local-newer', local, remote };
+    }
+    return { status: 'conflict', local, remote };
   }
   
   function saveState({ markModified = true, sync = true } = {}) {
     const fingerprint = syncRelevantFingerprint(state);
     const realFinancialChange = markModified && fingerprint !== lastPersistedSyncFingerprint;
     try {
-      if (realFinancialChange) state.lastModified = Date.now();
+      if (realFinancialChange) {
+        state.lastModified = Date.now();
+        state.dataRevision = Math.max(0, parseInt(state.dataRevision, 10) || 0) + 1;
+        state.dataVersionId = createDataVersionId(state.dataRevision, fingerprint);
+      }
       localStorage.setItem('ledger-state-v2', JSON.stringify(state));
     } catch(e) { toast('Error guardando', true); }
     lastPersistedSyncFingerprint = fingerprint;
@@ -9133,6 +9254,10 @@
   let syncInProgress = false;
   let pauseAutoUpload = false;
   let pendingRemoteState = null;
+  let pendingUploadRemoteState = null;
+  let pendingRemoteComparisonStatus = 'equal';
+  let currentSyncStatus = 'off';
+  let lastFreshnessCheckAt = 0;
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -9154,8 +9279,9 @@
             localStorage.setItem('ledger-token-exp', String(Date.now() + expiresIn * 1000));
             localStorage.setItem('ledger-drive-authorized', '1'); // marca que ya autorizó una vez
           } catch(e){}
-          updateSyncUI('ok');
+          updateSyncUI('syncing');
           scheduleTokenRefresh(expiresIn);
+          setTimeout(() => checkDriveFreshness({ notify: true }), 80);
         }
       },
       error_callback: (err) => {
@@ -9174,10 +9300,11 @@
       const exp = parseInt(localStorage.getItem('ledger-token-exp') || '0');
       if (saved && Date.now() < exp) {
         accessToken = saved;
-        updateSyncUI('ok');
+        updateSyncUI('syncing');
         // Programar refresh silencioso antes de que expire
         const msRemaining = exp - Date.now();
         scheduleTokenRefresh(msRemaining / 1000);
+        setTimeout(() => checkDriveFreshness({ notify: true }), 120);
       } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
         // Token expirado pero ya autorizó antes → intentar refresh silencioso
         setTimeout(silentRefresh, 500);
@@ -9250,15 +9377,69 @@
     // Se deja por compatibilidad
     return;
   }
+
+  async function fetchDriveState(fileId) {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (res.status === 401) { handleTokenExpired(); return null; }
+    if (!res.ok) throw new Error('download ' + res.status);
+    const remoteState = await res.json();
+    return remoteState && typeof remoteState === 'object' ? remoteState : null;
+  }
+
+  async function checkDriveFreshness({ notify = false } = {}) {
+    if (!accessToken || syncInProgress) return null;
+    syncInProgress = true;
+    lastFreshnessCheckAt = Date.now();
+    updateSyncUI('syncing');
+    try {
+      driveFileId = null;
+      const file = await findDriveFile();
+      if (!file) {
+        pendingRemoteState = null;
+        updateSyncUI('local-newer');
+        return { status: 'local-newer', remoteState: null };
+      }
+      driveFileId = file.id;
+      const remoteState = await fetchDriveState(file.id);
+      if (!remoteState) return null;
+      const comparison = compareDataVersions(state, remoteState);
+      pendingRemoteState = comparison.status === 'equal' ? null : remoteState;
+      if (comparison.status === 'equal') {
+        rememberSyncedVersion(state);
+        updateSyncUI('ok');
+      } else {
+        updateSyncUI(comparison.status);
+        if (notify && comparison.status === 'remote-newer') toast('Drive tiene datos más recientes');
+        if (notify && comparison.status === 'conflict') toast('Hay cambios distintos en ambos dispositivos', true);
+      }
+      return { ...comparison, remoteState };
+    } catch (e) {
+      console.error('freshness check error:', e);
+      updateSyncUI('error');
+      return null;
+    } finally {
+      syncInProgress = false;
+    }
+  }
+
+  function requestDriveFreshnessCheck({ notify = false, force = false } = {}) {
+    if (!accessToken) return;
+    if (!force && Date.now() - lastFreshnessCheckAt < 15000) return;
+    checkDriveFreshness({ notify });
+  }
   
   function scheduleSyncUpload() {
     if (!accessToken || pauseAutoUpload) return;
     clearTimeout(syncTimer);
-    updateSyncUI('syncing');
+    updateSyncUI('local-newer');
     syncTimer = setTimeout(async () => {
       try {
-        await uploadToDrive();
-        updateSyncUI('ok');
+        const result = await uploadToDrive();
+        if (result?.blocked && result.status === 'remote-newer') toast('Drive tiene datos más recientes; revisa antes de subir');
+        if (result?.blocked && result.status === 'conflict') toast('Hay cambios distintos en ambos dispositivos', true);
       } catch (e) {
         console.error('upload error:', e);
         updateSyncUI('error');
@@ -9266,15 +9447,20 @@
     }, 2000);
   }
   
-  async function uploadToDrive() {
-    if (!accessToken) return;
-    const content = JSON.stringify(state);
+  async function uploadToDrive({ force = false } = {}) {
+    if (!accessToken) return { blocked: true, status: 'off' };
+    updateSyncUI('syncing');
+    let remoteState = null;
+
+    // Comprobar siempre el contenido remoto antes de escribir, incluso cuando ya conocemos el fileId.
+    if (driveFileId) remoteState = await fetchDriveState(driveFileId);
     
     // Si no tengo fileId, primero crear el archivo (metadata)
     if (!driveFileId) {
       const file = await findDriveFile();
       if (file) {
         driveFileId = file.id;
+        remoteState = await fetchDriveState(file.id);
       } else {
         const createRes = await fetch(
           'https://www.googleapis.com/drive/v3/files',
@@ -9296,6 +9482,24 @@
         driveFileId = created.id;
       }
     }
+
+    if (remoteState && !force) {
+      const comparison = compareDataVersions(state, remoteState);
+      if (comparison.status === 'equal') {
+        rememberSyncedVersion(state);
+        pendingRemoteState = null;
+        updateSyncUI('ok');
+        return { blocked: false, status: 'equal', uploaded: false };
+      }
+      if (comparison.status === 'remote-newer' || comparison.status === 'conflict') {
+        pendingRemoteState = remoteState;
+        pendingUploadRemoteState = remoteState;
+        updateSyncUI(comparison.status);
+        return { blocked: true, status: comparison.status, remoteState };
+      }
+    }
+
+    const content = JSON.stringify(state);
     
     // Actualizar contenido
     const res = await fetch(
@@ -9311,6 +9515,11 @@
     );
     if (res.status === 401) { handleTokenExpired(); return; }
     if (!res.ok) throw new Error('upload ' + res.status);
+    rememberSyncedVersion(state);
+    pendingRemoteState = null;
+    pendingUploadRemoteState = null;
+    updateSyncUI('ok');
+    return { blocked: false, status: 'ok', uploaded: true };
   }
   
   function handleTokenExpired() {
@@ -9340,12 +9549,16 @@
   }
   
   function updateSyncUI(estado) {
+    currentSyncStatus = estado || 'off';
     const badge = document.getElementById('syncBadge');
     if (badge) {
       const configs = {
         off:      { icon: '○', text: 'Sin sync',       cls: 'off' },
         syncing:  { icon: '↻', text: 'Sincronizando',  cls: 'syncing' },
         ok:       { icon: '●', text: 'Sincronizado',   cls: 'ok' },
+        'remote-newer': { icon: '↓', text: 'Drive más nuevo', cls: 'remote-newer' },
+        'local-newer':  { icon: '↑', text: 'Pendiente de subir', cls: 'local-newer' },
+        conflict: { icon: '!', text: 'Revisar cambios', cls: 'conflict' },
         error:    { icon: '!', text: 'Error de sync',  cls: 'error' }
       };
       const c = configs[estado] || configs.off;
@@ -9364,12 +9577,15 @@
     const btnConnect = document.getElementById('btnConnect');
     const btnConnectIcon = document.getElementById('btnConnectIcon');
     if (btnConnect && btnConnectIcon) {
-      const icons = { off: '○', ok: '●', syncing: '↻', error: '!' };
+      const icons = { off: '○', ok: '●', syncing: '↻', 'remote-newer': '↓', 'local-newer': '↑', conflict: '!', error: '!' };
       btnConnect.className = 'sync-connect ' + (estado || 'off');
       btnConnectIcon.textContent = icons[estado] || '○';
       btnConnect.setAttribute('aria-label', 
         estado === 'ok' ? 'Drive conectado' :
         estado === 'syncing' ? 'Sincronizando' :
+        estado === 'remote-newer' ? 'Drive tiene datos más recientes' :
+        estado === 'local-newer' ? 'Cambios pendientes de subir' :
+        estado === 'conflict' ? 'Revisar cambios de sincronización' :
         estado === 'error' ? 'Error de sync' :
         'Conectar Drive'
       );
@@ -9383,8 +9599,24 @@
     return d.toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 
+  function getSyncStatusPresentation(status = currentSyncStatus) {
+    const configs = {
+      off: { label: 'Desconectado', color: 'var(--ink-mute)', note: 'Conecta Drive para comparar tus datos.' },
+      syncing: { label: 'Comprobando…', color: '#4A6F8A', note: 'Ledger está comparando este dispositivo con Drive.' },
+      ok: { label: 'Sincronizado', color: 'var(--gain)', note: 'Este dispositivo y Drive tienen el mismo contenido.' },
+      'remote-newer': { label: 'Drive tiene cambios', color: '#72540A', note: 'Otro dispositivo guardó información más reciente. Baja los datos antes de editar.' },
+      'local-newer': { label: 'Pendiente de subir', color: '#3F6682', note: 'Este dispositivo tiene cambios que todavía no están en Drive.' },
+      conflict: { label: 'Cambios en ambos', color: 'var(--danger)', note: 'Los dos dispositivos fueron editados. Ledger no reemplazará nada sin tu confirmación.' },
+      error: { label: 'No se pudo comprobar', color: 'var(--danger)', note: 'Revisa tu conexión o vuelve a conectar Drive.' }
+    };
+    return configs[status] || configs.off;
+  }
+
   function openDriveSync() {
     const conectado = !!accessToken;
+    const syncStatus = getSyncStatusPresentation(conectado ? currentSyncStatus : 'off');
+    const localVersion = getDataVersionInfo(state);
+    const remoteVersion = pendingRemoteState ? getDataVersionInfo(pendingRemoteState) : null;
     const lastMod = state.lastModified 
       ? new Date(state.lastModified).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
       : 'nunca';
@@ -9397,16 +9629,21 @@
       
       <div class="rollover-breakdown">
         <div class="rollover-row">
-          <span class="rollover-week">Estado</span>
-          <span class="rollover-amount" style="color:${conectado ? 'var(--gain)' : 'var(--ink-mute)'};">${conectado ? '● Conectado' : '○ Desconectado'}</span>
+          <span class="rollover-week">Estado de los datos</span>
+          <span class="rollover-amount" style="color:${syncStatus.color};">${syncStatus.label}</span>
         </div>
         ${conectado ? `
           <div class="rollover-row">
             <span class="rollover-week">Última edición local</span>
             <span class="rollover-amount" style="font-size:11px;">${lastMod}</span>
           </div>
+          <div class="rollover-row">
+            <span class="rollover-week">Revisión local</span>
+            <span class="rollover-amount" style="font-size:11px;">${localVersion.revision}${remoteVersion ? ` · Drive ${remoteVersion.revision}` : ''}</span>
+          </div>
         ` : ''}
       </div>
+      <p class="modal-sub" style="font-size:11px;margin-top:12px;color:${syncStatus.color};">${syncStatus.note}</p>
       
       ${conectado ? `
         <div class="sync-actions">
@@ -9429,7 +9666,7 @@
         </div>
         
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-          💡 <strong>Cuando cambias de dispositivo</strong>, toca "Bajar de Drive" antes de empezar a editar para traer los cambios más recientes. Los gastos que registres se suben solos.
+          Ledger comprueba Drive al abrir o reconectar. Solo los cambios financieros crean una revisión nueva; iniciar sesión o abrir la app no altera la versión.
         </p>
       ` : `
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
@@ -9458,11 +9695,54 @@
     updateSyncUI('syncing');
     try {
       driveFileId = null;
-      const file = await findDriveFile();
-      if (file) driveFileId = file.id;
-      await uploadToDrive();
-      updateSyncUI('ok');
-      toast('↑ Datos subidos a Drive');
+      const result = await uploadToDrive();
+      if (result?.blocked) {
+        openUploadBlockedModal(result.status, result.remoteState);
+        return;
+      }
+      toast(result?.uploaded ? '↑ Datos subidos a Drive' : 'Drive ya tenía estos datos');
+    } catch (e) {
+      console.error(e);
+      updateSyncUI('error');
+      toast('Error al subir', true);
+    }
+  }
+
+  function openUploadBlockedModal(status, remoteState) {
+    pendingUploadRemoteState = remoteState || pendingRemoteState;
+    const localInfo = getDataVersionInfo(state);
+    const remoteInfo = getDataVersionInfo(pendingUploadRemoteState || {});
+    const isConflict = status === 'conflict';
+    openModal(`
+      <h2>${isConflict ? 'Cambios en ambos' : 'Drive tiene cambios'}</h2>
+      <p class="modal-sub">${isConflict
+        ? 'Este dispositivo y Drive fueron editados por separado.'
+        : 'Drive contiene datos más recientes que este dispositivo.'} Ledger no reemplazará nada automáticamente.</p>
+      <div class="rollover-breakdown">
+        <div class="rollover-row">
+          <span class="rollover-week">Este dispositivo</span>
+          <span class="rollover-amount" style="font-size:11px;">Rev. ${localInfo.revision} · ${formatSyncTimestamp(localInfo.modified)}</span>
+        </div>
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Drive</span>
+          <span class="rollover-amount" style="font-size:11px;">Rev. ${remoteInfo.revision} · ${formatSyncTimestamp(remoteInfo.modified)}</span>
+        </div>
+      </div>
+      <p class="modal-sub" style="font-size:11px;margin-top:12px;">Bajar conserva Drive. Subir de todos modos reemplaza Drive con este dispositivo.</p>
+      <div class="modal-buttons modal-buttons-three">
+        <button class="btn-secondary" onclick="pendingUploadRemoteState=null; closeModal();">Cancelar</button>
+        <button class="btn-secondary" onclick="bajarAhora()">Usar Drive</button>
+        <button class="btn-primary" onclick="confirmarSubidaForzada()">Usar este dispositivo</button>
+      </div>
+    `);
+  }
+
+  async function confirmarSubidaForzada() {
+    closeModal();
+    updateSyncUI('syncing');
+    try {
+      const result = await uploadToDrive({ force: true });
+      if (!result?.blocked) toast('↑ Drive reemplazado con estos datos');
     } catch (e) {
       console.error(e);
       updateSyncUI('error');
@@ -9482,35 +9762,27 @@
       driveFileId = null;
       const file = await findDriveFile();
       if (!file) {
-        updateSyncUI('ok');
+        updateSyncUI('local-newer');
         toast('No hay datos en Drive todavía', true);
         return;
       }
       driveFileId = file.id;
-      const res = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (res.status === 401) { handleTokenExpired(); return; }
-      if (!res.ok) throw new Error('download ' + res.status);
-      const remoteState = await res.json();
+      const remoteState = await fetchDriveState(file.id);
+      if (!remoteState) return;
       pendingRemoteState = remoteState;
-      updateSyncUI('ok');
+      const comparison = compareDataVersions(state, remoteState);
+      pendingRemoteComparisonStatus = comparison.status;
+      updateSyncUI(comparison.status === 'equal' ? 'ok' : comparison.status);
 
       const localTime = state.lastModified || null;
       const remoteTime = remoteState.lastModified || null;
-      let freshness = 'Revisa las fechas antes de continuar.';
-      if (localTime && remoteTime) {
-        freshness = remoteTime > localTime
-          ? 'La versión de Drive parece más reciente.'
-          : remoteTime < localTime
-            ? 'Tu versión local parece más reciente. Bajar podría reemplazar cambios nuevos.'
-            : 'Ambas versiones tienen la misma fecha de edición.';
-      } else if (!localTime && remoteTime) {
-        freshness = 'Drive contiene una versión guardada; este dispositivo aún no registra cambios.';
-      } else if (localTime && !remoteTime) {
-        freshness = 'Este dispositivo contiene cambios con fecha registrada.';
-      }
+      const freshness = comparison.status === 'remote-newer'
+        ? 'Drive contiene cambios más recientes.'
+        : comparison.status === 'local-newer'
+          ? 'Este dispositivo tiene cambios que todavía no están en Drive. Bajar los reemplazaría.'
+          : comparison.status === 'conflict'
+            ? 'Hay cambios distintos en ambos dispositivos. Revisa antes de elegir.'
+            : 'Ambas versiones contienen los mismos datos.';
 
       openModal(`
         <h2>¿Bajar desde <span class="accent">Drive</span>?</h2>
@@ -9518,16 +9790,16 @@
         <div class="rollover-breakdown">
           <div class="rollover-row">
             <span class="rollover-week">Versión local</span>
-            <span class="rollover-amount" style="font-size:11px;">${formatSyncTimestamp(localTime)}</span>
+            <span class="rollover-amount" style="font-size:11px;">Rev. ${comparison.local.revision} · ${formatSyncTimestamp(localTime)}</span>
           </div>
           <div class="rollover-row highlight">
             <span class="rollover-week">Versión en Drive</span>
-            <span class="rollover-amount" style="font-size:11px;">${formatSyncTimestamp(remoteTime)}</span>
+            <span class="rollover-amount" style="font-size:11px;">Rev. ${comparison.remote.revision} · ${formatSyncTimestamp(remoteTime)}</span>
           </div>
         </div>
         <p class="modal-sub" style="font-size:11px;margin-top:12px;">${freshness}</p>
         <div class="modal-buttons">
-          <button class="btn-secondary" onclick="pendingRemoteState=null; closeModal();">Cancelar</button>
+          <button class="btn-secondary" onclick="cancelarBajadaDrive()">Cancelar</button>
           <button class="btn-primary" onclick="confirmarBajadaDrive()">Bajar y reemplazar</button>
         </div>
       `);
@@ -9538,24 +9810,33 @@
     }
   }
 
+  function cancelarBajadaDrive() {
+    pendingRemoteState = null;
+    closeModal();
+    setTimeout(() => checkDriveFreshness(), 0);
+  }
+
   function confirmarBajadaDrive() {
     if (!pendingRemoteState) {
       closeModal();
       toast('La descarga ya no está disponible', true);
       return;
     }
-    const remoteState = pendingRemoteState;
+    const remoteState = ensureSyncMetadata(pendingRemoteState);
     const remoteModified = remoteState.lastModified || null;
     const localDarkMode = state.darkMode;
     pauseAutoUpload = true;
     state = { ...remoteState, darkMode: localDarkMode };
     state.lastModified = remoteModified;
     lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
+    rememberSyncedVersion(state);
     closeModal();
     applyTheme();
     render({ markModified: false, sync: false });
     pauseAutoUpload = false;
     pendingRemoteState = null;
+    pendingUploadRemoteState = null;
+    pendingRemoteComparisonStatus = 'equal';
     updateSyncUI('ok');
     toast('↓ Datos traídos de Drive');
   }
@@ -9743,6 +10024,10 @@
   render({ markModified: false, sync: false });
   initKeyboardHandling();
   initGoogleSync();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') requestDriveFreshnessCheck({ notify: true });
+  });
+  window.addEventListener('focus', () => requestDriveFreshnessCheck({ notify: true }));
   // Precargar TC en background (silencioso, solo si es viejo)
   const cacheAge = getTcAgeHours();
   if (cacheAge === null || cacheAge > 1) {
