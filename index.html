@@ -3048,6 +3048,75 @@
     overflow-y: auto;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   }
+  .sync-notice-topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .sync-notice-title {
+    margin: 0;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: clamp(22px, 6vw, 28px);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+  }
+  .sync-notice-close {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    display: grid;
+    place-items: center;
+    margin: -7px -7px 0 0;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-mute);
+    font: 500 25px/1 'Bricolage Grotesque', sans-serif;
+    cursor: pointer;
+  }
+  .sync-notice-close:hover,
+  .sync-notice-close:focus-visible {
+    background: var(--line);
+    color: var(--ink);
+    outline: none;
+  }
+  .sync-notice-versions {
+    overflow: hidden;
+    margin-bottom: 16px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 16px;
+  }
+  .sync-notice-version {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 13px 14px;
+    color: var(--ink-mute);
+    font-size: 12px;
+  }
+  .sync-notice-version + .sync-notice-version {
+    border-top: 1px solid var(--line-hi);
+  }
+  .sync-notice-version.drive {
+    background: var(--lavender);
+    color: var(--ink);
+  }
+  .sync-notice-version strong {
+    color: inherit;
+    font-size: 13px;
+  }
+  .sync-notice-version time {
+    min-width: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .sync-notice-update {
+    width: 100%;
+  }
   .nested-modal-overlay {
     position: fixed;
     inset: 0;
@@ -3830,7 +3899,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '87';
+  const LEDGER_BUILD = '89';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9188,6 +9257,10 @@
   }
   function closeModal() {
     closeNestedModal();
+    if (activeSyncAlertVersionId) {
+      lastAnnouncedSyncVersionId = activeSyncAlertVersionId;
+      activeSyncAlertVersionId = null;
+    }
     document.getElementById('modalOverlay').classList.remove('active');
   }
   document.getElementById('nestedModalOverlay').addEventListener('click', (e) => {
@@ -9258,6 +9331,8 @@
   let pendingRemoteComparisonStatus = 'equal';
   let currentSyncStatus = 'off';
   let lastFreshnessCheckAt = 0;
+  let activeSyncAlertVersionId = null;
+  let lastAnnouncedSyncVersionId = null;
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -9412,8 +9487,9 @@
         updateSyncUI('ok');
       } else {
         updateSyncUI(comparison.status);
-        if (notify && comparison.status === 'remote-newer') toast('Drive tiene datos más recientes');
-        if (notify && comparison.status === 'conflict') toast('Hay cambios distintos en ambos dispositivos', true);
+        if (notify && (comparison.status === 'remote-newer' || comparison.status === 'conflict')) {
+          showDriveDataNotice(comparison.status, remoteState);
+        }
       }
       return { ...comparison, remoteState };
     } catch (e) {
@@ -9438,8 +9514,7 @@
     syncTimer = setTimeout(async () => {
       try {
         const result = await uploadToDrive();
-        if (result?.blocked && result.status === 'remote-newer') toast('Drive tiene datos más recientes; revisa antes de subir');
-        if (result?.blocked && result.status === 'conflict') toast('Hay cambios distintos en ambos dispositivos', true);
+        if (result?.blocked) showDriveDataNotice(result.status, result.remoteState);
       } catch (e) {
         console.error('upload error:', e);
         updateSyncUI('error');
@@ -9610,6 +9685,51 @@
       error: { label: 'No se pudo comprobar', color: 'var(--danger)', note: 'Revisa tu conexión o vuelve a conectar Drive.' }
     };
     return configs[status] || configs.off;
+  }
+
+  function showDriveDataNotice(status, remoteState) {
+    if (!remoteState || (status !== 'remote-newer' && status !== 'conflict')) return;
+    const remoteInfo = getDataVersionInfo(remoteState);
+    const versionKey = `${status}:${remoteInfo.versionId}:${remoteInfo.hash}`;
+    if (lastAnnouncedSyncVersionId === versionKey || activeSyncAlertVersionId === versionKey) return;
+    if (document.getElementById('modalOverlay')?.classList.contains('active')) return;
+
+    activeSyncAlertVersionId = versionKey;
+    if (status === 'conflict') {
+      openUploadBlockedModal('conflict', remoteState);
+      return;
+    }
+
+    const localInfo = getDataVersionInfo(state);
+    openModal(`
+      <div class="sync-notice-topline">
+        <h2 class="sync-notice-title">Drive más reciente</h2>
+        <button class="sync-notice-close" type="button" onclick="dismissDriveDataNotice()" aria-label="Cerrar">×</button>
+      </div>
+      <div class="sync-notice-versions">
+        <div class="sync-notice-version">
+          <strong>Local</strong>
+          <time>${formatSyncTimestamp(localInfo.modified)}</time>
+        </div>
+        <div class="sync-notice-version drive">
+          <strong>Drive</strong>
+          <time>${formatSyncTimestamp(remoteInfo.modified)}</time>
+        </div>
+      </div>
+      <button class="btn-primary sync-notice-update" onclick="updateFromDriveDataNotice()">Actualizar con Drive</button>
+    `);
+  }
+
+  function dismissDriveDataNotice() {
+    lastAnnouncedSyncVersionId = activeSyncAlertVersionId;
+    activeSyncAlertVersionId = null;
+    closeModal();
+  }
+
+  function updateFromDriveDataNotice() {
+    lastAnnouncedSyncVersionId = activeSyncAlertVersionId;
+    activeSyncAlertVersionId = null;
+    confirmarBajadaDrive();
   }
 
   function openDriveSync() {
