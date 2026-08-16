@@ -3116,6 +3116,21 @@
   }
   .sync-notice-update {
     width: 100%;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 20px;
+    border: 0;
+    border-radius: 16px;
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    cursor: pointer;
   }
   .nested-modal-overlay {
     position: fixed;
@@ -3899,7 +3914,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '89';
+  const LEDGER_BUILD = '90';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
