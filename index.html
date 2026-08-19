@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   
@@ -3914,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '90';
+  const LEDGER_BUILD = '91';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6628,9 +6629,10 @@
       
       <div class="all-list">${listaHTML}</div>
       
-      <div class="modal-buttons">
-        <button class="btn-secondary" onclick="exportarCSV()">Exportar CSV</button>
-        <button class="btn-primary" onclick="closeModal()">Cerrar</button>
+      <div class="modal-buttons modal-buttons-three">
+        <button class="btn-secondary" onclick="exportarCSV()">CSV</button>
+        <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+        <button class="btn-primary" onclick="exportarExcel()">Descargar Excel</button>
       </div>
     `);
     
@@ -6789,10 +6791,17 @@
         </div>
       </div>
       <div class="all-list">${listaHTML}</div>
-      <div class="modal-buttons">
-        <button class="btn-secondary" onclick="closeModal()">Volver</button>
-        ${movimientos.length ? `<button class="btn-primary" onclick="exportArchivedCycleCSV(${index})">Exportar CSV</button>` : ''}
-      </div>
+      ${movimientos.length ? `
+        <div class="modal-buttons modal-buttons-three">
+          <button class="btn-secondary" onclick="exportArchivedCycleCSV(${index})">CSV</button>
+          <button class="btn-secondary" onclick="closeModal()">Volver</button>
+          <button class="btn-primary" onclick="exportArchivedCycleExcel(${index})">Descargar Excel</button>
+        </div>
+      ` : `
+        <div class="modal-buttons">
+          <button class="btn-primary" onclick="closeModal()">Volver</button>
+        </div>
+      `}
     `);
   }
 
@@ -7352,7 +7361,344 @@
     render();
   }
   
-  // ============ EXPORTAR CSV ============
+  // ============ REPORTES EXCEL Y CSV ============
+  const EXCEL_PALETTE = {
+    ink: 'FF1A1A1A', bg: 'FFFAF8F3', white: 'FFFFFFFF', muted: 'FF6B6B6B',
+    line: 'FFD4CFC1', cream: 'FFF3E9CD', coral: 'FFF1CEC2', blue: 'FFD9E8F1',
+    green: 'FFDDEDD1', lavender: 'FFE9E0F0', gray: 'FFE8E4DA',
+    paleCoral: 'FFFCF2EE', paleBlue: 'FFF1F7FA', paleGreen: 'FFF4F8F1',
+    paleLavender: 'FFF7F2FA', paleGray: 'FFF5F3EE'
+  };
+
+  function excelFill(argb) {
+    return { type: 'pattern', pattern: 'solid', fgColor: { argb } };
+  }
+
+  function excelBorder(color = EXCEL_PALETTE.line) {
+    return {
+      top: { style: 'thin', color: { argb: color } },
+      left: { style: 'thin', color: { argb: color } },
+      bottom: { style: 'thin', color: { argb: color } },
+      right: { style: 'thin', color: { argb: color } }
+    };
+  }
+
+  function styleExcelRange(sheet, fromRow, fromCol, toRow, toCol, style = {}) {
+    for (let row = fromRow; row <= toRow; row++) {
+      for (let col = fromCol; col <= toCol; col++) {
+        const cell = sheet.getCell(row, col);
+        if (style.fill) cell.fill = style.fill;
+        if (style.font) cell.font = style.font;
+        if (style.alignment) cell.alignment = style.alignment;
+        if (style.border) cell.border = style.border;
+      }
+    }
+  }
+
+  function tipoReporteMovimiento(mov) {
+    if (mov?.etiqueta === 'recalcula') return 'AJUSTE';
+    return etiquetaTipoMovimiento(mov?.tipo) || 'S';
+  }
+
+  function impactoReporteMovimiento(mov) {
+    const tipo = tipoReporteMovimiento(mov);
+    if (tipo === 'S') return 'Disponible';
+    if (tipo === 'DS') return 'Disponible + tarjeta';
+    if (tipo === 'F') return 'Fondo';
+    if (tipo === 'F+DS') return 'Fondo + tarjeta';
+    return 'Ajuste interno';
+  }
+
+  function fechaReporteMovimiento(mov) {
+    const timestamp = Number(mov?.timestamp);
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      const fecha = new Date(timestamp);
+      if (!Number.isNaN(fecha.getTime())) return fecha;
+    }
+    if (mov?.fechaISO) {
+      const fecha = new Date(mov.fechaISO);
+      if (!Number.isNaN(fecha.getTime())) return fecha;
+    }
+    return mov?.fecha || '';
+  }
+
+  function cuotaReporteMovimiento(mov) {
+    const numero = Number(mov?.cuotaNumero);
+    const total = Number(mov?.cuotasTotal);
+    if (!Number.isFinite(numero) || !Number.isFinite(total) || total < 1) return '';
+    const moneda = mov?.cuotaMoneda ? ` · ${mov.cuotaMoneda}` : '';
+    return `${numero}/${total}${moneda}`;
+  }
+
+  function resumenReporteMovimientos(movimientos) {
+    const reales = movimientos.filter(mov => mov?.etiqueta !== 'recalcula');
+    const resumen = { S: 0, DS: 0, F: 0, FDS: 0, conteos: { S: 0, DS: 0, F: 0, FDS: 0 } };
+    reales.forEach(mov => {
+      const tipo = normalizarTipoMovimiento(mov?.tipo);
+      if (!Object.prototype.hasOwnProperty.call(resumen.conteos, tipo)) return;
+      resumen[tipo] += Number(mov?.monto) || 0;
+      resumen.conteos[tipo] += 1;
+    });
+    resumen.movimientos = reales.length;
+    resumen.gastoDisponible = resumen.S + resumen.DS;
+    resumen.deudaGenerada = resumen.DS + resumen.FDS;
+    resumen.fondoUtilizado = resumen.F + resumen.FDS;
+    return resumen;
+  }
+
+  function descargarArchivoBlob(blob, nombre) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function addExcelMetricCard(sheet, range, label, value, fill, isCurrency = true) {
+    const [labelRange, valueRange] = range;
+    sheet.mergeCells(labelRange);
+    sheet.mergeCells(valueRange);
+    const labelCell = sheet.getCell(labelRange.split(':')[0]);
+    const valueCell = sheet.getCell(valueRange.split(':')[0]);
+    labelCell.value = label;
+    valueCell.value = value;
+    labelCell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.muted } };
+    valueCell.font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    labelCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    valueCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    if (isCurrency) valueCell.numFmt = '"S/" #,##0.00';
+
+    const parse = ref => {
+      const match = ref.match(/([A-Z]+)(\d+):([A-Z]+)(\d+)/);
+      const colNum = letters => letters.split('').reduce((acc, ch) => acc * 26 + ch.charCodeAt(0) - 64, 0);
+      return [Number(match[2]), colNum(match[1]), Number(match[4]), colNum(match[3])];
+    };
+    const [lr1, lc1, lr2, lc2] = parse(labelRange);
+    const [vr1, vc1, vr2, vc2] = parse(valueRange);
+    styleExcelRange(sheet, lr1, lc1, vr2, vc2, { fill: excelFill(fill), border: excelBorder(fill) });
+  }
+
+  async function construirReporteExcel({ movimientos, periodo, nombreArchivo }) {
+    if (!window.ExcelJS?.Workbook) throw new Error('ExcelJS no disponible');
+
+    const workbook = new window.ExcelJS.Workbook();
+    workbook.creator = 'Ledger';
+    workbook.company = 'Ledger';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    const resumen = resumenReporteMovimientos(movimientos);
+    const summary = workbook.addWorksheet('Resumen', {
+      views: [{ showGridLines: false }],
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
+    });
+    summary.columns = Array.from({ length: 6 }, () => ({ width: 17 }));
+    summary.mergeCells('A1:F2');
+    summary.getCell('A1').value = 'LEDGER';
+    summary.getCell('A1').font = { name: 'Aptos', size: 26, bold: true, color: { argb: EXCEL_PALETTE.white } };
+    summary.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
+    styleExcelRange(summary, 1, 1, 2, 6, { fill: excelFill(EXCEL_PALETTE.ink) });
+    summary.getRow(1).height = 28;
+    summary.getRow(2).height = 18;
+
+    summary.mergeCells('A3:F3');
+    summary.getCell('A3').value = `Reporte de movimientos · ${periodo}`;
+    summary.getCell('A3').font = { name: 'Aptos', size: 11, color: { argb: EXCEL_PALETTE.muted } };
+    summary.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getRow(3).height = 25;
+
+    addExcelMetricCard(summary, ['A5:C5', 'A6:C7'], 'GASTO DEL DISPONIBLE', resumen.gastoDisponible, EXCEL_PALETTE.green);
+    addExcelMetricCard(summary, ['D5:F5', 'D6:F7'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
+    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'FONDO UTILIZADO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
+    addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'MOVIMIENTOS REALES', resumen.movimientos, EXCEL_PALETTE.cream, false);
+
+    summary.mergeCells('A13:F13');
+    summary.getCell('A13').value = 'DESGLOSE';
+    summary.getCell('A13').font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+
+    const breakdownHeader = summary.getRow(14);
+    ['Tipo', 'Qué representa', 'Movimientos', 'Monto'].forEach((value, index) => {
+      const cell = breakdownHeader.getCell(index + 1);
+      cell.value = value;
+      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } };
+      cell.fill = excelFill(EXCEL_PALETTE.ink);
+      cell.alignment = { vertical: 'middle', horizontal: index > 1 ? 'right' : 'left' };
+    });
+    summary.mergeCells('B14:C14');
+    summary.mergeCells('D14:E14');
+    summary.getCell('D14').value = 'Movimientos';
+    summary.getCell('F14').value = 'Monto';
+    styleExcelRange(summary, 14, 1, 14, 6, {
+      fill: excelFill(EXCEL_PALETTE.ink),
+      font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } },
+      border: excelBorder(EXCEL_PALETTE.bg)
+    });
+    summary.getCell('A14').alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell('B14').alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell('D14').alignment = { vertical: 'middle', horizontal: 'right' };
+    summary.getCell('F14').alignment = { vertical: 'middle', horizontal: 'right' };
+
+    const tipos = [
+      ['S', 'Sale del disponible', resumen.conteos.S, resumen.S, EXCEL_PALETTE.green],
+      ['DS', 'Disponible + tarjeta', resumen.conteos.DS, resumen.DS, EXCEL_PALETTE.coral],
+      ['F', 'Sale del fondo', resumen.conteos.F, resumen.F, EXCEL_PALETTE.blue],
+      ['F+DS', 'Fondo + tarjeta', resumen.conteos.FDS, resumen.FDS, EXCEL_PALETTE.lavender]
+    ];
+    tipos.forEach((item, index) => {
+      const row = 15 + index;
+      summary.mergeCells(`B${row}:C${row}`);
+      summary.mergeCells(`D${row}:E${row}`);
+      summary.getCell(`A${row}`).value = item[0];
+      summary.getCell(`B${row}`).value = item[1];
+      summary.getCell(`D${row}`).value = item[2];
+      summary.getCell(`F${row}`).value = item[3];
+      summary.getCell(`F${row}`).numFmt = '"S/" #,##0.00';
+      styleExcelRange(summary, row, 1, row, 6, {
+        fill: excelFill(item[4]),
+        border: excelBorder(EXCEL_PALETTE.bg),
+        font: { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } },
+        alignment: { vertical: 'middle' }
+      });
+      summary.getCell(`A${row}`).font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+      summary.getCell(`D${row}`).alignment = { vertical: 'middle', horizontal: 'right' };
+      summary.getCell(`F${row}`).alignment = { vertical: 'middle', horizontal: 'right' };
+      summary.getRow(row).height = 23;
+    });
+
+    summary.mergeCells('A21:F23');
+    summary.getCell('A21').value = 'Cómo leer el reporte\nS y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
+    summary.getCell('A21').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
+    summary.getCell('A21').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    styleExcelRange(summary, 21, 1, 23, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
+
+    const sheet = workbook.addWorksheet('Movimientos', {
+      views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+    });
+    sheet.columns = [
+      { key: 'fecha', width: 22 }, { key: 'tipo', width: 12 }, { key: 'detalle', width: 38 },
+      { key: 'etiqueta', width: 16 }, { key: 'impacto', width: 24 }, { key: 'monto', width: 18 },
+      { key: 'cuota', width: 18 }
+    ];
+    sheet.mergeCells('A1:G1');
+    sheet.getCell('A1').value = 'LEDGER · MOVIMIENTOS';
+    sheet.getCell('A1').font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white } };
+    sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
+    styleExcelRange(sheet, 1, 1, 1, 7, { fill: excelFill(EXCEL_PALETTE.ink) });
+    sheet.getRow(1).height = 32;
+    sheet.mergeCells('A2:G2');
+    sheet.getCell('A2').value = `${periodo} · ${resumen.movimientos} movimientos reales`;
+    sheet.getCell('A2').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
+    sheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
+    styleExcelRange(sheet, 2, 1, 2, 7, { fill: excelFill(EXCEL_PALETTE.cream) });
+
+    const headers = ['Fecha', 'Tipo', 'Detalle', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'];
+    headers.forEach((header, index) => {
+      const cell = sheet.getCell(4, index + 1);
+      cell.value = header;
+      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } };
+      cell.fill = excelFill(EXCEL_PALETTE.ink);
+      cell.alignment = { vertical: 'middle', horizontal: index >= 5 ? 'center' : 'left' };
+      cell.border = excelBorder(EXCEL_PALETTE.bg);
+    });
+    sheet.getRow(4).height = 25;
+
+    const rowFills = {
+      S: EXCEL_PALETTE.paleGreen, DS: EXCEL_PALETTE.paleCoral, F: EXCEL_PALETTE.paleBlue,
+      'F+DS': EXCEL_PALETTE.paleLavender, AJUSTE: EXCEL_PALETTE.paleGray
+    };
+    const typeFills = {
+      S: EXCEL_PALETTE.green, DS: EXCEL_PALETTE.coral, F: EXCEL_PALETTE.blue,
+      'F+DS': EXCEL_PALETTE.lavender, AJUSTE: EXCEL_PALETTE.gray
+    };
+
+    movimientos.forEach((mov, index) => {
+      const rowNumber = index + 5;
+      const row = sheet.getRow(rowNumber);
+      const tipo = tipoReporteMovimiento(mov);
+      const fecha = fechaReporteMovimiento(mov);
+      const ajuste = tipo === 'AJUSTE';
+      row.values = [
+        fecha,
+        tipo,
+        mov?.detalle || (ajuste ? 'Redistribución' : 'Sin detalle'),
+        ajuste ? 'Redistribución' : (mov?.etiqueta || ''),
+        impactoReporteMovimiento(mov),
+        Number(mov?.monto) || 0,
+        cuotaReporteMovimiento(mov)
+      ];
+      row.height = 23;
+      row.eachCell({ includeEmpty: true }, cell => {
+        cell.font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } };
+        cell.fill = excelFill(rowFills[tipo] || EXCEL_PALETTE.bg);
+        cell.border = { bottom: { style: 'thin', color: { argb: EXCEL_PALETTE.line } } };
+        cell.alignment = { vertical: 'middle', horizontal: 'left' };
+      });
+      row.getCell(2).fill = excelFill(typeFills[tipo] || EXCEL_PALETTE.gray);
+      row.getCell(2).font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(6).numFmt = '"S/" #,##0.00';
+      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+      if (fecha instanceof Date) row.getCell(1).numFmt = 'dd-mmm-yyyy hh:mm';
+    });
+
+    const lastRow = Math.max(5, movimientos.length + 4);
+    sheet.autoFilter = { from: 'A4', to: `G${lastRow}` };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    descargarArchivoBlob(
+      new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+      nombreArchivo
+    );
+  }
+
+  async function exportarExcel() {
+    if (!state.log.length) {
+      toast('Nada que exportar', true);
+      return;
+    }
+    const fecha = new Date().toISOString().slice(0, 10);
+    const periodo = `${formatCycleDate(state.fechaInicioCiclo)} — ${formatCycleDate(new Date())}`;
+    toast('Preparando Excel…');
+    try {
+      await construirReporteExcel({
+        movimientos: state.log,
+        periodo,
+        nombreArchivo: `ledger-${fecha}.xlsx`
+      });
+      toast('Excel descargado');
+    } catch (error) {
+      console.error('No se pudo crear el Excel', error);
+      toast('Excel no disponible · descargando CSV', true);
+      exportarCSV();
+    }
+  }
+
+  async function exportArchivedCycleExcel(index) {
+    const ciclo = getArchivedCycles()[index];
+    const movimientos = ciclo && Array.isArray(ciclo.movimientos) ? ciclo.movimientos : [];
+    if (!ciclo || !movimientos.length) {
+      toast('Este ciclo no tiene movimientos para exportar', true);
+      return;
+    }
+    toast('Preparando Excel…');
+    try {
+      await construirReporteExcel({
+        movimientos,
+        periodo: formatCycleRange(ciclo),
+        nombreArchivo: `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.xlsx`
+      });
+      toast('Ciclo descargado en Excel');
+    } catch (error) {
+      console.error('No se pudo crear el Excel del ciclo', error);
+      toast('Excel no disponible · descargando CSV', true);
+      exportArchivedCycleCSV(index);
+    }
+  }
+
   function exportarCSV() {
     if (state.log.length === 0) {
       toast('Nada que exportar', true);
