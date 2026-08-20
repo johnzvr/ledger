@@ -3915,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '95';
+  const LEDGER_BUILD = '96';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -4245,16 +4245,69 @@
     return true;
   }
 
+  function syncComparableState(source = state) {
+    // El conflicto de Drive debe representar cambios reales de datos, no diferencias
+    // técnicas entre builds/dispositivos. Normalizamos una copia sin tocar el estado.
+    const comparable = JSON.parse(JSON.stringify(source || {}));
+
+    // Metadatos de sincronización, preferencias locales y estados técnicos/derivados.
+    [
+      'lastModified',
+      'dataRevision',
+      'dataVersionId',
+      'darkMode',
+      'tcCache',
+      'redoMovement',
+      'ultimaSemanaVista',
+      'ultimoBloqueProcesado',
+      'tarjetaCalendarioPresetVersion',
+      'tarjetaAjusteDeuda',
+      // BUILD 94 lo reconstruye localmente en estados legacy. No debe crear un
+      // conflicto por sí solo; los ciclos nuevos ya quedan identificados por su
+      // fecha, saldos, bloques e historial financiero real.
+      'saldoInicialCiclo',
+      'presupuestoInicial'
+    ].forEach(key => delete comparable[key]);
+
+    // isCurrent y label se derivan de la fecha/UI. Un cambio de día o de build no
+    // equivale a una edición financiera. El presupuesto y los rangos sí se comparan.
+    if (Array.isArray(comparable.semanas)) {
+      comparable.semanas = comparable.semanas.map(sem => {
+        const limpio = { ...(sem || {}) };
+        delete limpio.isCurrent;
+        delete limpio.label;
+        return limpio;
+      });
+    }
+
+    // El calendario oficial precargado y sus metadatos son parte de la build, no
+    // una edición del usuario. Solo las fechas manuales participan en conflictos.
+    if (Array.isArray(comparable.tarjetaCalendarios)) {
+      comparable.tarjetaCalendarios = comparable.tarjetaCalendarios
+        .filter(item => item && item.manual !== false)
+        .map(item => {
+          const limpio = { ...item };
+          delete limpio.actualizadoEn;
+          delete limpio.fuente;
+          delete limpio.preset;
+          return limpio;
+        });
+    }
+
+    // diaCierre/diaPago son un espejo legacy del calendario exacto y también los
+    // puede cambiar una migración automática. diaSueldo sí pertenece al ciclo.
+    if (comparable.tarjeta && typeof comparable.tarjeta === 'object') {
+      const tarjetaLimpia = { ...comparable.tarjeta };
+      delete tarjetaLimpia.diaCierre;
+      delete tarjetaLimpia.diaPago;
+      comparable.tarjeta = tarjetaLimpia;
+    }
+
+    return comparable;
+  }
+
   function syncRelevantFingerprint(source = state) {
-    const {
-      lastModified,
-      dataRevision,
-      dataVersionId,
-      darkMode,
-      tcCache,
-      ...syncRelevantState
-    } = source || {};
-    return stableStringify(syncRelevantState);
+    return stableStringify(syncComparableState(source));
   }
 
   function stableStringify(value) {
