@@ -3915,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '93';
+  const LEDGER_BUILD = '94';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -3926,6 +3926,9 @@
     gastoNoAdeudado: 4618.00,
     gastoTotal: 6374.94,
     presupuestoInicial: 1759.06,
+    // Foto financiera inmutable tomada exactamente al iniciar cada ciclo.
+    // Es el valor que debe mostrarse como INICIO DEL CICLO en los reportes.
+    saldoInicialCiclo: null,
     deudaBaseCiclo: 1756.94, // deuda con la que empezó el ciclo; los DS se suman encima
     fechaInicioCiclo: null, // se setea la primera vez
     fechaProximoSueldo: null, // límite proyectado del ciclo automático
@@ -3973,6 +3976,9 @@
   ]);
   
   let state = loadState();
+  // BUILD 94: los estados anteriores no tenían una foto separada del inicio del ciclo.
+  // Se reconstruye una sola vez con el saldo actual + los gastos S/DS del log vigente.
+  asegurarSaldoInicialCiclo(state);
   ensureSyncMetadata(state);
   let lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
   // Limpia el respaldo temporal usado por una versión anterior.
@@ -4210,6 +4216,33 @@
       if (saved) return JSON.parse(saved);
     } catch(e) {}
     return JSON.parse(JSON.stringify(DEFAULT_STATE));
+  }
+
+  function asegurarSaldoInicialCiclo(target) {
+    if (!target || typeof target !== 'object') return false;
+    const existente = Number(target.saldoInicialCiclo);
+    if (Number.isFinite(existente) && existente >= 0) return false;
+
+    // Migración legacy: reconstruir el inicio económico usando únicamente
+    // movimientos que realmente reducen el disponible (S y DS).
+    const movimientos = Array.isArray(target.log) ? target.log : [];
+    const gastoDesdeLog = movimientos
+      .filter(mov => mov?.etiqueta !== 'recalcula')
+      .reduce((total, mov) => {
+        const tipo = normalizarTipoMovimiento(mov?.tipo);
+        return total + (tipo === 'S' || tipo === 'DS' ? (Number(mov?.monto) || 0) : 0);
+      }, 0);
+
+    if (gastoDesdeLog > 0.005) {
+      target.saldoInicialCiclo = redondearDinero((Number(target.totalDisponible) || 0) + gastoDesdeLog);
+      return true;
+    }
+
+    // Si no hay movimientos suficientes para reconstruir, conservar el dato legacy
+    // como mejor referencia disponible. Los ciclos nuevos ya no usan este fallback.
+    const legacy = Number(target.presupuestoInicial);
+    target.saldoInicialCiclo = redondearDinero(Number.isFinite(legacy) ? Math.max(0, legacy) : Math.max(0, Number(target.totalDisponible) || 0));
+    return true;
   }
 
   function syncRelevantFingerprint(source = state) {
@@ -7330,6 +7363,7 @@
       fechaInicio: state.fechaInicioCiclo,
       fechaFin: fechaFinCiclo,
       presupuestoInicial: Number(state.presupuestoInicial) || 0,
+      saldoInicialCiclo: Number.isFinite(Number(state.saldoInicialCiclo)) ? Number(state.saldoInicialCiclo) : null,
       totalS,
       totalDS,
       totalF,
@@ -7382,6 +7416,8 @@
     // Valores del nuevo ciclo
     state.totalDisponible = disponible;
     state.presupuestoInicial = disponible;
+    // Snapshot real del inicio: se fija aquí y no vuelve a cambiar durante el ciclo.
+    state.saldoInicialCiclo = redondearDinero(disponible);
     state.metaResidual = Math.max(0, meta);
     if (!isNaN(intocable)) state.montoIntocable = intocable;
     state.deudaActual = deuda;
@@ -7538,7 +7574,7 @@
     styleExcelRange(sheet, lr1, lc1, vr2, vc2, { fill: excelFill(fill), border: excelBorder(fill) });
   }
 
-  async function construirReporteExcel({ movimientos, periodo, nombreArchivo, presupuestoInicial = null }) {
+  async function construirReporteExcel({ movimientos, periodo, nombreArchivo, saldoInicialCiclo = null }) {
     if (!window.ExcelJS?.Workbook) throw new Error('ExcelJS no disponible');
 
     const workbook = new window.ExcelJS.Workbook();
@@ -7548,8 +7584,8 @@
     workbook.modified = new Date();
 
     const resumen = resumenReporteMovimientos(movimientos);
-    const presupuestoInicialReporte = Number.isFinite(Number(presupuestoInicial))
-      ? Number(presupuestoInicial)
+    const saldoInicialReporte = Number.isFinite(Number(saldoInicialCiclo))
+      ? Number(saldoInicialCiclo)
       : null;
     const summary = workbook.addWorksheet('Resumen', {
       views: [{ showGridLines: false }],
@@ -7573,10 +7609,10 @@
     addExcelMetricCard(
       summary,
       ['A5:F5', 'A6:F7'],
-      'PRESUPUESTO INICIAL',
-      presupuestoInicialReporte === null ? 'No registrado' : presupuestoInicialReporte,
+      'INICIO DEL CICLO',
+      saldoInicialReporte === null ? 'No registrado' : saldoInicialReporte,
       EXCEL_PALETTE.cream,
-      presupuestoInicialReporte !== null
+      saldoInicialReporte !== null
     );
     addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTO DEL DISPONIBLE', resumen.gastoDisponible, EXCEL_PALETTE.green);
     addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
@@ -7736,7 +7772,7 @@
         movimientos: state.log,
         periodo,
         nombreArchivo: `ledger-${fecha}.xlsx`,
-        presupuestoInicial: state.presupuestoInicial
+        saldoInicialCiclo: state.saldoInicialCiclo
       });
       toast('Excel descargado');
     } catch (error) {
@@ -7759,7 +7795,9 @@
         movimientos,
         periodo: formatCycleRange(ciclo),
         nombreArchivo: `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.xlsx`,
-        presupuestoInicial: Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null
+        saldoInicialCiclo: Number.isFinite(Number(ciclo.saldoInicialCiclo))
+          ? Number(ciclo.saldoInicialCiclo)
+          : (Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null)
       });
       toast('Ciclo descargado en Excel');
     } catch (error) {
@@ -10388,6 +10426,8 @@
     const localDarkMode = state.darkMode;
     pauseAutoUpload = true;
     state = { ...remoteState, darkMode: localDarkMode };
+    // Una descarga de Drive puede venir de una build anterior sin el snapshot de inicio.
+    asegurarSaldoInicialCiclo(state);
     state.lastModified = remoteModified;
     lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
     rememberSyncedVersion(state);
