@@ -3915,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '91';
+  const LEDGER_BUILD = '92';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -4790,27 +4790,31 @@
     return rangos;
   }
   
-  function calcularSemanaActualIdx() {
-    const rangos = calcularRangoSemanas();
-    if (rangos.length === 0) return 0;
-    
-    const hoy = new Date();
-    hoy.setHours(12,0,0,0); // mediodía para evitar edge cases
-    
+  function calcularSemanaIdxParaFecha(fechaReferencia = new Date(), rangos = calcularRangoSemanas()) {
+    if (!Array.isArray(rangos) || rangos.length === 0) return 0;
+
+    const referencia = new Date(fechaReferencia);
+    if (Number.isNaN(referencia.getTime())) return 0;
+    referencia.setHours(12,0,0,0); // mediodía para evitar edge cases
+
     for (let i = 0; i < rangos.length; i++) {
-      if (!rangos[i].inicio) continue; // bloque manual sin fechas aún
-      if (hoy >= rangos[i].inicio && hoy <= rangos[i].fin) {
+      if (!rangos[i]?.inicio || !rangos[i]?.fin) continue; // bloque manual sin fechas aún
+      if (referencia >= rangos[i].inicio && referencia <= rangos[i].fin) {
         return i;
       }
     }
-    // Si no cayó en ningún rango, buscar el último rango válido con fecha
-    const validos = rangos.map((r, i) => ({ r, i })).filter(x => x.r.inicio);
+    // Si no cayó en ningún rango, buscar el último rango válido con fecha.
+    const validos = rangos.map((r, i) => ({ r, i })).filter(x => x.r?.inicio && x.r?.fin);
     if (validos.length === 0) return 0;
     const ultimo = validos[validos.length - 1];
-    if (hoy > ultimo.r.fin) return ultimo.i + 1;
+    if (referencia > ultimo.r.fin) return ultimo.i + 1;
     const primero = validos[0];
-    if (hoy < primero.r.inicio) return primero.i;
+    if (referencia < primero.r.inicio) return primero.i;
     return 0;
+  }
+
+  function calcularSemanaActualIdx() {
+    return calcularSemanaIdxParaFecha(new Date());
   }
   
   function diasEnCiclo() {
@@ -4905,16 +4909,26 @@
   }
 
   function pesosDeBloquesRestantes(rangos, desdeIdx, fechaReferencia = new Date()) {
+    const referencia = inicioDelDia(fechaReferencia);
     return rangos.map((rango, i) => {
       if (i < desdeIdx) return 0;
       if (!rango || !rango.inicio || !rango.fin) return 1;
-      if (i === desdeIdx) return Math.max(1, diasRestantesParaBloque(rango, fechaReferencia));
-      return Math.max(1, Number(rango.dias) || diasEntreInclusive(rango.inicio, rango.fin));
+
+      const fin = inicioDelDia(rango.fin);
+      // Un bloque vencido jamás puede volver a recibir presupuesto.
+      if (referencia > fin) return 0;
+
+      if (i === desdeIdx) return Math.max(0, diasRestantesParaBloque(rango, fechaReferencia));
+      return Math.max(0, Number(rango.dias) || diasEntreInclusive(rango.inicio, rango.fin));
     });
   }
 
   function distribuirEntreBloques(semanas, monto, desdeIdx, rangos = calcularRangoSemanas(), fechaReferencia = new Date()) {
     if (!Array.isArray(semanas) || desdeIdx < 0 || desdeIdx >= semanas.length) return [];
+
+    // Todo bloque anterior al actual queda fuera de la contabilidad activa.
+    for (let i = 0; i < desdeIdx; i++) semanas[i].presupuesto = 0;
+
     const pesos = pesosDeBloquesRestantes(rangos, desdeIdx, fechaReferencia);
     const totalPeso = pesos.slice(desdeIdx, semanas.length).reduce((s, peso) => s + peso, 0);
     if (totalPeso <= 0) return [];
@@ -4936,19 +4950,42 @@
 
   function redistribuirPresupuestoRestante(semanas, totalDisponible, metaResidual = 0, fechaReferencia = new Date()) {
     if (!Array.isArray(semanas) || semanas.length === 0) return [];
-    let currentIdx = semanas.findIndex(sem => sem.isCurrent);
-    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), semanas.length - 1);
+    const rangos = calcularRangoSemanas();
+    // La fecha manda. isCurrent queda como estado visual y nunca decide dinero.
+    const currentIdx = calcularSemanaIdxParaFecha(fechaReferencia, rangos);
     if (currentIdx < 0 || currentIdx >= semanas.length) return [];
     const gastable = Math.max(0, (Number(totalDisponible) || 0) - (Number(metaResidual) || 0));
-    return distribuirEntreBloques(semanas, gastable, currentIdx, calcularRangoSemanas(), fechaReferencia);
+    return distribuirEntreBloques(semanas, gastable, currentIdx, rangos, fechaReferencia);
   }
   
-  function autoRecalcRestantes() {
+  function autoRecalcRestantes(fechaReferencia = new Date()) {
     return redistribuirPresupuestoRestante(
       state.semanas,
       state.totalDisponible,
-      state.metaResidual || 0
+      state.metaResidual || 0,
+      fechaReferencia
     );
+  }
+
+  function asegurarIntegridadBloques(fechaReferencia = new Date()) {
+    if (!Array.isArray(state.semanas) || state.semanas.length === 0) return false;
+    const rangos = calcularRangoSemanas();
+    const currentIdx = calcularSemanaIdxParaFecha(fechaReferencia, rangos);
+    if (currentIdx < 0 || currentIdx >= state.semanas.length) return false;
+
+    const gastable = redondearDinero(Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0)));
+    const sumaActivos = redondearDinero(state.semanas
+      .slice(currentIdx)
+      .reduce((total, sem) => total + Math.max(0, Number(sem?.presupuesto) || 0), 0));
+    const haySaldoEnCerrados = state.semanas
+      .slice(0, currentIdx)
+      .some(sem => Math.abs(Number(sem?.presupuesto) || 0) > 0.005);
+    const descuadre = Math.abs(sumaActivos - gastable) > 0.005;
+
+    if (!haySaldoEnCerrados && !descuadre) return false;
+
+    distribuirEntreBloques(state.semanas, gastable, currentIdx, rangos, fechaReferencia);
+    return true;
   }
   
   function formatRangoCorto(r) {
@@ -4994,13 +5031,25 @@
       const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
     }
+    // Primero fijar el bloque real por fecha; después procesar cualquier transición.
+    actualizarSemanaActual();
     const cambioSemana = detectarCambioSemana();
     let huboCambioAutomatico = cambioSemana;
-    actualizarSemanaActual();
     const cuotasActivadas = activarCuotasPendientes();
     if (cuotasActivadas > 0) {
       huboCambioAutomatico = true;
       toast(`${cuotasActivadas} cuota${cuotasActivadas === 1 ? '' : 's'} activada${cuotasActivadas === 1 ? '' : 's'} automáticamente`);
+    }
+
+    // Última defensa: el dinero gastable debe existir solo en bloques abiertos.
+    const integridadCorregida = asegurarIntegridadBloques();
+    if (integridadCorregida) {
+      huboCambioAutomatico = true;
+      if (!cambioSemana) {
+        const currentIdx = calcularSemanaActualIdx();
+        const activos = state.semanas.slice(Math.max(0, currentIdx)).map(sem => `S/ ${fmt(sem.presupuesto)}`).join(' · ');
+        setTimeout(() => toast(`Presupuesto corregido · ${activos}`), 500);
+      }
     }
     
     document.getElementById('currentDate').textContent = 
@@ -6195,10 +6244,11 @@
     };
   }
 
-  function aplicarGastoEnBloques(semanas, monto, totalDisponibleDespues, metaResidual, etiqueta = null) {
+  function aplicarGastoEnBloques(semanas, monto, totalDisponibleDespues, metaResidual, etiqueta = null, fechaReferencia = new Date()) {
     if (!Array.isArray(semanas) || semanas.length === 0) return { currentIdx: -1, exceso: monto, futuros: [] };
-    let currentIdx = semanas.findIndex(sem => sem.isCurrent);
-    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), semanas.length - 1);
+    const rangos = calcularRangoSemanas();
+    const currentIdx = calcularSemanaIdxParaFecha(fechaReferencia, rangos);
+    if (currentIdx < 0 || currentIdx >= semanas.length) return { currentIdx: -1, exceso: monto, futuros: [] };
     if (etiqueta === 'sem') {
       const resultado = restarGastoDivididoEntreBloques(semanas, monto, currentIdx);
       if (resultado.exceso > 0) {
@@ -6212,7 +6262,6 @@
       };
     }
 
-    const rangos = calcularRangoSemanas();
     const gastableDespues = Math.max(0, totalDisponibleDespues - (metaResidual || 0));
 
     const disponibleActual = Math.max(0, Number(semanas[currentIdx]?.presupuesto) || 0);
@@ -6225,7 +6274,7 @@
     semanas[currentIdx].presupuesto = 0;
     semanas[currentIdx].exceso = (Number(semanas[currentIdx].exceso) || 0) + exceso;
     const futuros = currentIdx + 1 < semanas.length
-      ? distribuirEntreBloques(semanas, gastableDespues, currentIdx + 1, rangos)
+      ? distribuirEntreBloques(semanas, gastableDespues, currentIdx + 1, rangos, fechaReferencia)
       : [];
     return { currentIdx, exceso, futuros };
   }
@@ -6250,27 +6299,31 @@
     if (tipo === 'S') next.gastoNoAdeudado += monto;
     if (tipo === 'DS') next.deudaActual += monto;
 
+    const fechaMovimiento = mov.fechaISO
+      ? new Date(mov.fechaISO)
+      : (Number.isFinite(Number(mov.timestamp)) ? new Date(Number(mov.timestamp)) : new Date());
     if (mov.redistribucionSimulador) {
       redistribuirPresupuestoRestante(
         next.semanas,
         next.totalDisponible,
         next.metaResidual,
-        mov.fechaISO ? new Date(mov.fechaISO) : new Date()
+        fechaMovimiento
       );
     } else {
-      aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta);
+      aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta, fechaMovimiento);
     }
     return next;
   }
 
-  function applyRecalculationToSnapshot(snapshot) {
+  function applyRecalculationToSnapshot(snapshot, fechaReferencia = new Date()) {
     const next = cloneMovementSnapshot(snapshot);
     if (!next || next.semanas.length === 0) throw new Error('Sin semanas');
-    let currentIdx = next.semanas.findIndex(sem => sem.isCurrent);
-    if (currentIdx < 0) currentIdx = 0;
+    const rangos = calcularRangoSemanas();
+    const currentIdx = calcularSemanaIdxParaFecha(fechaReferencia, rangos);
+    if (currentIdx < 0 || currentIdx >= next.semanas.length) throw new Error('Ciclo terminado');
     const restantes = Math.max(1, next.semanas.length - currentIdx);
     const gastable = Math.max(0, next.totalDisponible - (next.metaResidual || 0));
-    const asignaciones = distribuirEntreBloques(next.semanas, gastable, currentIdx);
+    const asignaciones = distribuirEntreBloques(next.semanas, gastable, currentIdx, rangos, fechaReferencia);
     const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
     return { snapshot: next, monto: nuevoPresupuesto, restantes, asignaciones };
   }
@@ -6423,8 +6476,11 @@
         let expectedOriginalAfter;
         let expectedRebuiltAfter;
         if (originalLog[i].etiqueta === 'recalcula') {
-          const originalRecalc = applyRecalculationToSnapshot(originalBefore);
-          const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState);
+          const fechaRecalc = originalLog[i].fechaISO
+            ? new Date(originalLog[i].fechaISO)
+            : (Number.isFinite(Number(originalLog[i].timestamp)) ? new Date(Number(originalLog[i].timestamp)) : new Date());
+          const originalRecalc = applyRecalculationToSnapshot(originalBefore, fechaRecalc);
+          const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState, fechaRecalc);
           expectedOriginalAfter = originalRecalc.snapshot;
           expectedRebuiltAfter = rebuiltRecalc.snapshot;
           replayedMov.monto = rebuiltRecalc.monto;
@@ -7841,7 +7897,8 @@
     
     // Si es un gasto normal (no sem) y excede el bloque actual → confirmación previa
     if (afectaPresupuestoSalarial(selectedType) && selectedMod !== 'sem') {
-      const semActual = state.semanas.find(s => s.isCurrent);
+      const currentIdx = calcularSemanaActualIdx();
+      const semActual = currentIdx >= 0 && currentIdx < state.semanas.length ? state.semanas[currentIdx] : null;
       if (semActual && monto > semActual.presupuesto) {
         confirmarRollover(monto, selectedType, selectedMod, detalle);
         return;
@@ -7866,8 +7923,10 @@
   }
   
   function confirmarRollover(monto, tipo, etiqueta, detalle) {
-    const semActual = state.semanas.find(s => s.isCurrent);
-    const semActualIdx = state.semanas.findIndex(s => s.isCurrent);
+    const ahora = new Date();
+    const semActualIdx = calcularSemanaIdxParaFecha(ahora);
+    const semActual = semActualIdx >= 0 && semActualIdx < state.semanas.length ? state.semanas[semActualIdx] : null;
+    if (!semActual) { toast('El ciclo ya terminó; inicia uno nuevo', true); return; }
     const restanteSemActual = Math.max(0, Number(semActual.presupuesto) || 0);
     const exceso = Math.max(0, monto - restanteSemActual);
     const semanasSimuladas = JSON.parse(JSON.stringify(state.semanas));
@@ -7876,7 +7935,8 @@
       monto,
       state.totalDisponible - monto,
       state.metaResidual || 0,
-      etiqueta
+      etiqueta,
+      ahora
     );
 
     const desgloseHtml = [`
@@ -7993,7 +8053,7 @@
 
     const resultadoBloques = opciones.redistribuirRestantes
       ? {
-          currentIdx: Math.max(0, state.semanas.findIndex(sem => sem.isCurrent)),
+          currentIdx: Math.max(0, calcularSemanaIdxParaFecha(ahora)),
           exceso: 0,
           futuros: redistribuirPresupuestoRestante(
             state.semanas,
@@ -8007,7 +8067,8 @@
           monto,
           state.totalDisponible,
           state.metaResidual || 0,
-          etiqueta
+          etiqueta,
+          ahora
         );
     if (notificar && etiqueta === 'sem') {
       if (resultadoBloques.exceso > 0) {
@@ -8036,8 +8097,11 @@
       : cloneMovementSnapshot(originalCurrent);
     if (!target || !targetBefore || !actualTargetAfter) throw new Error('Historial incompleto');
 
+    const fechaTarget = target.fechaISO
+      ? new Date(target.fechaISO)
+      : (Number.isFinite(Number(target.timestamp)) ? new Date(Number(target.timestamp)) : new Date());
     const expectedTargetAfter = target.etiqueta === 'recalcula'
-      ? applyRecalculationToSnapshot(targetBefore).snapshot
+      ? applyRecalculationToSnapshot(targetBefore, fechaTarget).snapshot
       : applyMovementToSnapshot(targetBefore, target);
     // Quita únicamente el efecto de la entrada elegida y conserva cualquier
     // ajuste automático o manual que ocurrió antes de la siguiente.
@@ -8058,8 +8122,11 @@
       let expectedOriginalAfter;
       let expectedRebuiltAfter;
       if (originalLog[i].etiqueta === 'recalcula') {
-        const originalRecalc = applyRecalculationToSnapshot(originalBefore);
-        const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState);
+        const fechaRecalc = originalLog[i].fechaISO
+          ? new Date(originalLog[i].fechaISO)
+          : (Number.isFinite(Number(originalLog[i].timestamp)) ? new Date(Number(originalLog[i].timestamp)) : new Date());
+        const originalRecalc = applyRecalculationToSnapshot(originalBefore, fechaRecalc);
+        const rebuiltRecalc = applyRecalculationToSnapshot(rebuiltState, fechaRecalc);
         expectedOriginalAfter = originalRecalc.snapshot;
         expectedRebuiltAfter = rebuiltRecalc.snapshot;
         replayedMov.monto = rebuiltRecalc.monto;
@@ -9161,9 +9228,8 @@
     const disponible = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
     const disponibleDespues = disponible - monto;
     const reduccionPct = disponible > 0 ? Math.round((monto / disponible) * 100) : 100;
-    let currentIdx = state.semanas.findIndex(s => s.isCurrent);
-    if (currentIdx < 0) currentIdx = Math.min(calcularSemanaActualIdx(), state.semanas.length - 1);
     const rangos = calcularRangoSemanas();
+    const currentIdx = Math.min(calcularSemanaIdxParaFecha(new Date(), rangos), state.semanas.length - 1);
     const margenAntes = Math.max(0, Number(state.semanas[currentIdx]?.presupuesto) || 0);
     const rangoBloqueActual = rangos[currentIdx] || null;
     const diasBloqueRestantes = diasRestantesParaBloque(rangoBloqueActual);
