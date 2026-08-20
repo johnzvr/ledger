@@ -3915,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '92';
+  const LEDGER_BUILD = '93';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7329,6 +7329,7 @@
       id: 'ciclo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       fechaInicio: state.fechaInicioCiclo,
       fechaFin: fechaFinCiclo,
+      presupuestoInicial: Number(state.presupuestoInicial) || 0,
       totalS,
       totalDS,
       totalF,
@@ -7537,7 +7538,7 @@
     styleExcelRange(sheet, lr1, lc1, vr2, vc2, { fill: excelFill(fill), border: excelBorder(fill) });
   }
 
-  async function construirReporteExcel({ movimientos, periodo, nombreArchivo }) {
+  async function construirReporteExcel({ movimientos, periodo, nombreArchivo, presupuestoInicial = null }) {
     if (!window.ExcelJS?.Workbook) throw new Error('ExcelJS no disponible');
 
     const workbook = new window.ExcelJS.Workbook();
@@ -7547,6 +7548,9 @@
     workbook.modified = new Date();
 
     const resumen = resumenReporteMovimientos(movimientos);
+    const presupuestoInicialReporte = Number.isFinite(Number(presupuestoInicial))
+      ? Number(presupuestoInicial)
+      : null;
     const summary = workbook.addWorksheet('Resumen', {
       views: [{ showGridLines: false }],
       pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
@@ -7566,16 +7570,24 @@
     summary.getCell('A3').alignment = { vertical: 'middle', horizontal: 'left' };
     summary.getRow(3).height = 25;
 
-    addExcelMetricCard(summary, ['A5:C5', 'A6:C7'], 'GASTO DEL DISPONIBLE', resumen.gastoDisponible, EXCEL_PALETTE.green);
-    addExcelMetricCard(summary, ['D5:F5', 'D6:F7'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
-    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'FONDO UTILIZADO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
-    addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'MOVIMIENTOS REALES', resumen.movimientos, EXCEL_PALETTE.cream, false);
+    addExcelMetricCard(
+      summary,
+      ['A5:F5', 'A6:F7'],
+      'PRESUPUESTO INICIAL',
+      presupuestoInicialReporte === null ? 'No registrado' : presupuestoInicialReporte,
+      EXCEL_PALETTE.cream,
+      presupuestoInicialReporte !== null
+    );
+    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTO DEL DISPONIBLE', resumen.gastoDisponible, EXCEL_PALETTE.green);
+    addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
+    addExcelMetricCard(summary, ['A13:C13', 'A14:C15'], 'FONDO UTILIZADO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
+    addExcelMetricCard(summary, ['D13:F13', 'D14:F15'], 'MOVIMIENTOS REALES', resumen.movimientos, EXCEL_PALETTE.cream, false);
 
-    summary.mergeCells('A13:F13');
-    summary.getCell('A13').value = 'DESGLOSE';
-    summary.getCell('A13').font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    summary.mergeCells('A17:F17');
+    summary.getCell('A17').value = 'DESGLOSE';
+    summary.getCell('A17').font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
 
-    const breakdownHeader = summary.getRow(14);
+    const breakdownHeader = summary.getRow(18);
     ['Tipo', 'Qué representa', 'Movimientos', 'Monto'].forEach((value, index) => {
       const cell = breakdownHeader.getCell(index + 1);
       cell.value = value;
@@ -7583,19 +7595,19 @@
       cell.fill = excelFill(EXCEL_PALETTE.ink);
       cell.alignment = { vertical: 'middle', horizontal: index > 1 ? 'right' : 'left' };
     });
-    summary.mergeCells('B14:C14');
-    summary.mergeCells('D14:E14');
-    summary.getCell('D14').value = 'Movimientos';
-    summary.getCell('F14').value = 'Monto';
-    styleExcelRange(summary, 14, 1, 14, 6, {
+    summary.mergeCells('B18:C18');
+    summary.mergeCells('D18:E18');
+    summary.getCell('D18').value = 'Movimientos';
+    summary.getCell('F18').value = 'Monto';
+    styleExcelRange(summary, 18, 1, 18, 6, {
       fill: excelFill(EXCEL_PALETTE.ink),
       font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } },
       border: excelBorder(EXCEL_PALETTE.bg)
     });
-    summary.getCell('A14').alignment = { vertical: 'middle', horizontal: 'left' };
-    summary.getCell('B14').alignment = { vertical: 'middle', horizontal: 'left' };
-    summary.getCell('D14').alignment = { vertical: 'middle', horizontal: 'right' };
-    summary.getCell('F14').alignment = { vertical: 'middle', horizontal: 'right' };
+    summary.getCell('A18').alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell('B18').alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell('D18').alignment = { vertical: 'middle', horizontal: 'right' };
+    summary.getCell('F18').alignment = { vertical: 'middle', horizontal: 'right' };
 
     const tipos = [
       ['S', 'Sale del disponible', resumen.conteos.S, resumen.S, EXCEL_PALETTE.green],
@@ -7604,7 +7616,7 @@
       ['F+DS', 'Fondo + tarjeta', resumen.conteos.FDS, resumen.FDS, EXCEL_PALETTE.lavender]
     ];
     tipos.forEach((item, index) => {
-      const row = 15 + index;
+      const row = 19 + index;
       summary.mergeCells(`B${row}:C${row}`);
       summary.mergeCells(`D${row}:E${row}`);
       summary.getCell(`A${row}`).value = item[0];
@@ -7624,11 +7636,11 @@
       summary.getRow(row).height = 23;
     });
 
-    summary.mergeCells('A21:F23');
-    summary.getCell('A21').value = 'Cómo leer el reporte\nS y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
-    summary.getCell('A21').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
-    summary.getCell('A21').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-    styleExcelRange(summary, 21, 1, 23, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
+    summary.mergeCells('A25:F27');
+    summary.getCell('A25').value = 'Cómo leer el reporte\nEl presupuesto inicial es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
+    summary.getCell('A25').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
+    summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
 
     const sheet = workbook.addWorksheet('Movimientos', {
       views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
@@ -7723,7 +7735,8 @@
       await construirReporteExcel({
         movimientos: state.log,
         periodo,
-        nombreArchivo: `ledger-${fecha}.xlsx`
+        nombreArchivo: `ledger-${fecha}.xlsx`,
+        presupuestoInicial: state.presupuestoInicial
       });
       toast('Excel descargado');
     } catch (error) {
@@ -7745,7 +7758,8 @@
       await construirReporteExcel({
         movimientos,
         periodo: formatCycleRange(ciclo),
-        nombreArchivo: `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.xlsx`
+        nombreArchivo: `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.xlsx`,
+        presupuestoInicial: Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null
       });
       toast('Ciclo descargado en Excel');
     } catch (error) {
