@@ -3915,7 +3915,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '94';
+  const LEDGER_BUILD = '95';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7614,10 +7614,10 @@
       EXCEL_PALETTE.cream,
       saldoInicialReporte !== null
     );
-    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTO DEL DISPONIBLE', resumen.gastoDisponible, EXCEL_PALETTE.green);
+    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTADO', resumen.gastoDisponible, EXCEL_PALETTE.green);
     addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
-    addExcelMetricCard(summary, ['A13:C13', 'A14:C15'], 'FONDO UTILIZADO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
-    addExcelMetricCard(summary, ['D13:F13', 'D14:F15'], 'MOVIMIENTOS REALES', resumen.movimientos, EXCEL_PALETTE.cream, false);
+    addExcelMetricCard(summary, ['A13:C13', 'A14:C15'], 'GASTADO DEL FONDO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
+    addExcelMetricCard(summary, ['D13:F13', 'D14:F15'], 'MOVIMIENTOS', resumen.movimientos, EXCEL_PALETTE.cream, false);
 
     summary.mergeCells('A17:F17');
     summary.getCell('A17').value = 'DESGLOSE';
@@ -7673,7 +7673,7 @@
     });
 
     summary.mergeCells('A25:F27');
-    summary.getCell('A25').value = 'Cómo leer el reporte\nEl presupuesto inicial es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
+    summary.getCell('A25').value = 'Cómo leer el reporte\nEl inicio del ciclo es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
     summary.getCell('A25').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
     summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
