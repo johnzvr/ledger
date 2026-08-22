@@ -1568,6 +1568,79 @@
     font-size: 9px;
     line-height: 1.4;
   }
+  .purchase-card-head-inline {
+    display: block;
+  }
+  .purchase-help-inline {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    z-index: 3;
+  }
+  .purchase-help-button {
+    width: 18px;
+    height: 18px;
+    border: 1px solid rgba(26,26,26,0.08);
+    border-radius: 999px;
+    background: rgba(255,255,255,0.28);
+    color: var(--ink-dim);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: none;
+    opacity: 0.42;
+    transition: opacity .16s ease, background .16s ease, border-color .16s ease;
+  }
+  .purchase-help-button:hover,
+  .purchase-help-button:focus-visible { opacity: 0.72; }
+  body.dark .purchase-help-button {
+    background: rgba(255,255,255,0.025);
+    border-color: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.72);
+  }
+  .purchase-help-inline.open .purchase-help-button {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--bg);
+    opacity: 1;
+  }
+  .purchase-help-popover {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    z-index: 8;
+    width: min(240px, 70vw);
+    padding: 10px 11px;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 10px;
+    line-height: 1.45;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.14);
+    opacity: 0;
+    transform: translateY(-4px);
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  .purchase-help-popover::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    transform: rotate(45deg);
+  }
+  .purchase-help-inline.open .purchase-help-popover {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
   .purchase-result-conversion {
     margin-top: 14px;
     padding: 9px 11px;
@@ -1682,6 +1755,7 @@
     line-height: 1.45;
   }
   .purchase-recommendation-card {
+    position: relative;
     margin-top: 12px;
     padding: 14px 15px;
     border-radius: 17px;
@@ -1692,10 +1766,20 @@
     border: 1px solid rgba(255,255,255,0.08);
   }
   .purchase-recommendation-head {
+    display: block;
+  }
+  .purchase-recommendation-label-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-right: 28px;
+  }
+  .purchase-recommendation-primary-row {
+    display: block;
+    margin-top: 5px;
+    padding-right: 24px;
   }
   .purchase-recommendation-label {
     color: var(--ink-dim);
@@ -1705,7 +1789,8 @@
     text-transform: uppercase;
   }
   .purchase-recommendation-title {
-    margin-top: 5px;
+    margin-top: 0;
+    padding-right: 0;
     color: var(--ink);
     font-family: 'Bricolage Grotesque', sans-serif;
     font-size: 20px;
@@ -1788,6 +1873,59 @@
     transform: translateY(-1px);
     -webkit-text-stroke: 0.35px currentColor;
   }
+  .purchase-budget-flow {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);
+    align-items: center;
+    gap: 6px;
+    margin-top: 9px;
+  }
+  .purchase-budget-flow-item {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .purchase-budget-flow-item small {
+    color: var(--ink-dim);
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .purchase-budget-flow-item strong {
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .purchase-budget-flow-item.is-impact { text-align: center; }
+  .purchase-budget-flow-item.is-impact strong { color: var(--ink-dim); }
+  .purchase-budget-flow-item.is-after { text-align: right; }
+  .purchase-cycle-window-card {
+    position: relative;
+    margin-top: 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: rgba(255,255,255,0.34);
+  }
+  body.dark .purchase-cycle-window-card { background: rgba(255,255,255,0.035); }
+  .purchase-cycle-window-list {
+    padding-right: 28px;
+    color: var(--ink);
+    font-size: 11px;
+    font-weight: 750;
+    line-height: 1.35;
+  }
+  .purchase-cycle-window-meta {
+    margin-top: 5px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.4;
+  }
+  @media (max-width: 380px) {
+    .purchase-budget-flow { gap: 3px; }
+    .purchase-budget-arrow { margin: 0 2px; font-size: 12px; }
+    .purchase-budget-flow-item strong { font-size: 10px; }
+  }
   .purchase-impact-section + .purchase-impact-section {
     margin-top: 13px;
     padding-top: 13px;
@@ -1805,11 +1943,19 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  .purchase-impact-heading-row {
+  .purchase-impact-label-row {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 5px;
+  }
+  .purchase-impact-label-row .purchase-impact-eyebrow {
+    margin-bottom: 0;
+  }
+  .purchase-impact-heading-row {
+    display: block;
   }
   .purchase-impact-heading {
     color: var(--ink);
@@ -1940,6 +2086,7 @@
     margin-top: 8px;
   }
   .purchase-compare-card {
+    position: relative;
     padding: 13px 14px;
     border-radius: 15px;
     background: #F0EAF4;
@@ -1953,8 +2100,10 @@
   .purchase-compare-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-right: 22px;
   }
   .purchase-compare-title {
     color: var(--ink);
@@ -1963,6 +2112,7 @@
   }
   .purchase-compare-payment {
     margin-top: 8px;
+    padding-right: 28px;
     color: var(--ink);
     font-size: 12px;
     font-weight: 700;
@@ -3599,6 +3749,412 @@
     .section-toggle-btn { padding-left: 9px; padding-right: 9px; }
     .tc-header-actions { gap: 4px; }
   }
+
+
+  /* BUILD 116 — purchase simulator hierarchy system */
+  #modalContent:has(#simPurchaseAmount) {
+    --sim-label: #66635F;
+    --sim-support: #6E6B66;
+    --sim-line: #DED9CF;
+    --sim-soft: #F7F5F1;
+    --sim-good: #B4D99C;
+    --sim-mid: #E9C67F;
+    --sim-bad: #E8A090;
+  }
+
+  /* One spacing rhythm: 8 / 16 / 24 */
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-settings,
+  #modalContent:has(#simPurchaseAmount) #purchaseSimulationResult > .purchase-recommendation-card,
+  #modalContent:has(#simPurchaseAmount) #purchaseSimulationResult > .purchase-budget-card,
+  #modalContent:has(#simPurchaseAmount) #purchaseSimulationResult > .purchase-finance-summary,
+  #modalContent:has(#simPurchaseAmount) #purchaseSimulationResult > .purchase-cycle-window-card,
+  #modalContent:has(#simPurchaseAmount) #purchaseSimulationResult > .purchase-comparison-toggle {
+    margin-top: 16px;
+  }
+
+  /* Secondary copy: readable gray, not washed out */
+  #modalContent:has(#simPurchaseAmount) .modal-sub,
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-hint,
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-note,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-payment,
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-days,
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-meta {
+    color: var(--sim-support);
+    font-weight: 500;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-field-head label,
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-head span,
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-kicker,
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-metric span,
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-label,
+  #modalContent:has(#simPurchaseAmount) .purchase-impact-eyebrow,
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-date {
+    color: var(--sim-label);
+    font-weight: 650;
+  }
+
+  /* Neutral containers: recommendation is the only large colored surface */
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-settings,
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-summary,
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card,
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-card,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait {
+    background: transparent;
+    border: 1px solid var(--sim-line);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-settings {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-summary,
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card {
+    padding: 12px 40px 12px 14px;
+    border-radius: 14px;
+  }
+
+  /* Primary answer: recommendation comes first and gets the only colored card */
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+    margin-top: 16px;
+    padding: 18px 42px 18px 18px;
+    border-radius: 18px;
+    background: #EAF3E5;
+    border: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-label-row {
+    gap: 8px;
+    padding-right: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-title {
+    margin-top: 8px;
+    font-size: 24px;
+    line-height: 1.05;
+    font-weight: 760;
+    letter-spacing: -0.035em;
+  }
+
+  /* Three-level hierarchy: label -> primary value -> support */
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-payment {
+    font-size: 19px;
+    line-height: 1.12;
+    font-weight: 740;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-term {
+    font-size: 19px;
+    min-height: 28px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-payment > span:last-child {
+    min-height: 28px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-metrics {
+    margin-top: 8px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-metric strong {
+    font-size: 11px;
+    font-weight: 650;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-list {
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 700;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-impact-heading {
+    font-size: 22px;
+    line-height: 1.08;
+    font-weight: 760;
+    letter-spacing: -0.03em;
+  }
+
+  /* Semantic badge system */
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-badge {
+    padding: 5px 9px;
+    font-size: 9px;
+    line-height: 1;
+    font-weight: 720;
+    border: 1px solid rgba(26,26,26,.05);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-badge.good { background: var(--sim-good); }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-badge.mid { background: var(--sim-mid); }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-badge.bad { background: var(--sim-bad); }
+
+  /* BUILD 121 — compact only the badges paired with top labels */
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-label-row .purchase-sim-badge,
+  #modalContent:has(#simPurchaseAmount) .purchase-impact-label-row .purchase-sim-badge {
+    padding: 3px 6px;
+    font-size: 7.5px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0;
+    border-radius: 999px;
+  }
+
+  /* Total remaining: one integrated waterfall instead of floating arrows */
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-track {
+    height: 5px;
+    margin-top: 12px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0;
+    margin-top: 8px;
+    padding: 10px 0 0;
+    border-top: 1px solid var(--sim-line);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall > span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall small {
+    color: var(--sim-support);
+    font-size: 8px;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall strong {
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 680;
+    white-space: nowrap;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall-delta {
+    margin: 0 14px;
+    padding: 0 14px;
+    border-left: 1px solid var(--sim-line);
+    border-right: 1px solid var(--sim-line);
+    text-align: center;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall-end {
+    text-align: right;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall-delta strong {
+    color: var(--sim-support);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-total-status {
+    margin-top: 6px;
+    padding: 3px 7px;
+    width: fit-content;
+    background: #DDEED3;
+  }
+
+  /* Distribution is support information, not another headline */
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-overview {
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-grid {
+    gap: 8px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-period {
+    padding: 10px 12px;
+    background: var(--sim-soft);
+  }
+
+  /* Comparison is tertiary: white cards, semantic badges only */
+  #modalContent:has(#simPurchaseAmount) .purchase-comparison-toggle {
+    min-height: 48px;
+    border-color: var(--sim-line);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-comparison-details {
+    gap: 8px;
+    margin-top: 8px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card {
+    padding: 12px 38px 12px 14px;
+    border-radius: 14px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-title {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-payment {
+    margin-top: 6px;
+    font-size: 10px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  /* Footer: one clear primary action */
+  #modalContent:has(#simPurchaseAmount) .modal-buttons {
+    gap: 8px;
+    margin-top: 24px;
+    align-items: center;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-footer-ghost-close {
+    flex: .55;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 0 !important;
+    background: transparent;
+    color: var(--sim-support);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-footer-register {
+    flex: 1.45;
+    min-height: 48px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* Dark mode keeps hierarchy without decorative purple panels */
+  body.dark #modalContent:has(#simPurchaseAmount) {
+    --sim-label: rgba(255,255,255,.68);
+    --sim-support: rgba(255,255,255,.64);
+    --sim-line: rgba(255,255,255,.11);
+    --sim-soft: rgba(255,255,255,.045);
+    --sim-good: #91B879;
+    --sim-mid: #C7A35F;
+    --sim-bad: #C77C6B;
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-installment-settings,
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-finance-summary,
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card,
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-budget-card,
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card,
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait {
+    background: transparent;
+    border-color: var(--sim-line);
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+    background: rgba(145,184,121,.13);
+    border: 1px solid rgba(145,184,121,.18);
+  }
+
+  @media (max-width: 380px) {
+    #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall-delta {
+      margin: 0 8px;
+      padding: 0 8px;
+    }
+    #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall strong {
+      font-size: 10px;
+    }
+  }
+
+
+  /* BUILD 119 — color balance, same 1:1 horizontal structure */
+  #modalContent:has(#simPurchaseAmount) {
+    --sim-panel-purple: #F1EAF5;
+    --sim-panel-purple-soft: #F6F1F8;
+    --sim-panel-green: #EAF3E5;
+    --sim-panel-green-soft: #F0F6EC;
+    --sim-panel-blue: #EEF3F6;
+    --sim-panel-warm: #F7F4EE;
+    --sim-panel-block: #EEEAE2;
+  }
+
+  /* Give every information family its own restrained surface. */
+  #modalContent:has(#simPurchaseAmount) .purchase-installment-settings {
+    background: var(--sim-panel-purple-soft);
+    border: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-summary {
+    background: var(--sim-panel-purple);
+    border: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card {
+    background: var(--sim-panel-blue);
+    border-color: rgba(70,82,89,.08);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+    background: var(--sim-panel-green);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-card {
+    background: var(--sim-panel-warm);
+    border-color: rgba(92,82,64,.10);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-plan-period {
+    background: var(--sim-panel-block);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card {
+    background: var(--sim-panel-purple-soft);
+    border-color: transparent;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait {
+    background: var(--sim-panel-green-soft);
+    border-color: transparent;
+  }
+
+  /* Keep internal whitespace proportional: no content stranded at the far edges. */
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-summary {
+    padding: 16px 16px 14px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card {
+    padding: 12px 38px 12px 14px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+    padding: 16px 40px 16px 16px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-budget-card {
+    padding: 16px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card {
+    padding: 12px 38px 12px 14px;
+  }
+
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-top,
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-head,
+  #modalContent:has(#simPurchaseAmount) .purchase-impact-heading-row,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-head {
+    min-width: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-finance-payment,
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-title,
+  #modalContent:has(#simPurchaseAmount) .purchase-impact-heading,
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-list,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-payment {
+    max-width: 100%;
+  }
+
+  /* The info icon floats in the corner without reserving a whole empty strip. */
+  #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card,
+  #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card,
+  #modalContent:has(#simPurchaseAmount) .purchase-compare-card {
+    position: relative;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-help-inline {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  /* Dark mode keeps the same families instead of flattening everything. */
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-installment-settings {
+    background: rgba(180,140,220,.09);
+    border: 0;
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-finance-summary {
+    background: rgba(180,140,220,.12);
+    border: 0;
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card {
+    background: rgba(127,184,224,.08);
+    border-color: rgba(127,184,224,.11);
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-budget-card {
+    background: rgba(217,197,163,.06);
+    border-color: rgba(217,197,163,.10);
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-plan-period {
+    background: rgba(255,255,255,.055);
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card {
+    background: rgba(180,140,220,.08);
+    border-color: transparent;
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait {
+    background: rgba(145,184,121,.10);
+    border-color: transparent;
+  }
+
 </style>
 </head>
 <body>
@@ -4266,7 +4822,10 @@
       // conflicto por sí solo; los ciclos nuevos ya quedan identificados por su
       // fecha, saldos, bloques e historial financiero real.
       'saldoInicialCiclo',
-      'presupuestoInicial'
+      'presupuestoInicial',
+      // BUILD 100–104 experimental: Autofinanciamiento fue retirado. Si un navegador
+      // conserva metadata de prueba, no debe generar un conflicto de Drive por sí sola.
+      'planesAutofinanciamiento'
     ].forEach(key => delete comparable[key]);
 
     // isCurrent y label se derivan de la fecha/UI. Un cambio de día o de build no
@@ -8876,6 +9435,7 @@
     const close = document.getElementById('purchaseFooterClose');
     const register = document.getElementById('purchaseFooterRegister');
     if (!secondary || !close || !register) return;
+    secondary.classList.toggle('purchase-footer-ghost-close', canRegister);
     if (canRegister) {
       secondary.textContent = 'Cerrar';
       secondary.setAttribute('onclick', 'closeModal()');
@@ -9019,6 +9579,41 @@
     promptManualTc();
     updatePurchaseSimulationConversion();
   }
+
+  function purchaseHelpIcon(texto) {
+    if (!texto) return '';
+    return `
+      <span class="purchase-help-inline">
+        <button type="button" class="purchase-help-button" aria-label="Más información" aria-expanded="false" onclick="toggleInlineHelp(this, event)">?</button>
+        <span class="purchase-help-popover">${texto}</span>
+      </span>
+    `;
+  }
+
+  function toggleInlineHelp(button, event) {
+    event?.stopPropagation?.();
+    const wrap = button?.closest('.purchase-help-inline');
+    if (!wrap) return;
+    const willOpen = !wrap.classList.contains('open');
+    document.querySelectorAll('.purchase-help-inline.open').forEach(node => {
+      if (node !== wrap) {
+        node.classList.remove('open');
+        const btn = node.querySelector('.purchase-help-button');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+      }
+    });
+    wrap.classList.toggle('open', willOpen);
+    button.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+  }
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('.purchase-help-inline')) return;
+    document.querySelectorAll('.purchase-help-inline.open').forEach(node => {
+      node.classList.remove('open');
+      const btn = node.querySelector('.purchase-help-button');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    });
+  });
 
   function openPurchaseSimulator() {
     purchaseSimulationCurrency = 'PEN';
@@ -9164,6 +9759,58 @@
     `;
   }
 
+  function normalizarFechaSimulacion(fecha = new Date()) {
+    const normalizada = new Date(fecha);
+    normalizada.setHours(12, 0, 0, 0);
+    return normalizada;
+  }
+
+  function formatRangoCicloSimulador(inicio, fin) {
+    const desde = normalizarFechaSimulacion(inicio);
+    const hasta = normalizarFechaSimulacion(fin);
+    const mismoMes = desde.getFullYear() === hasta.getFullYear() && desde.getMonth() === hasta.getMonth();
+    const finTxt = formatFecha(hasta).replace(/\.$/, '');
+    if (mismoMes) return `${desde.getDate()}–${finTxt}`;
+    return `${formatFecha(desde).replace(/\.$/, '')}–${finTxt}`;
+  }
+
+  function rangosCiclosSimulador(fechas, fechaLimite) {
+    const limite = normalizarFechaSimulacion(fechaLimite);
+    const unicas = [...new Map((Array.isArray(fechas) ? fechas : [])
+      .map(fecha => normalizarFechaSimulacion(fecha))
+      .filter(fecha => fecha <= limite)
+      .sort((a,b) => a - b)
+      .map(fecha => [fecha.getTime(), fecha])).values()];
+    return unicas.map((inicio, index) => {
+      let fin = limite;
+      if (index < unicas.length - 1) {
+        fin = normalizarFechaSimulacion(unicas[index + 1]);
+        fin.setDate(fin.getDate() - 1);
+      }
+      if (fin < inicio) fin = inicio;
+      return { inicio, fin, texto: formatRangoCicloSimulador(inicio, fin) };
+    });
+  }
+
+  function resumenCiclosBanco(escenario, plan, fechaCompra = new Date()) {
+    if (!escenario?.calendario?.pago) return '';
+    const compra = normalizarFechaSimulacion(fechaCompra);
+    const fechas = [compra, ...(Array.isArray(escenario.sueldos) ? escenario.sueldos : [])];
+    const rangos = rangosCiclosSimulador(fechas, escenario.calendario.pago);
+    const lista = rangos.map(item => item.texto).join(' · ');
+    const pagoLabel = Number(plan?.meses) > 1 ? 'Primera cuota' : 'Pago';
+    const ayuda = `Compra ${formatFecha(compra).replace(/\.$/, '')} · Cierre ${formatFecha(escenario.calendario.cierre).replace(/\.$/, '')} · ${pagoLabel} ${formatFechaCompleta(escenario.calendario.pago)}`;
+    return `
+      <div class="purchase-cycle-window-card">
+        <div class="purchase-card-head-inline">
+          <span class="purchase-impact-eyebrow">Ciclos antes del ${Number(plan?.meses) > 1 ? 'primer pago' : 'pago'}</span>
+        </div>
+        <div class="purchase-cycle-window-list">${lista || 'Sin otro ciclo antes del pago'}</div>
+        ${purchaseHelpIcon(ayuda)}
+      </div>
+    `;
+  }
+
   function resumenRecomendacionCuotas(esperarHasta, compraEsperando, plan) {
     const sueldosAntesDelPago = Array.isArray(compraEsperando.sueldos) ? compraEsperando.sueldos : [];
     const contextoAbonos = sueldosAntesDelPago.length
@@ -9172,15 +9819,19 @@
     const referenciaFecha = compraEsperando.calendario.estimado
       ? 'La fecha aún no es oficial: usando tu último patrón, '
       : '';
+    const ayuda = `${referenciaFecha}${plan?.meses === 1 ? 'El pago sería' : 'La primera cuota sería'} el ${formatFechaCompleta(compraEsperando.calendario.pago)}. ${contextoAbonos}`;
     return `
       <div class="purchase-recommendation-card">
         <div class="purchase-recommendation-head">
-          <span class="purchase-recommendation-label">Más margen</span>
-          <span class="purchase-sim-badge good">Recomendado</span>
+          <div class="purchase-recommendation-label-row">
+            <span class="purchase-recommendation-label">Más margen</span>
+            <span class="purchase-sim-badge good">Recomendado</span>
+          </div>
+          <div class="purchase-recommendation-primary-row">
+            <div class="purchase-recommendation-title">Esperar al ${formatFecha(esperarHasta)}</div>
+          </div>
         </div>
-        <div class="purchase-recommendation-title">Esperar al ${formatFecha(esperarHasta)}</div>
-        <div class="purchase-recommendation-copy">${referenciaFecha}${plan?.meses === 1 ? 'El pago sería' : 'La primera cuota sería'} el ${formatFechaCompleta(compraEsperando.calendario.pago)}.</div>
-        <div class="purchase-recommendation-income">${contextoAbonos}</div>
+        ${purchaseHelpIcon(ayuda)}
       </div>
     `;
   }
@@ -9220,20 +9871,21 @@
     return `
       <div class="purchase-budget-card">
         <section class="purchase-impact-section total">
-          <span class="purchase-impact-eyebrow">Total disponible</span>
-          <div class="purchase-impact-heading-row">
-            <div>
-              <div class="purchase-impact-heading">${tituloTotal}</div>
-              <span class="purchase-total-status ${totalFaltante > 0 ? 'bad' : ''}">${estadoTotal}</span>
-            </div>
+          <div class="purchase-impact-label-row">
+            <span class="purchase-impact-eyebrow">Total restante</span>
             <span class="purchase-sim-badge ${capacidad.nivel}">${capacidad.capacidad}</span>
+          </div>
+          <div class="purchase-impact-heading-row">
+            <div class="purchase-impact-heading">${tituloTotal}</div>
           </div>
           ${balanceHidden ? '' : `
             <div class="purchase-budget-track" aria-label="Disponible total después de ${capacidad.esCuota ? 'la primera cuota' : 'la compra'}">
               <div class="purchase-budget-fill" style="width:${porcentajeTotal.toFixed(1)}%"></div>
             </div>
-            <div class="purchase-budget-values">
-              <span><strong>S/ ${fmtSim(totalAntes)}</strong><span class="purchase-budget-arrow" aria-hidden="true">→</span><strong>S/ ${fmtSim(totalDespues)}</strong></span>
+            <div class="purchase-budget-waterfall" aria-label="Resumen del impacto en tu disponible">
+              <span class="purchase-budget-waterfall-start"><small>Antes</small><strong>S/ ${fmtSim(totalAntes)}</strong></span>
+              <span class="purchase-budget-waterfall-delta"><small>${capacidad.esCuota ? '1ª cuota' : 'Compra'}</small><strong>− S/ ${fmtSim(Math.max(0, Number(capacidad.montoImpacto) || 0))}</strong></span>
+              <span class="purchase-budget-waterfall-end"><small>Restante</small><strong>S/ ${fmtSim(totalDespues)}</strong></span>
             </div>
           `}
         </section>
@@ -9247,6 +9899,7 @@
     const abonos = escenario.sueldos.length === 0
       ? 'Sin abonos antes del pago'
       : `${escenario.sueldos.length} abono${escenario.sueldos.length === 1 ? '' : 's'} antes del pago`;
+    const ayuda = `Cierre${escenario.calendario.estimado ? ' estimado' : ''} ${formatFecha(escenario.calendario.cierre)} · ${abonos}${plan.meses === 1 ? '.' : ` · Última cuota ${formatFechaCompleta(ultima)}.`}`;
     return `
       <div class="purchase-compare-card ${variante === 'wait' ? 'wait' : ''}">
         <div class="purchase-compare-head">
@@ -9254,7 +9907,7 @@
           <span class="purchase-sim-badge ${escenario.nivel}">${escenario.margen}</span>
         </div>
         <div class="purchase-compare-payment">${plan.meses === 1 ? 'Pago único' : 'Primera cuota'}${escenario.calendario.estimado ? ' estimado' : ''} · ${formatInstallmentMoney(plan.cuota, currencyInfo.currency)} · ${formatFechaCompleta(escenario.calendario.pago)}</div>
-        <div class="purchase-compare-meta">Cierre${escenario.calendario.estimado ? ' estimado' : ''} ${formatFecha(escenario.calendario.cierre)} · ${abonos}${plan.meses === 1 ? '.' : ` · Última cuota ${formatFechaCompleta(ultima)}.`}</div>
+        ${purchaseHelpIcon(ayuda)}
       </div>
     `;
   }
@@ -9414,6 +10067,7 @@
       diasRestantes,
       disponibleAntes: disponible,
       disponibleDespues,
+      montoImpacto: monto,
       margenAntes,
       margenDespues,
       diasBloqueRestantes,
@@ -9549,6 +10203,7 @@
         ${resumenFinanciamiento(planCuotas, currencyInfo)}
         ${resumenRecomendacionCuotas(esperarHasta, compraEsperando, planCuotas)}
         ${resumenImpactoCuota(capacidad)}
+        ${resumenCiclosBanco(compraHoy, planCuotas, hoy)}
         <button class="purchase-comparison-toggle" type="button" aria-expanded="false" onclick="togglePurchaseComparison(this)">
           <span class="purchase-comparison-label">Ver comparación de fechas</span>
           <span class="purchase-comparison-chevron" aria-hidden="true">⌄</span>
