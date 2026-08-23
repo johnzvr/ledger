@@ -5757,8 +5757,12 @@
     state.semanas.forEach((sem, i) => {
       const div = document.createElement('div');
       const isClosed = i < currentBlockIdx;
-      const isZero = !isClosed && sem.presupuesto <= 0;
-      const excedido = !isClosed && Number(sem.exceso) > 0;
+      const presupuestoActual = Number(sem.presupuesto) || 0;
+      // El rojo representa el estado ACTUAL del bloque, no un exceso histórico.
+      // Si una redistribución devuelve saldo positivo, el bloque vuelve a su estilo normal.
+      const isZero = !isClosed && presupuestoActual <= 0;
+      const excedido = isZero;
+      const mostrarExceso = isZero && Number(sem.exceso) > 0;
       div.className = 'week-chip'
         + (sem.isCurrent ? ' current' : '')
         + (isClosed ? ' closed' : '')
@@ -5768,7 +5772,7 @@
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
       const diasTxt = rango && rango.inicio ? ` · ${rango.dias}d` : '';
-      const excesoTxt = excedido ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
+      const excesoTxt = mostrarExceso ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
       div.innerHTML = `
         <span class="wk-label">${label}</span>
         ${isClosed
