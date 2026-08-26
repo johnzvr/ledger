@@ -1118,7 +1118,106 @@
   }
   .weeks-grid::-webkit-scrollbar { display: none; }
   .weeks-grid.collapsed .week-chip:not(.current) { display: none; }
-  .weeks-grid.collapsed .week-chip.current { flex: 1 1 100%; }
+  .weeks-grid.collapsed .week-chip.current {
+    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(118px, 0.65fr);
+    grid-template-areas:
+      "label daily"
+      "amount daily"
+      "overrun overrun";
+    column-gap: 24px;
+    row-gap: 5px;
+    align-items: center;
+    padding: 14px 16px;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-label {
+    grid-area: label;
+    margin-bottom: 1px;
+    font-size: 9px;
+    letter-spacing: 0.055em;
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-range-inline {
+    display: inline;
+    color: rgba(250,248,243,0.48);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-amount {
+    font-size: clamp(26px, 5.2vw, 34px);
+    font-weight: 760;
+    letter-spacing: -0.045em;
+    line-height: 0.96;
+    margin: 2px 0 4px;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-amount,
+  .weeks-grid.collapsed .week-chip.current .wk-closed-status {
+    grid-area: amount;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-range {
+    display: none;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-daily {
+    grid-area: daily;
+    justify-self: end;
+    align-self: center;
+    margin-top: 0;
+    min-width: 112px;
+    padding-left: 18px;
+    border-left: 1px solid rgba(250,248,243,0.16);
+    text-align: right;
+    font-size: 14px;
+    line-height: 1.12;
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-daily::before {
+    content: 'Ritmo diario';
+    display: block;
+    margin-bottom: 5px;
+    color: rgba(250,248,243,0.48);
+    font-family: inherit;
+    font-size: 8px;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  body.dark .weeks-grid.collapsed .week-chip.current .wk-daily {
+    border-left-color: rgba(10,10,11,0.14);
+  }
+  body.dark .weeks-grid.collapsed .week-chip.current .wk-daily::before {
+    color: rgba(10,10,11,0.46);
+  }
+  body.dark .weeks-grid.collapsed .week-chip.current .wk-range-inline {
+    color: rgba(10,10,11,0.46);
+  }
+  .weeks-grid.collapsed .week-chip.current .wk-overrun {
+    grid-area: overrun;
+  }
+  @media (max-width: 420px) {
+    .weeks-grid.collapsed .week-chip.current {
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: 14px;
+      padding: 13px 14px;
+    }
+    .weeks-grid.collapsed .week-chip.current .wk-amount {
+      font-size: 27px;
+    }
+    .weeks-grid.collapsed .week-chip.current .wk-daily {
+      min-width: 94px;
+      padding-left: 12px;
+      font-size: 12px;
+    }
+  }
   .week-chip {
     flex: 1 0 104px;
     background: rgba(255,255,255,0.55);
@@ -1141,6 +1240,9 @@
     font-weight: 600;
     margin-bottom: 6px;
     display: block;
+  }
+  .wk-range-inline {
+    display: none;
   }
   .week-chip.current .wk-label { color: rgba(250,248,243,0.65); }
   .week-chip .wk-amount {
@@ -1202,6 +1304,10 @@
     font-weight: 700;
     letter-spacing: 0.01em;
     color: var(--ink-dim);
+    white-space: nowrap;
+  }
+  .weeks-grid:not(.collapsed) .wk-daily {
+    display: none;
   }
   .week-chip.current .wk-daily { color: rgba(250,248,243,0.78); }
   body.dark .week-chip.current .wk-daily { color: rgba(10,10,11,0.7); }
@@ -3137,6 +3243,64 @@
   }
   .chip:active { transform: scale(0.96); }
   .chip[data-mod="recalcula"] { font-size: 10px; letter-spacing: 0; }
+  .redistrib-control {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+  .redistrib-control > .chip {
+    width: 100%;
+    flex: none;
+    touch-action: manipulation;
+  }
+  .redistrib-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 210px;
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 15px;
+    background: #202020;
+    box-shadow: 0 14px 32px rgba(0,0,0,0.28);
+    z-index: 140;
+  }
+  .redistrib-menu[hidden] { display: none; }
+  .redistrib-menu::after {
+    content: '';
+    position: absolute;
+    right: 24px;
+    bottom: -5px;
+    width: 10px;
+    height: 10px;
+    background: #202020;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    transform: rotate(45deg);
+  }
+  .redistrib-menu-btn {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 11px;
+    background: transparent;
+    color: rgba(250,248,243,0.92);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+  .redistrib-menu-btn + .redistrib-menu-btn {
+    margin-top: 2px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0 0 10px 10px;
+  }
+  .redistrib-menu-btn:active {
+    background: rgba(255,255,255,0.08);
+  }
   
   .chip.type-S.active {
     background: var(--mint);
@@ -4456,7 +4620,27 @@
       <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
       <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Fondo; combínalo con DS para pagar con tarjeta">F</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
-      <div class="chip mod" data-mod="recalcula" onclick="setMod('recalcula')" role="button" aria-label="Redistribuir presupuesto">redistrib.</div>
+      <div class="redistrib-control" id="redistribControl">
+        <div
+          class="chip mod"
+          id="redistribChip"
+          data-mod="recalcula"
+          role="button"
+          aria-label="Redistribuir presupuesto. Mantén presionado para más opciones."
+          aria-haspopup="menu"
+          aria-expanded="false"
+          onclick="handleRedistribClick(event)"
+          onpointerdown="startRedistribLongPress(event)"
+          onpointerup="cancelRedistribLongPress()"
+          onpointercancel="cancelRedistribLongPress()"
+          onpointerleave="cancelRedistribLongPress()"
+          oncontextmenu="return false"
+        >redistrib.</div>
+        <div class="redistrib-menu" id="redistribMenu" role="menu" hidden>
+          <button class="redistrib-menu-btn" type="button" role="menuitem" onclick="redistribuirBloquesDesdeMenu(event)">Redistribuir bloques</button>
+          <button class="redistrib-menu-btn" type="button" role="menuitem" onclick="actualizarGastoDiarioDesdeMenu(event)">Actualizar gasto/día</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -4471,7 +4655,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '96';
+  const LEDGER_BUILD = '130';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -4496,9 +4680,9 @@
     darkMode: false,
     tcCache: { rate: null, fetchedAt: null }, // último USD→PEN conocido
     semanas: [
-      { label: 'Semana actual', presupuesto: 328.59, isCurrent: true, fechaInicioManual: null, fechaFinManual: null },
-      { label: 'Semana +1', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null },
-      { label: 'Semana +2', presupuesto: 715.24, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
+      { label: 'Semana actual', presupuesto: 328.59, presupuestoAsignado: 328.59, diasRitmo: 3, ritmoDiarioFijo: 109.53, isCurrent: true, fechaInicioManual: null, fechaFinManual: null },
+      { label: 'Semana +1', presupuesto: 715.24, presupuestoAsignado: 715.24, diasRitmo: 7, ritmoDiarioFijo: 102.18, isCurrent: false, fechaInicioManual: null, fechaFinManual: null },
+      { label: 'Semana +2', presupuesto: 715.24, presupuestoAsignado: 715.24, diasRitmo: 7, ritmoDiarioFijo: 102.18, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
     tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 },
     tarjetaCalendarios: [], // estados de cuenta exactos e independientes del ciclo salarial
@@ -4535,6 +4719,7 @@
   // BUILD 94: los estados anteriores no tenían una foto separada del inicio del ciclo.
   // Se reconstruye una sola vez con el saldo actual + los gastos S/DS del log vigente.
   asegurarSaldoInicialCiclo(state);
+  asegurarRitmoDiarioBloques(state);
   ensureSyncMetadata(state);
   let lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
   // Limpia el respaldo temporal usado por una versión anterior.
@@ -4799,6 +4984,72 @@
     const legacy = Number(target.presupuestoInicial);
     target.saldoInicialCiclo = redondearDinero(Number.isFinite(legacy) ? Math.max(0, legacy) : Math.max(0, Number(target.totalDisponible) || 0));
     return true;
+  }
+
+
+  function asegurarRitmoDiarioBloques(target = state) {
+    if (!target || !Array.isArray(target.semanas) || target.semanas.length === 0) return false;
+    let cambio = false;
+
+    // Para estados anteriores a BUILD 123 intentamos recuperar la última asignación
+    // real del bloque desde los snapshots. Si no existe historial suficiente,
+    // conservamos el presupuesto visible como mejor base posible.
+    const rangos = target === state ? calcularRangoSemanas() : [];
+    const currentIdx = target === state ? calcularSemanaActualIdx() : -1;
+    const rangoActual = currentIdx >= 0 && currentIdx < rangos.length ? rangos[currentIdx] : null;
+    const inicioActual = rangoActual?.inicio ? inicioDelDia(rangoActual.inicio).getTime() : null;
+    const finActual = rangoActual?.fin ? finDelDia(rangoActual.fin).getTime() : null;
+    const movimientos = Array.isArray(target.log) ? target.log : [];
+
+    let fechaUltimaAsignacion = null;
+    let baselineSemanas = null;
+    if (inicioActual !== null && finActual !== null) {
+      const recalculos = movimientos.filter(mov => {
+        const ts = Number(mov?.timestamp) || (mov?.fechaISO ? new Date(mov.fechaISO).getTime() : NaN);
+        return mov?.etiqueta === 'recalcula' && Number.isFinite(ts) && ts >= inicioActual && ts <= finActual;
+      });
+      const ultimoRecalculo = recalculos.length ? recalculos[recalculos.length - 1] : null;
+      if (ultimoRecalculo) {
+        fechaUltimaAsignacion = new Date(Number(ultimoRecalculo.timestamp) || ultimoRecalculo.fechaISO);
+        const tsAsignacion = fechaUltimaAsignacion.getTime();
+        const siguiente = movimientos.find(mov => {
+          const ts = Number(mov?.timestamp) || (mov?.fechaISO ? new Date(mov.fechaISO).getTime() : NaN);
+          return mov?.etiqueta !== 'recalcula' && Number.isFinite(ts) && ts >= tsAsignacion && Array.isArray(mov?.snapshot?.semanas);
+        });
+        if (siguiente) baselineSemanas = siguiente.snapshot.semanas;
+      } else {
+        const primeroDelBloque = movimientos.find(mov => {
+          const ts = Number(mov?.timestamp) || (mov?.fechaISO ? new Date(mov.fechaISO).getTime() : NaN);
+          return mov?.etiqueta !== 'recalcula' && Number.isFinite(ts) && ts >= inicioActual && ts <= finActual && Array.isArray(mov?.snapshot?.semanas);
+        });
+        if (primeroDelBloque) baselineSemanas = primeroDelBloque.snapshot.semanas;
+      }
+    }
+
+    target.semanas.forEach((sem, i) => {
+      if (!sem || typeof sem !== 'object') return;
+      if (!Number.isFinite(Number(sem.presupuestoAsignado)) || Number(sem.presupuestoAsignado) < 0) {
+        const candidato = Number(baselineSemanas?.[i]?.presupuesto);
+        sem.presupuestoAsignado = redondearDinero(Number.isFinite(candidato) ? Math.max(0, candidato) : Math.max(0, Number(sem.presupuesto) || 0));
+        cambio = true;
+      }
+      if (!Number.isFinite(Number(sem.diasRitmo)) || Number(sem.diasRitmo) <= 0) {
+        const rango = rangos[i];
+        let dias = Math.max(1, Number(rango?.dias) || 1);
+        if (i === currentIdx && fechaUltimaAsignacion && rango) {
+          dias = Math.max(1, diasRestantesParaBloque(rango, fechaUltimaAsignacion));
+        }
+        sem.diasRitmo = dias;
+        cambio = true;
+      }
+      if (!Number.isFinite(Number(sem.ritmoDiarioFijo)) || Number(sem.ritmoDiarioFijo) < 0) {
+        const base = Math.max(0, Number(sem.presupuestoAsignado) || 0);
+        const dias = Math.max(1, Number(sem.diasRitmo) || 1);
+        sem.ritmoDiarioFijo = redondearDinero(base / dias);
+        cambio = true;
+      }
+    });
+    return cambio;
   }
 
   function syncComparableState(source = state) {
@@ -5365,14 +5616,21 @@
 
   function crearSemanasDesdeRangos(rangos, gastable, fechasManuales = false) {
     const totalDias = Math.max(1, rangos.reduce((s, r) => s + Math.max(0, r.dias || 0), 0));
-    return rangos.map((rango, i) => ({
-      label: i === 0 ? 'Bloque 1' : 'Bloque ' + (i + 1),
-      presupuesto: Math.max(0, gastable) * Math.max(0, rango.dias || 0) / totalDias,
-      isCurrent: i === 0,
-      fechaInicioManual: fechasManuales ? fechaParaInput(rango.inicio) : null,
-      fechaFinManual: fechasManuales ? fechaParaInput(rango.fin) : null,
-      exceso: 0
-    }));
+    return rangos.map((rango, i) => {
+      const diasAsignados = Math.max(1, Number(rango.dias) || 1);
+      const presupuestoAsignado = Math.max(0, gastable) * Math.max(0, rango.dias || 0) / totalDias;
+      return {
+        label: i === 0 ? 'Bloque 1' : 'Bloque ' + (i + 1),
+        presupuesto: presupuestoAsignado,
+        presupuestoAsignado,
+        diasRitmo: diasAsignados,
+        ritmoDiarioFijo: redondearDinero(presupuestoAsignado / diasAsignados),
+        isCurrent: i === 0,
+        fechaInicioManual: fechasManuales ? fechaParaInput(rango.inicio) : null,
+        fechaFinManual: fechasManuales ? fechaParaInput(rango.fin) : null,
+        exceso: 0
+      };
+    });
   }
   
   // Retorna array con {inicio, fin, dias} para cada semana calendario del ciclo
@@ -5588,7 +5846,14 @@
       const presupuesto = centavos / 100;
       centavosAsignados += centavos;
       semanas[i].presupuesto = presupuesto;
-      asignaciones.push({ index: i, presupuesto, dias: pesos[i] });
+      // El ritmo diario se fija cuando el bloque recibe una nueva asignación.
+      // Los gastos posteriores solo reducen presupuesto; no modifican esta base.
+      semanas[i].presupuestoAsignado = presupuesto;
+      semanas[i].diasRitmo = Math.max(1, Number(pesos[i]) || 1);
+      // Fuente de verdad del aprox/día: solo cambia cuando este bloque recibe
+      // una nueva asignación (redistrib., transición o nuevo ciclo).
+      semanas[i].ritmoDiarioFijo = redondearDinero(presupuesto / semanas[i].diasRitmo);
+      asignaciones.push({ index: i, presupuesto, dias: pesos[i], ritmoDiario: semanas[i].ritmoDiarioFijo });
     }
     return asignaciones;
   }
@@ -5660,6 +5925,7 @@
   }
   
   function render({ markModified = true, sync = true } = {}) {
+    asegurarRitmoDiarioBloques(state);
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
     if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
@@ -5772,13 +6038,23 @@
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
       const diasTxt = rango && rango.inicio ? ` · ${rango.dias}d` : '';
+      const diasRitmo = Math.max(1, Number(sem.diasRitmo) || Number(rango?.dias) || 1);
+      const presupuestoAsignado = Math.max(0, Number(sem.presupuestoAsignado) || 0);
+      const ritmoGuardado = Number(sem.ritmoDiarioFijo);
+      const ritmoDiario = Number.isFinite(ritmoGuardado) && ritmoGuardado >= 0
+        ? ritmoGuardado
+        : presupuestoAsignado / diasRitmo;
+      const ritmoTxt = !isClosed && presupuestoAsignado > 0
+        ? `<div class="wk-daily">S/ ${fmt(ritmoDiario)}/día</div>`
+        : '';
       const excesoTxt = mostrarExceso ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
       div.innerHTML = `
-        <span class="wk-label">${label}</span>
+        <span class="wk-label">${label}<span class="wk-range-inline">${rangoTxt}${diasTxt}</span></span>
         ${isClosed
           ? '<div class="wk-closed-status">✓ Cerrado</div>'
           : `<div class="wk-amount">S/ ${fmt(sem.presupuesto)}</div>`}
         <div class="wk-range">${rangoTxt}${diasTxt}</div>
+        ${ritmoTxt}
         ${excesoTxt}
       `;
       weeksEl.appendChild(div);
@@ -6999,7 +7275,14 @@
         - (Number(from.semanas[i].exceso) || 0),
       presupuesto: (Number(sem.presupuesto) || 0)
         + (Number(to.semanas[i].presupuesto) || 0)
-        - (Number(from.semanas[i].presupuesto) || 0)
+        - (Number(from.semanas[i].presupuesto) || 0),
+      presupuestoAsignado: (Number(sem.presupuestoAsignado) || Number(sem.presupuesto) || 0)
+        + (Number(to.semanas[i].presupuestoAsignado) || Number(to.semanas[i].presupuesto) || 0)
+        - (Number(from.semanas[i].presupuestoAsignado) || Number(from.semanas[i].presupuesto) || 0),
+      diasRitmo: Math.max(1, Number(to.semanas[i].diasRitmo) || Number(sem.diasRitmo) || 1),
+      ritmoDiarioFijo: Number.isFinite(Number(to.semanas[i].ritmoDiarioFijo))
+        ? Math.max(0, Number(to.semanas[i].ritmoDiarioFijo))
+        : Math.max(0, Number(sem.ritmoDiarioFijo) || 0)
     }));
     return result;
   }
@@ -8469,6 +8752,131 @@
     updateChipsUI();
   }
   
+  let redistribLongPressTimer = null;
+  let redistribLongPressTriggered = false;
+
+  function redistribMenuAbierto() {
+    return !document.getElementById('redistribMenu')?.hidden;
+  }
+
+  function openRedistribMenu() {
+    const menu = document.getElementById('redistribMenu');
+    const chip = document.getElementById('redistribChip');
+    if (!menu || !chip) return;
+    menu.hidden = false;
+    chip.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeRedistribMenu() {
+    const menu = document.getElementById('redistribMenu');
+    const chip = document.getElementById('redistribChip');
+    if (menu) menu.hidden = true;
+    if (chip) chip.setAttribute('aria-expanded', 'false');
+  }
+
+  function startRedistribLongPress(event) {
+    if (event?.pointerType === 'mouse' && event.button !== 0) return;
+    clearTimeout(redistribLongPressTimer);
+    redistribLongPressTriggered = false;
+    redistribLongPressTimer = setTimeout(() => {
+      redistribLongPressTriggered = true;
+      openRedistribMenu();
+      try { navigator.vibrate?.(12); } catch(e) {}
+    }, 520);
+  }
+
+  function cancelRedistribLongPress() {
+    clearTimeout(redistribLongPressTimer);
+    redistribLongPressTimer = null;
+  }
+
+  function handleRedistribClick(event) {
+    cancelRedistribLongPress();
+    if (redistribLongPressTriggered) {
+      redistribLongPressTriggered = false;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      return;
+    }
+    if (redistribMenuAbierto()) {
+      closeRedistribMenu();
+      return;
+    }
+    ejecutarRecalculo();
+  }
+
+  function redistribuirBloquesDesdeMenu(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    closeRedistribMenu();
+    ejecutarRecalculo();
+  }
+
+  function actualizarGastoDiarioDesdeMenu(event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    closeRedistribMenu();
+    actualizarSoloRitmoDiario();
+  }
+
+  function actualizarSoloRitmoDiario() {
+    const numSem = state.semanas.length;
+    if (numSem === 0) {
+      toast('No hay bloques configurados', true);
+      return;
+    }
+
+    const currentIdx = calcularSemanaActualIdx();
+    if (currentIdx < 0 || currentIdx >= numSem) {
+      toast('El ciclo ya terminó; inicia uno nuevo', true);
+      return;
+    }
+
+    const rangos = calcularRangoSemanas();
+    const ahora = new Date();
+    let huboCambio = false;
+    let ritmoActual = null;
+
+    for (let i = currentIdx; i < state.semanas.length; i++) {
+      const sem = state.semanas[i];
+      const rango = rangos[i];
+      const presupuesto = Math.max(0, Number(sem.presupuesto) || 0);
+      const dias = i === currentIdx
+        ? Math.max(1, diasRestantesParaBloque(rango, ahora))
+        : Math.max(1, Number(rango?.dias) || diasRestantesParaBloque(rango, ahora) || 1);
+      const nuevoRitmo = redondearDinero(presupuesto / dias);
+
+      const cambio =
+        Math.abs((Number(sem.presupuestoAsignado) || 0) - presupuesto) > 0.005 ||
+        Number(sem.diasRitmo) !== dias ||
+        Math.abs((Number(sem.ritmoDiarioFijo) || 0) - nuevoRitmo) > 0.005;
+
+      if (cambio) huboCambio = true;
+      sem.presupuestoAsignado = presupuesto;
+      sem.diasRitmo = dias;
+      sem.ritmoDiarioFijo = nuevoRitmo;
+      if (i === currentIdx) ritmoActual = nuevoRitmo;
+    }
+
+    if (!huboCambio) {
+      toast('El gasto por día ya estaba actualizado');
+      return;
+    }
+
+    state.redoMovement = null;
+    render();
+    if (Number.isFinite(Number(ritmoActual))) {
+      toast(`Gasto por día actualizado · S/ ${fmt(ritmoActual)}/día`);
+    } else {
+      toast('Gasto por día actualizado');
+    }
+  }
+
+  document.addEventListener('pointerdown', (event) => {
+    if (event.target.closest('#redistribControl')) return;
+    closeRedistribMenu();
+  });
+
   function setMod(mod) {
     if (mod === 'recalcula') { ejecutarRecalculo(); return; }
     if (selectedType === 'F' || selectedType === 'FDS') {
@@ -8511,12 +8919,18 @@
       semanas: JSON.parse(JSON.stringify(state.semanas))
     };
     // Solo modifica los bloques restantes y pondera sus días reales.
+    // Un redistrib. puede mantener exactamente los mismos montos y, aun así,
+    // tener que actualizar el ritmo diario porque ahora quedan menos días.
     const antes = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-    const asignaciones = distribuirEntreBloques(state.semanas, gastable, currentIdx);
+    const ritmosAntes = state.semanas.map(sem => Number(sem.ritmoDiarioFijo) || 0);
+    const asignaciones = distribuirEntreBloques(state.semanas, gastable, currentIdx, calcularRangoSemanas(), new Date());
     const despues = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-    if (!presupuestosCambiaron(antes, despues, currentIdx)) {
+    const ritmosDespues = state.semanas.map(sem => Number(sem.ritmoDiarioFijo) || 0);
+    const cambioPresupuesto = presupuestosCambiaron(antes, despues, currentIdx);
+    const cambioRitmo = presupuestosCambiaron(ritmosAntes, ritmosDespues, currentIdx);
+    if (!cambioPresupuesto && !cambioRitmo) {
       state.semanas = JSON.parse(JSON.stringify(snapshot.semanas));
-      toast('El presupuesto ya estaba actualizado');
+      toast('El presupuesto y el ritmo diario ya estaban actualizados');
       return;
     }
     const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
@@ -8531,7 +8945,12 @@
       timestamp: ahora.getTime(),
       snapshot
     });
-    toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
+    const ritmoActualizado = asignaciones[0]?.ritmoDiario;
+    if (!cambioPresupuesto && cambioRitmo && Number.isFinite(Number(ritmoActualizado))) {
+      toast(`Ritmo diario actualizado · S/ ${fmt(ritmoActualizado)}/día`);
+    } else {
+      toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
+    }
     render();
   }
   
@@ -9194,6 +9613,9 @@
         newSem.push({
           label: 'Bloque ' + (i + 1),
           presupuesto: !isNaN(presArr[i]) ? presArr[i] : 0,
+          presupuestoAsignado: !isNaN(presArr[i]) ? presArr[i] : 0,
+          diasRitmo: Math.max(1, Number(rangoExistente?.dias) || 1),
+          ritmoDiarioFijo: redondearDinero((!isNaN(presArr[i]) ? presArr[i] : 0) / Math.max(1, Number(rangoExistente?.dias) || 1)),
           isCurrent: i === 0,
           fechaInicioManual: existente?.fechaInicioManual || (state.modoManualSemanas && rangoExistente?.inicio ? fechaParaInput(rangoExistente.inicio) : null),
           fechaFinManual: existente?.fechaFinManual || (state.modoManualSemanas && rangoExistente?.fin ? fechaParaInput(rangoExistente.fin) : null),
@@ -11140,6 +11562,7 @@
     state = { ...remoteState, darkMode: localDarkMode };
     // Una descarga de Drive puede venir de una build anterior sin el snapshot de inicio.
     asegurarSaldoInicialCiclo(state);
+    asegurarRitmoDiarioBloques(state);
     state.lastModified = remoteModified;
     lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
     rememberSyncedVersion(state);
