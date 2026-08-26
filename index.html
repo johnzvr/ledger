@@ -4655,7 +4655,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '130';
+  const LEDGER_BUILD = '131';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5116,8 +5116,61 @@
     return comparable;
   }
 
+  function syncCompatibilityComparableState(source = state) {
+    // Compatibilidad entre builds: dos copias con la misma revisión no deben
+    // entrar en conflicto únicamente porque una build haya añadido campos
+    // derivados o arrays vacíos durante una migración automática.
+    const comparable = syncComparableState(source);
+
+    // Ausente y [] significan lo mismo para estas colecciones.
+    [
+      'historialCiclos',
+      'tarjetaCalendarios',
+      'tarjetaCiclosPagados',
+      'tarjetaPagosPendientesConciliar',
+      'tarjetaMovimientosArrastrados',
+      'planesCuotas',
+      'log'
+    ].forEach(key => {
+      if (!Array.isArray(comparable[key])) comparable[key] = [];
+    });
+
+    // Ausente y null significan lo mismo en estados legacy.
+    if (typeof comparable.cicloAnterior === 'undefined') comparable.cicloAnterior = null;
+    if (typeof comparable.fechaInicioCiclo === 'undefined') comparable.fechaInicioCiclo = null;
+    if (typeof comparable.fechaProximoSueldo === 'undefined') comparable.fechaProximoSueldo = null;
+
+    if (Array.isArray(comparable.semanas)) {
+      comparable.semanas = comparable.semanas.map(sem => {
+        const limpio = { ...(sem || {}) };
+
+        // BUILD 123+ agregó estos campos para mostrar el ritmo diario. Son un
+        // estado derivado de la asignación del bloque y pueden aparecer por una
+        // migración al abrir una build nueva. Se excluyen SOLO de la comparación
+        // de compatibilidad; el fingerprint normal sí los conserva.
+        delete limpio.presupuestoAsignado;
+        delete limpio.diasRitmo;
+        delete limpio.ritmoDiarioFijo;
+
+        if (typeof limpio.fechaInicioManual === 'undefined') limpio.fechaInicioManual = null;
+        if (typeof limpio.fechaFinManual === 'undefined') limpio.fechaFinManual = null;
+
+        // Un exceso inexistente y un exceso explícito de 0 son equivalentes.
+        if (!Number(limpio.exceso)) delete limpio.exceso;
+
+        return limpio;
+      });
+    }
+
+    return comparable;
+  }
+
   function syncRelevantFingerprint(source = state) {
     return stableStringify(syncComparableState(source));
+  }
+
+  function syncCompatibilityFingerprint(source = state) {
+    return stableStringify(syncCompatibilityComparableState(source));
   }
 
   function stableStringify(value) {
@@ -5159,11 +5212,13 @@
   function getDataVersionInfo(source) {
     const target = source || {};
     const fingerprint = syncRelevantFingerprint(target);
+    const compatibilityFingerprint = syncCompatibilityFingerprint(target);
     return {
       revision: Math.max(0, parseInt(target.dataRevision, 10) || 0),
       versionId: target.dataVersionId || `legacy-${Number(target.lastModified) || 0}-${syncFingerprintHash(fingerprint)}`,
       modified: Number(target.lastModified) || 0,
-      hash: syncFingerprintHash(fingerprint)
+      hash: syncFingerprintHash(fingerprint),
+      compatHash: syncFingerprintHash(compatibilityFingerprint)
     };
   }
 
@@ -5187,6 +5242,14 @@
     const local = getDataVersionInfo(localSource);
     const remote = getDataVersionInfo(remoteSource);
     if (local.hash === remote.hash) return { status: 'equal', local, remote };
+
+    // Si la revisión es exactamente la misma y, al quitar únicamente diferencias
+    // de esquema/migración, el contenido coincide, no existe un conflicto real.
+    // Ejemplo: un dispositivo ya tiene ritmoDiarioFijo y el JSON de Drive todavía
+    // viene de una build anterior que no guardaba ese campo.
+    if (local.revision === remote.revision && local.compatHash === remote.compatHash) {
+      return { status: 'equal', local, remote, schemaOnlyDifference: true };
+    }
 
     const base = getLastSyncedVersionInfo();
     if (base) {
