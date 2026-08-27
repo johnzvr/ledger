@@ -345,7 +345,7 @@
   .notes-compose-footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
     margin-top: 10px;
   }
@@ -768,11 +768,11 @@
   .hero-card {
     background: var(--cream);
     border-radius: 28px;
-    padding: 22px;
+    padding: 20px 22px;
     position: relative;
     margin-bottom: 12px;
     overflow: hidden;
-    min-height: 210px;
+    min-height: 0;
   }
   .hero-badge {
     position: absolute;
@@ -838,7 +838,7 @@
   .hero-label {
     font-size: 11px;
     color: var(--ink-dim);
-    margin-top: 82px;
+    margin-top: 62px;
     letter-spacing: 0.05em;
     font-weight: 500;
   }
@@ -869,7 +869,7 @@
     top: 0.16em;
   }
   .hero-progress {
-    margin-top: 18px;
+    margin-top: 14px;
     height: 4px;
     background: rgba(0,0,0,0.08);
     border-radius: 2px;
@@ -964,26 +964,36 @@
   .bento {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 12px;
   }
   .bento-card {
-    border-radius: 22px;
-    padding: 18px;
-    min-height: 140px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    border-radius: 20px;
+    padding: 14px 15px;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto;
+    align-content: start;
+    row-gap: 9px;
   }
   .bento-card.fund-card { position: relative; }
   .bento-card.coral { background: var(--coral); }
   .bento-card.sky { background: var(--sky); }
   .bento-card.mint { background: var(--mint); }
   .bento-card.sage { background: var(--sage); }
-  
+
+  .bento-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    min-height: 32px;
+  }
+
   .bento-icon {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
     background: var(--ink);
     border-radius: 50%;
     display: flex;
@@ -991,31 +1001,45 @@
     justify-content: center;
     color: var(--bg);
     font-size: 14px;
-    margin-bottom: 10px;
+    margin: 0;
   }
   .bento-label {
-    font-size: 10px;
+    min-width: 0;
+    font-size: 11px;
     color: var(--ink-dim);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.055em;
     text-transform: uppercase;
-    font-weight: 600;
-    margin-bottom: 4px;
+    font-weight: 720;
+    margin: 0;
+    line-height: 1.12;
+  }
+  .bento-body {
+    margin-top: 0;
+    min-width: 0;
   }
   .bento-value {
     font-family: 'Bricolage Grotesque', sans-serif;
-    font-weight: 700;
-    font-size: 22px;
-    letter-spacing: -0.03em;
+    font-weight: 760;
+    font-size: clamp(29px, 5vw, 34px);
+    letter-spacing: -0.045em;
     color: var(--ink);
     font-variant-numeric: tabular-nums;
-    line-height: 1;
+    line-height: 0.95;
+    white-space: nowrap;
   }
   .bento-value .cur {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--ink-dim);
     font-weight: 500;
-    vertical-align: 4px;
+    vertical-align: 5px;
     margin-right: 2px;
+    letter-spacing: -0.02em;
+  }
+  .fund-card .bento-head {
+    padding-right: 34px;
+  }
+  .fund-card .bento-body {
+    padding-right: 0;
   }
   .bento-sub {
     font-size: 11px;
@@ -1025,7 +1049,7 @@
   }
   .fund-privacy {
     position: absolute;
-    bottom: 14px;
+    top: 14px;
     right: 14px;
     width: 32px;
     height: 32px;
@@ -1526,6 +1550,9 @@
     margin-top: 3px;
     font-weight: 500;
   }
+  .tc-deadline-income {
+    display: none !important;
+  }
   .tc-icon {
     width: 30px;
     height: 30px;
@@ -1824,6 +1851,9 @@
     color: var(--ink-dim);
     font-size: 9px;
     line-height: 1.4;
+  }
+  .purchase-installment-hint:empty {
+    display: none;
   }
   .purchase-card-head-inline {
     display: block;
@@ -4050,8 +4080,8 @@
   }
 
   @media (max-width: 390px) {
-    .hero-card { min-height: 190px; padding: 20px; }
-    .hero-label { margin-top: 72px; }
+    .hero-card { min-height: 0; padding: 18px 20px; }
+    .hero-label { margin-top: 60px; }
     .hero-amount { font-size: 46px; }
     .tc-deadline-value { font-size: 18px; }
   }
@@ -4569,50 +4599,49 @@
   <!-- Bento -->
   <div class="bento">
     <div class="bento-card coral">
-      <div>
+      <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
         <div class="bento-label">Deuda actual</div>
       </div>
-      <div>
+      <div class="bento-body">
         <div class="bento-value"><span class="cur">S/</span><span id="deudaActual">0</span></div>
-        <div class="bento-sub">acumulada</div>
       </div>
     </div>
+
     <div class="bento-card sky fund-card">
       <button class="fund-privacy" id="fundPrivacyBtn" onclick="toggleFundPrivacy()" aria-label="Ocultar fondo">
         <svg class="ui-icon"><use id="fundPrivacyIcon" href="#icon-eye"></use></svg>
       </button>
-      <div>
+      <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-shield"></use></svg></div>
         <div class="bento-label">Fondo</div>
       </div>
-      <div>
+      <div class="bento-body">
         <div class="bento-value"><span class="cur">S/</span><span id="montoIntocable">0</span></div>
-        <div class="bento-sub">ahorrado</div>
       </div>
     </div>
+
     <div class="bento-card mint">
-      <div>
+      <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-cash"></use></svg></div>
         <div class="bento-label">No adeudado</div>
       </div>
-      <div>
+      <div class="bento-body">
         <div class="bento-value"><span class="cur">S/</span><span id="gastoNoAdeudado">0</span></div>
-        <div class="bento-sub">gastado</div>
       </div>
     </div>
+
     <div class="bento-card sage">
-      <div>
+      <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-chart"></use></svg></div>
         <div class="bento-label">Gasto total</div>
       </div>
-      <div>
+      <div class="bento-body">
         <div class="bento-value"><span class="cur">S/</span><span id="gastoTotal">0</span></div>
-        <div class="bento-sub">acumulado</div>
       </div>
     </div>
   </div>
-  
+
   <!-- Semanas -->
   <div class="weeks-strip">
     <div class="weeks-header">
@@ -4633,7 +4662,7 @@
         <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
         <div class="tc-title-wrap">
           <div class="tc-title">Calendario tarjeta</div>
-          <div class="tc-calendar-source">Interbank · pago 20 · calendario 2026</div>
+          <div class="tc-calendar-source">Interbank · pago 20</div>
         </div>
       </div>
       <div class="tc-header-actions">
@@ -4645,6 +4674,7 @@
       <div class="tc-deadline-label">Si compras hoy</div>
       <div class="tc-deadline-value" id="ccCompraPago">—</div>
       <div class="tc-deadline-sub" id="ccCompraPagoSub">—</div>
+      <div class="tc-deadline-income" id="ccCompraSueldos"></div>
       <div class="tc-status-track" id="signalTrack" role="img" aria-label="Momento para usar la tarjeta">
         <div class="tc-status-fill" id="signalBar"></div>
       </div>
@@ -4741,20 +4771,19 @@
       <!-- Ventana Anotaciones -->
       <section class="app-view" data-view-index="3" aria-label="Anotaciones">
         <div class="notes-view-head">
-          <h2>Anotaciones <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">personales</span></h2>
+          <h2>Anotaciones</h2>
           <span class="notes-count" id="notesCount"></span>
         </div>
 
         <div class="notes-compose">
-          <label class="notes-compose-label" for="noteDraft">Nueva anotación</label>
           <textarea
             class="notes-textarea"
             id="noteDraft"
-            placeholder="Escribe algo para recordar…"
+            aria-label="Nueva anotación"
+            placeholder="Escribe una nota…"
             maxlength="4000"
           ></textarea>
           <div class="notes-compose-footer">
-            <span class="notes-compose-hint">Se guardará con fecha y hora.</span>
             <button class="notes-save-btn" type="button" onclick="guardarAnotacion()">Guardar</button>
           </div>
         </div>
@@ -4831,7 +4860,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '132';
+  const LEDGER_BUILD = '138';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6330,6 +6359,7 @@
     const signalTrack = document.getElementById('signalTrack');
     const cierreLabel = document.getElementById('ccCierreLabel');
     const pagoLabel = document.getElementById('ccPagoLabel');
+    const compraSueldos = document.getElementById('ccCompraSueldos');
     if (compraHoy.pendiente) {
       const exactos = calendariosTarjetaExactos();
       const ultimoConocido = exactos.length > 0 ? exactos[exactos.length - 1] : null;
@@ -6348,6 +6378,10 @@
       }
       document.getElementById('ccCompraPago').textContent = 'Ciclo en curso · fechas por confirmar';
       document.getElementById('ccCompraPagoSub').textContent = `Compras desde el ${formatFecha(compraHoy.inicio)} · el banco aún no informa el próximo cierre y pago`;
+      if (compraSueldos) {
+        compraSueldos.textContent = '';
+        compraSueldos.classList.remove('visible');
+      }
       signalBar.className = 'tc-status-fill pending';
       signalBar.style.width = '100%';
       signalTrack.setAttribute('aria-label', 'Ciclo de tarjeta en curso; el banco aún no informó las próximas fechas.');
@@ -6364,7 +6398,17 @@
       document.getElementById('ccCierreSub').textContent = diasCierre === 0 ? 'hoy' : (diasCierre > 0 ? 'en ' + diasCierre + ' días' : 'cerró');
       document.getElementById('ccPagoSub').textContent = diasPago === 0 ? 'hoy' : (diasPago > 0 ? 'en ' + diasPago + ' días' : 'venció');
       document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(pago);
-      document.getElementById('ccCompraPagoSub').textContent = `Cierra el ${formatFecha(cierre)} · ${diasPago === 0 ? 'vence hoy' : diasPago + ' días para pagar'}`;
+      const sueldosAntesPago = fechasSueldoEntre(new Date(), pago);
+      const cierreCompacto = `Cierra ${formatFecha(cierre)}`;
+      const diasCompacto = diasPago === 0 ? 'vence hoy' : `${diasPago} días`;
+      const sueldosCompacto = sueldosAntesPago.length > 0
+        ? `${sueldosAntesPago.length} sueldo${sueldosAntesPago.length === 1 ? '' : 's'}: ${unirFechasCortas(sueldosAntesPago)}`
+        : 'sin otro sueldo';
+      document.getElementById('ccCompraPagoSub').textContent = `${cierreCompacto} · ${diasCompacto} · ${sueldosCompacto}`;
+      if (compraSueldos) {
+        compraSueldos.textContent = '';
+        compraSueldos.classList.remove('visible');
+      }
 
       // Barra estratégica: usa el inicio y cierre exactos guardados para este ciclo.
       const inicioTarjeta = compraHoy.inicio || (() => {
@@ -7935,7 +7979,7 @@
     if (!container) return;
     const ciclos = getArchivedCycles();
     container.innerHTML = ciclos.length
-      ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div><p class="modal-sub" style="font-size:10px;margin:10px 2px 18px;">Se conservan como máximo los 2 ciclos más recientes.</p>`
+      ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div>`
       : '<div class="view-empty">Cuando cierres tu primer ciclo, aparecerá aquí.</div>';
   }
 
@@ -7968,7 +8012,7 @@
     count.textContent = notas.length ? `${notas.length} guardada${notas.length === 1 ? '' : 's'}` : '';
 
     if (!notas.length) {
-      list.innerHTML = '<div class="view-empty notes-empty">Tus anotaciones guardadas aparecerán aquí.</div>';
+      list.innerHTML = '<div class="view-empty notes-empty">Sin anotaciones</div>';
       return;
     }
 
@@ -10280,7 +10324,7 @@
     const hint = document.getElementById('purchaseInstallmentHint');
     if (hint) {
       hint.textContent = purchaseSimulationInstallments === 1
-        ? 'Pago único, sin intereses de financiamiento.'
+        ? ''
         : purchaseSimulationCurrency === 'USD'
           ? 'La cuota se calcula en dólares. Su equivalente en soles usa el tipo de cambio actual.'
           : 'La cuota se calcula con la tasa para compras en soles.';
@@ -10441,12 +10485,9 @@
     pendingPurchaseSimulation = null;
     openModal(`
       <h2 class="purchase-modal-title">Simular compra</h2>
-      <p class="modal-sub">
-        Revisa cuánto cambia tu margen y compara comprar hoy con esperar al siguiente ciclo. No modifica tus montos reales.<br>
-        <span style="font-size:11px;">Cálculo con sueldo el día ${diaSueldoConfigurado()}.</span>
-      </p>
+      <p class="modal-sub" style="font-size:10px;margin-bottom:12px;">Sueldo: día ${diaSueldoConfigurado()}</p>
       <div class="purchase-sim-field-head">
-        <label for="simPurchaseAmount">Monto que planeas gastar</label>
+        <label for="simPurchaseAmount">Monto</label>
         <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
           <button class="purchase-currency-option active" data-currency="PEN" aria-pressed="true" onclick="setPurchaseSimulationCurrency('PEN')">S/</button>
           <button class="purchase-currency-option" data-currency="USD" aria-pressed="false" onclick="setPurchaseSimulationCurrency('USD')">US$</button>
@@ -10474,7 +10515,7 @@
           </div>
           <button class="purchase-installment-step" type="button" data-installment-step="1" aria-label="Aumentar cantidad de pagos" onclick="stepPurchaseSimulationInstallments(1)">+</button>
         </div>
-        <div class="purchase-installment-hint" id="purchaseInstallmentHint">Pago único, sin intereses de financiamiento.</div>
+        <div class="purchase-installment-hint" id="purchaseInstallmentHint"></div>
       </div>
       <div id="purchaseSimulationResult"></div>
       <div class="modal-buttons">
@@ -11748,11 +11789,7 @@
     
     openModal(`
       <h2>Google Drive <span class="accent">sync</span></h2>
-      <p class="modal-sub">
-        Sincroniza tus datos entre celular y computadora. Los datos se guardan como <code style="background:var(--line);padding:2px 6px;border-radius:4px;font-size:11px;">ledger-data.json</code> en tu Drive.
-      </p>
-      
-      <div class="rollover-breakdown">
+<div class="rollover-breakdown">
         <div class="rollover-row">
           <span class="rollover-week">Estado de los datos</span>
           <span class="rollover-amount" style="color:${syncStatus.color};">${syncStatus.label}</span>
@@ -11789,10 +11826,6 @@
           </button>
 
         </div>
-        
-        <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-          Ledger comprueba Drive al abrir o reconectar. Solo los cambios reales en tus datos crean una revisión nueva; iniciar sesión o abrir la app no altera la versión.
-        </p>
       ` : `
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
           💡 Al conectar por primera vez, Google te pedirá permiso. Aprueba solo los permisos de "ver y administrar archivos que creaste con esta app".
