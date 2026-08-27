@@ -253,7 +253,7 @@
   /* Ventanas horizontales */
   .view-tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     padding: 4px;
     margin-bottom: 14px;
@@ -283,6 +283,157 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
   body.dark .view-tab.active { background: #222226; }
+  @media (max-width: 430px) {
+    .view-tabs { gap: 3px; padding: 3px; }
+    .view-tab { min-height: 42px; font-size: 10px; padding: 0 4px; }
+  }
+
+  /* Anotaciones */
+  .notes-view-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 6px 2px 16px;
+  }
+  .notes-view-head h2 {
+    margin: 0;
+  }
+  .notes-count {
+    color: var(--ink-dim);
+    font-size: 10px;
+    font-weight: 650;
+  }
+  .notes-compose {
+    padding: 16px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 20px;
+    background: #EEF1E4;
+  }
+  body.dark .notes-compose {
+    background: rgba(198,215,178,0.08);
+    border-color: rgba(255,255,255,0.09);
+  }
+  .notes-compose-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .notes-textarea {
+    width: 100%;
+    min-height: 122px;
+    resize: vertical;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 15px;
+    padding: 13px 14px;
+    background: var(--bg);
+    color: var(--ink);
+    font: 500 13px/1.55 inherit;
+    outline: none;
+  }
+  .notes-textarea:focus {
+    border-color: var(--ink);
+  }
+  body.dark .notes-textarea {
+    background: rgba(255,255,255,0.045);
+    border-color: rgba(255,255,255,0.10);
+  }
+  .notes-compose-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .notes-compose-hint {
+    color: var(--ink-dim);
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .notes-save-btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--bg);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .notes-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .note-card {
+    padding: 14px 15px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 17px;
+    background: var(--bg);
+  }
+  body.dark .note-card {
+    background: rgba(255,255,255,0.035);
+    border-color: rgba(255,255,255,0.09);
+  }
+  .note-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .note-date {
+    color: var(--ink-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 650;
+  }
+  .note-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .note-action {
+    border: 0;
+    border-radius: 9px;
+    padding: 6px 8px;
+    background: var(--line);
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .note-action.delete {
+    color: #B8503A;
+  }
+  body.dark .note-action {
+    background: rgba(255,255,255,0.06);
+  }
+  .note-text {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 520;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .note-edited {
+    margin-top: 8px;
+    color: var(--ink-mute);
+    font-size: 8.5px;
+  }
+  .notes-empty {
+    margin-top: 16px;
+  }
+
   .views-shell {
     overflow: hidden;
     transition: height 0.28s ease;
@@ -4383,6 +4534,7 @@
     <button class="view-tab active" data-view="0" onclick="goToView(0)" role="tab" aria-selected="true">Inicio</button>
     <button class="view-tab" data-view="1" onclick="goToView(1)" role="tab" aria-selected="false">Movimientos</button>
     <button class="view-tab" data-view="2" onclick="goToView(2)" role="tab" aria-selected="false">Ciclos</button>
+    <button class="view-tab" data-view="3" onclick="goToView(3)" role="tab" aria-selected="false">Anotaciones</button>
   </div>
 
   <div class="views-shell" id="viewsShell">
@@ -4585,6 +4737,30 @@
           </div>
         </div>
       </section>
+
+      <!-- Ventana Anotaciones -->
+      <section class="app-view" data-view-index="3" aria-label="Anotaciones">
+        <div class="notes-view-head">
+          <h2>Anotaciones <span class="serif-italic" style="color:var(--ink-dim);font-weight:400;">personales</span></h2>
+          <span class="notes-count" id="notesCount"></span>
+        </div>
+
+        <div class="notes-compose">
+          <label class="notes-compose-label" for="noteDraft">Nueva anotación</label>
+          <textarea
+            class="notes-textarea"
+            id="noteDraft"
+            placeholder="Escribe algo para recordar…"
+            maxlength="4000"
+          ></textarea>
+          <div class="notes-compose-footer">
+            <span class="notes-compose-hint">Se guardará con fecha y hora.</span>
+            <button class="notes-save-btn" type="button" onclick="guardarAnotacion()">Guardar</button>
+          </div>
+        </div>
+
+        <div class="notes-list" id="notesList"></div>
+      </section>
     </div>
   </div>
 </div>
@@ -4655,7 +4831,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '131';
+  const LEDGER_BUILD = '132';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -4692,9 +4868,10 @@
     tarjetaPagosPendientesConciliar: [], // marca visual; no cambia la deuda de Inicio
     tarjetaMovimientosArrastrados: [],
     planesCuotas: [], // compromisos financiados; cada ciclo activa solo su cuota
+    anotaciones: [], // notas personales con fecha/hora; no pertenecen a un ciclo
     log: [],
     redoMovement: null,
-    dataRevision: 0, // solo aumenta cuando cambia información financiera real
+    dataRevision: 0, // aumenta cuando cambian datos reales del usuario (finanzas o anotaciones)
     dataVersionId: null // identifica exactamente el contenido de esta revisión
   };
 
@@ -4725,7 +4902,7 @@
   // Limpia el respaldo temporal usado por una versión anterior.
   try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
   let uiSections = loadUiSections();
-  let currentView = Math.max(0, Math.min(2, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
+  let currentView = Math.max(0, Math.min(3, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
   let viewsInitialized = false;
   let undoGestureActive = false;
   let balanceHidden = (() => {
@@ -4781,7 +4958,7 @@
   }
 
   function goToView(index, options = {}) {
-    currentView = Math.max(0, Math.min(2, Number(index) || 0));
+    currentView = Math.max(0, Math.min(3, Number(index) || 0));
     const track = document.getElementById('viewsTrack');
     if (track) {
       track.classList.remove('dragging');
@@ -4867,9 +5044,10 @@
       const dy = e.clientY - startY;
       if (!horizontal && Math.abs(dx) > 10) horizontal = Math.abs(dx) > Math.abs(dy);
       if (!horizontal) return;
-      const navigationDx = currentView === 2 ? Math.abs(dx) : dx;
+      const navigationDx = dx;
       const atFirst = currentView === 0 && navigationDx > 0;
-      const resisted = atFirst ? navigationDx * 0.22 : navigationDx;
+      const atLast = currentView === 3 && navigationDx < 0;
+      const resisted = (atFirst || atLast) ? navigationDx * 0.22 : navigationDx;
       track.classList.add('dragging');
       track.style.transform = `translateX(calc(-${currentView * 100}% + ${resisted}px))`;
     });
@@ -4889,10 +5067,6 @@
       if (shouldMove) {
         suppressNextClick = true;
         setTimeout(() => { suppressNextClick = false; }, 400);
-      }
-      if (shouldMove && currentView === 2) {
-        goToView(1, { focusTabs: true });
-        return;
       }
       let next = currentView;
       if (shouldMove && dx < 0) next++;
@@ -5130,6 +5304,7 @@
       'tarjetaPagosPendientesConciliar',
       'tarjetaMovimientosArrastrados',
       'planesCuotas',
+      'anotaciones',
       'log'
     ].forEach(key => {
       if (!Array.isArray(comparable[key])) comparable[key] = [];
@@ -5270,9 +5445,9 @@
   
   function saveState({ markModified = true, sync = true } = {}) {
     const fingerprint = syncRelevantFingerprint(state);
-    const realFinancialChange = markModified && fingerprint !== lastPersistedSyncFingerprint;
+    const realDataChange = markModified && fingerprint !== lastPersistedSyncFingerprint;
     try {
-      if (realFinancialChange) {
+      if (realDataChange) {
         state.lastModified = Date.now();
         state.dataRevision = Math.max(0, parseInt(state.dataRevision, 10) || 0) + 1;
         state.dataVersionId = createDataVersionId(state.dataRevision, fingerprint);
@@ -5280,7 +5455,7 @@
       localStorage.setItem('ledger-state-v2', JSON.stringify(state));
     } catch(e) { toast('Error guardando', true); }
     lastPersistedSyncFingerprint = fingerprint;
-    if (realFinancialChange && sync) scheduleSyncUpload();
+    if (realDataChange && sync) scheduleSyncUpload();
   }
   
   function fmt(n) {
@@ -5995,6 +6170,7 @@
     if (!Array.isArray(state.tarjetaPagosPendientesConciliar)) state.tarjetaPagosPendientesConciliar = [];
     if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
     if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+    if (!Array.isArray(state.anotaciones)) state.anotaciones = [];
     initFechaCiclo();
     // Migración estructural: se guarda localmente sin fingir una edición financiera.
     migrarCalendarioTarjetaExacto();
@@ -6223,6 +6399,7 @@
     renderLog();
     renderComparison();
     renderCycleHistoryInline();
+    renderAnotaciones();
     applySectionState();
     initViews();
     requestAnimationFrame(updateViewHeight);
@@ -7760,6 +7937,158 @@
     container.innerHTML = ciclos.length
       ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div><p class="modal-sub" style="font-size:10px;margin:10px 2px 18px;">Se conservan como máximo los 2 ciclos más recientes.</p>`
       : '<div class="view-empty">Cuando cierres tu primer ciclo, aparecerá aquí.</div>';
+  }
+
+  function formatNotaFecha(iso) {
+    const fecha = new Date(iso);
+    if (Number.isNaN(fecha.getTime())) return '';
+    const dia = fecha.toLocaleDateString('es-PE', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }).replace(/\./g, '');
+    const hora = fecha.toLocaleTimeString('es-PE', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    return `${dia} · ${hora}`;
+  }
+
+  function renderAnotaciones() {
+    const list = document.getElementById('notesList');
+    const count = document.getElementById('notesCount');
+    if (!list || !count) return;
+
+    if (!Array.isArray(state.anotaciones)) state.anotaciones = [];
+    const notas = state.anotaciones
+      .filter(nota => nota && String(nota.texto || '').trim())
+      .slice()
+      .sort((a, b) => new Date(b.creadoEn || 0) - new Date(a.creadoEn || 0));
+
+    count.textContent = notas.length ? `${notas.length} guardada${notas.length === 1 ? '' : 's'}` : '';
+
+    if (!notas.length) {
+      list.innerHTML = '<div class="view-empty notes-empty">Tus anotaciones guardadas aparecerán aquí.</div>';
+      return;
+    }
+
+    list.innerHTML = notas.map(nota => {
+      const id = escapeHtml(nota.id || '');
+      const creado = formatNotaFecha(nota.creadoEn);
+      const editado = nota.editadoEn ? formatNotaFecha(nota.editadoEn) : '';
+      return `
+        <article class="note-card">
+          <div class="note-card-head">
+            <time class="note-date">${escapeHtml(creado)}</time>
+            <div class="note-actions">
+              <button class="note-action" type="button" onclick="editarAnotacion('${id}')">Editar</button>
+              <button class="note-action delete" type="button" onclick="confirmarEliminarAnotacion('${id}')">Eliminar</button>
+            </div>
+          </div>
+          <div class="note-text">${escapeHtml(nota.texto)}</div>
+          ${editado ? `<div class="note-edited">Editada ${escapeHtml(editado)}</div>` : ''}
+        </article>
+      `;
+    }).join('');
+  }
+
+  function guardarAnotacion() {
+    const input = document.getElementById('noteDraft');
+    const texto = String(input?.value || '').trim();
+    if (!texto) {
+      toast('Escribe una anotación primero', true);
+      input?.focus();
+      return;
+    }
+
+    if (!Array.isArray(state.anotaciones)) state.anotaciones = [];
+    const ahora = new Date().toISOString();
+    state.anotaciones.push({
+      id: `nota-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      texto,
+      creadoEn: ahora,
+      editadoEn: null
+    });
+
+    if (input) input.value = '';
+    saveState({ markModified: true, sync: true });
+    renderAnotaciones();
+    requestAnimationFrame(updateViewHeight);
+    toast('Anotación guardada');
+  }
+
+  function editarAnotacion(id) {
+    const nota = Array.isArray(state.anotaciones)
+      ? state.anotaciones.find(item => item?.id === id)
+      : null;
+    if (!nota) {
+      toast('Anotación no disponible', true);
+      return;
+    }
+
+    openModal(`
+      <h2>Editar <span class="accent">anotación</span></h2>
+      <p class="modal-sub">Creada ${escapeHtml(formatNotaFecha(nota.creadoEn))}</p>
+      <div class="modal-field">
+        <label for="editNoteText">Texto</label>
+        <textarea id="editNoteText" class="notes-textarea" maxlength="4000">${escapeHtml(nota.texto || '')}</textarea>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="guardarEdicionAnotacion('${escapeHtml(id)}')">Guardar cambios</button>
+      </div>
+    `);
+    requestAnimationFrame(() => document.getElementById('editNoteText')?.focus());
+  }
+
+  function guardarEdicionAnotacion(id) {
+    const nota = Array.isArray(state.anotaciones)
+      ? state.anotaciones.find(item => item?.id === id)
+      : null;
+    const texto = String(document.getElementById('editNoteText')?.value || '').trim();
+    if (!nota || !texto) {
+      toast('La anotación no puede quedar vacía', true);
+      return;
+    }
+
+    nota.texto = texto;
+    nota.editadoEn = new Date().toISOString();
+    saveState({ markModified: true, sync: true });
+    closeModal();
+    renderAnotaciones();
+    requestAnimationFrame(updateViewHeight);
+    toast('Anotación actualizada');
+  }
+
+  function confirmarEliminarAnotacion(id) {
+    const nota = Array.isArray(state.anotaciones)
+      ? state.anotaciones.find(item => item?.id === id)
+      : null;
+    if (!nota) return;
+
+    openModal(`
+      <h2>Eliminar <span class="accent">anotación</span></h2>
+      <p class="modal-sub">Se eliminará la anotación del ${escapeHtml(formatNotaFecha(nota.creadoEn))}.</p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="eliminarAnotacion('${escapeHtml(id)}')">Eliminar</button>
+      </div>
+    `);
+  }
+
+  function eliminarAnotacion(id) {
+    if (!Array.isArray(state.anotaciones)) state.anotaciones = [];
+    const antes = state.anotaciones.length;
+    state.anotaciones = state.anotaciones.filter(item => item?.id !== id);
+    if (state.anotaciones.length === antes) {
+      toast('Anotación no disponible', true);
+      return;
+    }
+    saveState({ markModified: true, sync: true });
+    closeModal();
+    renderAnotaciones();
+    requestAnimationFrame(updateViewHeight);
+    toast('Anotación eliminada');
   }
 
   function showCycleHistory() {
@@ -10979,7 +11308,7 @@
 
     viewport.addEventListener('resize', updateKeyboard);
     viewport.addEventListener('scroll', updateKeyboard);
-    ['inputAmount', 'inputDetalle'].forEach(id => {
+    ['inputAmount', 'inputDetalle', 'noteDraft'].forEach(id => {
       const input = document.getElementById(id);
       if (!input) return;
       input.addEventListener('focus', () => {
@@ -11462,7 +11791,7 @@
         </div>
         
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-          Ledger comprueba Drive al abrir o reconectar. Solo los cambios financieros crean una revisión nueva; iniciar sesión o abrir la app no altera la versión.
+          Ledger comprueba Drive al abrir o reconectar. Solo los cambios reales en tus datos crean una revisión nueva; iniciar sesión o abrir la app no altera la versión.
         </p>
       ` : `
         <p class="modal-sub" style="font-size:11px;margin-top:14px;">
