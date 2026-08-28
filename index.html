@@ -4860,7 +4860,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '139';
+  const LEDGER_BUILD = '138';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11379,36 +11379,7 @@
   let lastFreshnessCheckAt = 0;
   let activeSyncAlertVersionId = null;
   let lastAnnouncedSyncVersionId = null;
-  let driveTokenRequestSource = 'manual';
-  let driveReconnectOnNextGesture = false;
-
-  function armDriveReconnectOnNextGesture() {
-    if (driveReconnectOnNextGesture) return;
-    if (localStorage.getItem('ledger-drive-authorized') !== '1') return;
-    driveReconnectOnNextGesture = true;
-  }
-
-  function tryDriveReconnectFromUserGesture() {
-    if (!driveReconnectOnNextGesture || accessToken || !tokenClient) return;
-    if (localStorage.getItem('ledger-drive-authorized') !== '1') {
-      driveReconnectOnNextGesture = false;
-      return;
-    }
-    driveReconnectOnNextGesture = false;
-    driveTokenRequestSource = 'gesture';
-    try {
-      tokenClient.requestAccessToken({ prompt: '' });
-    } catch (e) {
-      console.warn('Gesture reconnect failed:', e);
-      updateSyncUI('error');
-    }
-  }
-
-  // Si iOS/Safari bloquea OAuth sin gesto, el primer toque normal
-  // reintenta la conexión sin obligar a pulsar el botón de sync.
-  document.addEventListener('pointerdown', tryDriveReconnectFromUserGesture, true);
-  document.addEventListener('keydown', tryDriveReconnectFromUserGesture, true);
-
+  
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
       setTimeout(initGoogleSync, 500);
@@ -11423,8 +11394,6 @@
       callback: async (tokenResponse) => {
         if (tokenResponse.access_token) {
           accessToken = tokenResponse.access_token;
-          driveReconnectOnNextGesture = false;
-          driveTokenRequestSource = 'manual';
           const expiresIn = tokenResponse.expires_in || 3600;
           try {
             localStorage.setItem('ledger-token', accessToken);
@@ -11437,25 +11406,12 @@
         }
       },
       error_callback: (err) => {
-        const source = driveTokenRequestSource;
-        driveTokenRequestSource = 'manual';
-        console.warn('OAuth error:', source, err);
-
-        // En un intento automático no marcamos error definitivo si el
-        // navegador solo está exigiendo interacción del usuario.
-        if ((source === 'startup' || source === 'refresh') &&
-            localStorage.getItem('ledger-drive-authorized') === '1') {
-          armDriveReconnectOnNextGesture();
-          updateSyncUI('off');
-          return;
-        }
-
-        updateSyncUI('error');
-        if (source === 'gesture') {
-          toast('Drive necesita reconexión manual', true);
-        } else if (err && err.type === 'popup_failed_to_open') {
+        console.warn('OAuth error:', err);
+        // Si falla el silencioso, intentar con prompt visible
+        if (err && err.type === 'popup_failed_to_open') {
           toast('Reconecta manualmente Drive', true);
         }
+        updateSyncUI('error');
       }
     });
     
@@ -11471,8 +11427,8 @@
         scheduleTokenRefresh(msRemaining / 1000);
         setTimeout(() => checkDriveFreshness({ notify: true }), 120);
       } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
-        // Token expirado, pero Drive ya fue autorizado: sincronizar al abrir.
-        setTimeout(autoSyncOnLaunch, 350);
+        // Token expirado pero ya autorizó antes → intentar refresh silencioso
+        setTimeout(silentRefresh, 500);
       }
     } catch(e){}
   }
@@ -11486,37 +11442,14 @@
     refreshTimer = setTimeout(silentRefresh, refreshInMs);
   }
   
-  function autoSyncOnLaunch() {
-    if (!tokenClient) return;
-    if (accessToken) {
-      requestDriveFreshnessCheck({ notify: true, force: true });
-      return;
-    }
-    if (localStorage.getItem('ledger-drive-authorized') !== '1') return;
-
-    driveTokenRequestSource = 'startup';
-    updateSyncUI('syncing');
-    try {
-      tokenClient.requestAccessToken({ prompt: '' });
-    } catch (e) {
-      console.warn('Startup Drive sync failed:', e);
-      driveTokenRequestSource = 'manual';
-      armDriveReconnectOnNextGesture();
-      updateSyncUI('off');
-    }
-  }
-
   function silentRefresh() {
     if (!tokenClient) return;
     // Si ya autorizó antes, intentar sin prompt (silencioso)
     if (localStorage.getItem('ledger-drive-authorized') === '1') {
-      driveTokenRequestSource = 'refresh';
       try {
         tokenClient.requestAccessToken({ prompt: '' });
       } catch (e) {
         console.warn('Silent refresh failed:', e);
-        driveTokenRequestSource = 'manual';
-        armDriveReconnectOnNextGesture();
       }
     }
   }
@@ -11528,7 +11461,6 @@
     }
     // Primera vez: con consent. Después: silencioso.
     const yaAutorizado = localStorage.getItem('ledger-drive-authorized') === '1';
-    driveTokenRequestSource = 'manual';
     tokenClient.requestAccessToken({ 
       prompt: yaAutorizado ? '' : 'consent' 
     });
@@ -11543,9 +11475,7 @@
     try {
       localStorage.removeItem('ledger-token');
       localStorage.removeItem('ledger-token-exp');
-      localStorage.removeItem('ledger-drive-authorized');
     } catch(e){}
-    driveReconnectOnNextGesture = false;
     updateSyncUI('off');
     closeModal();
     toast('Drive desconectado');
