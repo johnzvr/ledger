@@ -4860,7 +4860,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '138';
+  const LEDGER_BUILD = '140';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6786,18 +6786,27 @@
     return { grupos, porIndice };
   }
 
-  function grupoPagoParaMovimiento(mov, index, fechaInicioReferencia, grupos = gruposPagoTarjeta()) {
-    if (!esMovimientoTarjeta(mov)) return null;
-    const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
-    if (fechaPerteneceACicloPagado(fechaMovimiento)) return null;
-    const calendario = calendarioExactoParaFecha(fechaMovimiento);
+  function grupoPagoParaFecha(fechaMovimiento, grupos = gruposPagoTarjeta()) {
+    const fecha = new Date(fechaMovimiento);
+    if (Number.isNaN(fecha.getTime())) return null;
+    if (fechaPerteneceACicloPagado(fecha)) return null;
+
+    const calendario = calendarioExactoParaFecha(fecha);
     if (!calendario && calendariosTarjetaExactos().length === 0) {
       return grupos.find(grupo => grupo.pendiente) || null;
     }
+
     const key = calendario
       ? (calendario.pendiente ? calendario.key : `exacto-${calendario.id}`)
-      : `exacto-${fechaParaInput(fechaPagoParaCompra(fechaMovimiento).pago)}`;
+      : `exacto-${fechaParaInput(fechaPagoParaCompra(fecha).pago)}`;
+
     return grupos.find(grupo => grupo.key === key) || null;
+  }
+
+  function grupoPagoParaMovimiento(mov, index, fechaInicioReferencia, grupos = gruposPagoTarjeta()) {
+    if (!esMovimientoTarjeta(mov)) return null;
+    const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
+    return grupoPagoParaFecha(fechaMovimiento, grupos);
   }
 
   function movimientosRecientesCicloAnterior() {
@@ -7099,11 +7108,21 @@
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
-      const grupoPago = pagosTarjeta.porIndice.get(idx);
-      if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
-        logEl.appendChild(divisorCicloTarjeta(grupoPago));
-        ciclosMostrados.add(grupoPago.key);
+      const fechaMovimiento = fechaDeMovimiento(mov, idx, state.fechaInicioCiclo);
+      const grupoPosicion = grupoPagoParaFecha(fechaMovimiento, pagosTarjeta.grupos);
+      const grupoPago = esMovimientoTarjeta(mov)
+        ? (pagosTarjeta.porIndice.get(idx) || grupoPosicion)
+        : null;
+
+      // El heads-up pertenece al tramo cronológico del ciclo de tarjeta,
+      // no al primer gasto DS/FDS. Por eso también puede aparecer antes
+      // de un movimiento S/F/RC si ese movimiento es el más reciente
+      // dentro del mismo rango de fechas.
+      if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+        logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
+        ciclosMostrados.add(grupoPosicion.key);
       }
+
       const div = document.createElement('div');
       const canUndo = deletableIndices.has(idx);
       const canEdit = editableIndices.has(idx);
@@ -7146,12 +7165,18 @@
       marker.textContent = 'Ciclo de sueldo anterior · últimos 14 días';
       logEl.appendChild(marker);
 
-      recientesAnteriores.forEach(({ mov, index, ciclo }) => {
-        const grupoPago = grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos);
-        if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
-          logEl.appendChild(divisorCicloTarjeta(grupoPago));
-          ciclosMostrados.add(grupoPago.key);
+      recientesAnteriores.forEach(({ mov, index, ciclo, fecha }) => {
+        const fechaMovimiento = fecha || fechaDeMovimiento(mov, index, ciclo.fechaInicio);
+        const grupoPosicion = grupoPagoParaFecha(fechaMovimiento, pagosTarjeta.grupos);
+        const grupoPago = esMovimientoTarjeta(mov)
+          ? grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos)
+          : null;
+
+        if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+          logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
+          ciclosMostrados.add(grupoPosicion.key);
         }
+
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov.tipo);
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
