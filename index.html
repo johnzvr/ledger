@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '146';
+  const LEDGER_BUILD = '147';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9420,30 +9420,33 @@
       row.getCell(7).numFmt = '"S/" #,##0.00';
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
 
-      // Categoría editable directamente en Excel.
-      // "Sin categoría" permanece como una opción explícita.
-      if (!ajuste) {
-        const validationValues = ['Sin categoría', ...MOVEMENT_CATEGORIES].join(',');
-        row.getCell(4).dataValidation = {
-          type: 'list',
-          allowBlank: false,
-          showErrorMessage: true,
-          errorStyle: 'stop',
-          errorTitle: 'Categoría',
-          error: 'Selecciona una categoría de la lista.',
-          formulae: [`"${validationValues}"`]
-        };
-      }
-
       if (fecha instanceof Date) row.getCell(1).numFmt = 'dd-mmm-yyyy hh:mm';
     });
 
     const lastRow = Math.max(5, movimientos.length + 4);
 
     if (movimientos.length > 0) {
+      const validationValues = ['Sin categoría', ...MOVEMENT_CATEGORIES].join(',');
+      const categoryValidation = {
+        type: 'list',
+        allowBlank: false,
+        showDropDown: false,
+        showErrorMessage: true,
+        errorStyle: 'stop',
+        errorTitle: 'Categoría',
+        error: 'Selecciona una categoría de la lista.',
+        formulae: [`"${validationValues}"`]
+      };
+
       for (let rowNumber = 5; rowNumber <= movimientos.length + 4; rowNumber++) {
+        const movement = movimientos[rowNumber - 5];
+        const tipo = tipoReporteMovimiento(movement);
         const categoryCell = sheet.getCell(rowNumber, 4);
-        if (categoryCell.value !== '—') {
+
+        if (tipo !== 'AJUSTE') {
+          // Aplicar al final, de forma explícita, a CADA gasto real.
+          // Excel debe mostrar el selector en todas estas celdas.
+          categoryCell.dataValidation = { ...categoryValidation };
           categoryCell.fill = excelFill(EXCEL_PALETTE.paleLavender);
           categoryCell.font = {
             name: 'Aptos',
