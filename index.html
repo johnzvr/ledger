@@ -3771,6 +3771,15 @@
     outline: none;
   }
   .modal-field select:focus { border-color: var(--ink); }
+
+  /* Categoría: mayor área táctil y mejor peso visual en modal */
+  #quickMovementCategory,
+  #editMovementCategoryOnly,
+  #editMovementCategory {
+    min-height: 54px;
+    padding-top: 13px;
+    padding-bottom: 13px;
+  }
   .calendar-date-input {
     min-height: 48px;
     cursor: pointer;
@@ -4905,7 +4914,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '153';
+  const LEDGER_BUILD = '154';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
