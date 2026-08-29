@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '151';
+  const LEDGER_BUILD = '152';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7748,24 +7748,39 @@
   }
 
   function openEditMovement(idx) {
-    if (!getEditableMovementIndices().includes(idx)) {
-      const mov = state.log[idx];
-      toast(
-        mov?.planCuotasId
-          ? 'Las cuotas automáticas se editan desde su plan; la categoría sí puede cambiarse'
-          : 'Monto y tipo: solo los últimos 10. La categoría sí puede cambiarse en cualquier movimiento',
-        true
-      );
+    const mov = state.log[idx];
+    if (!mov || mov.etiqueta === 'recalcula') {
+      toast('Este movimiento no se puede editar', true);
       return;
     }
-    const mov = state.log[idx];
-    if (!mov?.snapshot || mov.etiqueta === 'recalcula') {
+
+    // Fuera de los últimos 10 no se toca ningún dato financiero.
+    // La categoría sigue siendo editable porque es metadata y no requiere recálculo.
+    if (!getEditableMovementIndices().includes(idx)) {
+      openModal(`
+        <h2>Editar <span class="accent">categoría</span></h2>
+        <p class="modal-sub">${escapeHtml(mov.detalle || 'Sin detalle')} · ${escapeHtml(mov.fecha || '')}</p>
+        <div class="modal-field">
+          <label>Categoría</label>
+          <select id="editMovementCategoryOnly">${opcionesCategoriaMovimiento(mov.categoria)}</select>
+        </div>
+        <p class="modal-sub" style="font-size:11px;">Monto y tipo solo pueden modificarse en los últimos 10 movimientos.</p>
+        <div class="modal-buttons">
+          <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+          <button class="btn-primary" onclick="saveMovementCategoryOnly(${idx})">Guardar categoría</button>
+        </div>
+      `);
+      requestAnimationFrame(() => document.getElementById('editMovementCategoryOnly')?.focus());
+      return;
+    }
+
+    if (!mov?.snapshot) {
       toast('Este movimiento no se puede editar', true);
       return;
     }
     openModal(`
       <h2>Editar <span class="accent">movimiento</span></h2>
-      <p class="modal-sub">Se conservará la fecha ${escapeHtml(mov.fecha || '')}. Ledger recalculará los movimientos posteriores.</p>
+      <p class="modal-sub">Se conservará la fecha ${escapeHtml(mov.fecha || '')}. Solo cambios de monto, tipo o SEM recalculan movimientos posteriores.</p>
       <div class="modal-field">
         <label>Monto en soles</label>
         <input type="number" id="editMovementAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(mov.monto).toFixed(2)}">
@@ -7814,6 +7829,35 @@
     toggleEditFundType(mov.tipo);
   }
 
+  function saveMovementCategoryOnly(idx) {
+    const mov = state.log[idx];
+    if (!mov || mov.etiqueta === 'recalcula') {
+      closeModal();
+      return;
+    }
+
+    const categoria = normalizarCategoriaMovimiento(
+      document.getElementById('editMovementCategoryOnly')?.value
+    );
+
+    if (categoria) mov.categoria = categoria;
+    else delete mov.categoria;
+
+    if (mov.planCuotasId && Array.isArray(state.planesCuotas)) {
+      const plan = state.planesCuotas.find(item => item?.id === mov.planCuotasId);
+      if (plan) {
+        if (categoria) plan.categoria = categoria;
+        else delete plan.categoria;
+      }
+    }
+
+    state.redoMovement = null;
+    saveState({ markModified: true, sync: true });
+    closeModal();
+    toast(categoria ? `Categoría · ${categoria}` : 'Categoría eliminada');
+    render();
+  }
+
   function toggleEditFundType(tipo) {
     const sem = document.getElementById('editMovementSem');
     const row = document.getElementById('editMovementSemRow');
@@ -7837,6 +7881,26 @@
     const etiqueta = afectaPresupuestoSalarial(tipo) && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
     if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F', 'FDS'].includes(tipo)) {
       toast('Revisa el monto y el tipo', true);
+      return;
+    }
+
+    const currentMov = state.log[idx];
+    const montoCambio = Math.abs((Number(currentMov?.monto) || 0) - monto) > 0.0001;
+    const tipoCambio = normalizarTipoMovimiento(currentMov?.tipo) !== normalizarTipoMovimiento(tipo);
+    const semCambio = (currentMov?.etiqueta === 'sem' ? 'sem' : null) !== etiqueta;
+
+    // Detalle y categoría son metadata. Si monto/tipo/SEM no cambiaron,
+    // guardar directamente sin entrar al motor de recálculo.
+    if (!montoCambio && !tipoCambio && !semCambio) {
+      currentMov.detalle = detalle;
+      if (categoria) currentMov.categoria = categoria;
+      else delete currentMov.categoria;
+
+      state.redoMovement = null;
+      saveState({ markModified: true, sync: true });
+      closeModal();
+      toast('Movimiento actualizado');
+      render();
       return;
     }
 
