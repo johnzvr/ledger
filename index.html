@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '148';
+  const LEDGER_BUILD = '150';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6651,22 +6651,47 @@
 
   function getEditableMovementIndices() {
     const indices = [];
-    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
+    let historialPosteriorCompleto = true;
+
+    for (let i = state.log.length - 1; i >= 0; i--) {
       const mov = state.log[i];
-      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot && !mov?.planCuotasId) indices.unshift(i);
+
+      // Para editar una entrada antigua, Ledger necesita poder reconstruir
+      // también todas las que ocurrieron después.
+      if (!mov?.snapshot) historialPosteriorCompleto = false;
+
+      if (
+        historialPosteriorCompleto
+        && mov?.snapshot
+        && mov?.etiqueta !== 'recalcula'
+        && !mov?.planCuotasId
+      ) {
+        indices.unshift(i);
+      }
     }
+
     return indices;
   }
 
   function getDeletableMovementIndices() {
     const indices = [];
-    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
-      // Para recalcular con seguridad, todas las entradas posteriores deben
-      // conservar el snapshot que se guarda al crear cada movimiento.
-      if (!state.log[i]?.snapshot) break;
-      if (state.log[i]?.planCuotasId) continue;
-      indices.unshift(i);
+    let historialPosteriorCompleto = true;
+
+    for (let i = state.log.length - 1; i >= 0; i--) {
+      const mov = state.log[i];
+
+      // Eliminar una entrada antigua también exige reconstruir todo lo posterior.
+      if (!mov?.snapshot) historialPosteriorCompleto = false;
+
+      if (
+        historialPosteriorCompleto
+        && mov?.snapshot
+        && !mov?.planCuotasId
+      ) {
+        indices.unshift(i);
+      }
     }
+
     return indices;
   }
 
@@ -7748,7 +7773,13 @@
 
   function openEditMovement(idx) {
     if (!getEditableMovementIndices().includes(idx)) {
-      toast('Solo puedes editar las últimas 10 entradas', true);
+      const mov = state.log[idx];
+      toast(
+        mov?.planCuotasId
+          ? 'Las cuotas automáticas se editan desde su plan; la categoría sí puede cambiarse aquí'
+          : 'Este movimiento no tiene historial suficiente para recalcularse',
+        true
+      );
       return;
     }
     const mov = state.log[idx];
@@ -7820,7 +7851,7 @@
   function saveMovementEdit(idx) {
     if (!getEditableMovementIndices().includes(idx)) {
       closeModal();
-      toast('Este movimiento ya no está entre los últimos 10', true);
+      toast('Este movimiento ya no puede recalcularse con seguridad', true);
       return;
     }
     const monto = parseFloat(document.getElementById('editMovementAmount')?.value);
@@ -8051,6 +8082,7 @@
     openModal(`
       <h2>Todos los <span class="accent">movimientos</span></h2>
       <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'} en el ciclo ${filtroActivo}</p>
+      <p class="modal-sub" style="font-size:11px;margin-top:-8px;">Ciclo abierto · los gastos pueden editarse o eliminarse y Ledger recalcula lo posterior.</p>
       
       <div class="search-box">
         <span class="search-icon">⌕</span>
@@ -10057,7 +10089,13 @@
   
   function confirmDelete(idx) {
     if (!getDeletableMovementIndices().includes(idx)) {
-      toast('Solo puedes eliminar las últimas 10 entradas', true);
+      const mov = state.log[idx];
+      toast(
+        mov?.planCuotasId
+          ? 'Esta cuota pertenece a un plan y no se elimina como movimiento suelto'
+          : 'Este movimiento no tiene historial suficiente para recalcularse',
+        true
+      );
       return;
     }
     const mov = state.log[idx];
@@ -10081,7 +10119,7 @@
   function doDelete(idx) {
     if (!getDeletableMovementIndices().includes(idx)) {
       closeModal();
-      toast('Solo puedes eliminar las últimas 10 entradas', true);
+      toast('Este movimiento ya no puede recalcularse con seguridad', true);
       return;
     }
     const eraUltimo = idx === state.log.length - 1;
@@ -10168,7 +10206,7 @@
           <span class="help-item-chip MOD">→</span>
           <span class="help-item-title">Editar entradas recientes</span>
         </div>
-        <div class="help-item-desc">Mantén presionada cualquiera de las últimas 10 entradas y deslízala hacia la derecha. Aparecerá “Editar” en azul. Un swipe normal sigue cambiando de ventana.</div>
+        <div class="help-item-desc">Mientras el ciclo siga abierto, puedes editar cualquier gasto del ciclo desde Movimientos. Ledger recalculará automáticamente lo que ocurrió después.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
