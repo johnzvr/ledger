@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '147';
+  const LEDGER_BUILD = '148';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9139,6 +9139,18 @@
     const saldoInicialReporte = Number.isFinite(Number(saldoInicialCiclo))
       ? Number(saldoInicialCiclo)
       : null;
+    // Hoja auxiliar oculta para validaciones de datos.
+    // Usar un rango real es más robusto que incrustar todas las categorías
+    // dentro de la regla del desplegable.
+    const categoryListSheet = workbook.addWorksheet('_Listas');
+    const excelCategoryOptions = ['Sin categoría', ...MOVEMENT_CATEGORIES];
+    excelCategoryOptions.forEach((categoria, index) => {
+      categoryListSheet.getCell(index + 1, 1).value = categoria;
+    });
+    categoryListSheet.state = 'veryHidden';
+    const categoryValidationFormula =
+      `'${categoryListSheet.name}'!$A$1:$A$${excelCategoryOptions.length}`;
+
     const summary = workbook.addWorksheet('Resumen', {
       views: [{ showGridLines: false }],
       pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
@@ -9261,7 +9273,7 @@
 
     // Esta sección es dinámica. La categoría se puede cambiar directamente
     // en la hoja Movimientos y Excel recalcula automáticamente estos totales.
-    const excelCategories = ['Sin categoría', ...MOVEMENT_CATEGORIES];
+    const excelCategories = excelCategoryOptions;
     const excelDataStartRow = 5;
     const excelDataEndRow = 5000;
     const categoryFirstRow = categoryHeaderRow + 1;
@@ -9426,7 +9438,6 @@
     const lastRow = Math.max(5, movimientos.length + 4);
 
     if (movimientos.length > 0) {
-      const validationValues = ['Sin categoría', ...MOVEMENT_CATEGORIES].join(',');
       const categoryValidation = {
         type: 'list',
         allowBlank: false,
@@ -9435,7 +9446,7 @@
         errorStyle: 'stop',
         errorTitle: 'Categoría',
         error: 'Selecciona una categoría de la lista.',
-        formulae: [`"${validationValues}"`]
+        formulae: [categoryValidationFormula]
       };
 
       for (let rowNumber = 5; rowNumber <= movimientos.length + 4; rowNumber++) {
