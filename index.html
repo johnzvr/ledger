@@ -3224,6 +3224,32 @@
     text-transform: uppercase;
     font-weight: 600;
   }
+  .movement-category-chip {
+    appearance: none;
+    border: 0;
+    border-radius: 999px;
+    padding: 2px 7px;
+    background: var(--line);
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1.25;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .movement-category-chip.is-empty {
+    background: transparent;
+    border: 1px dashed var(--line-hi);
+    color: var(--ink-mute);
+  }
+  body.dark .movement-category-chip {
+    background: rgba(255,255,255,0.07);
+  }
+  body.dark .movement-category-chip.is-empty {
+    background: transparent;
+    border-color: rgba(255,255,255,0.14);
+  }
   .log-right {
     display: flex;
     flex-direction: column;
@@ -3731,6 +3757,20 @@
     font-weight: 500;
   }
   .modal-field input:focus { border-color: var(--ink); }
+  .modal-field select {
+    width: 100%;
+    min-height: 44px;
+    background: var(--bg);
+    border: 1.5px solid var(--line-hi);
+    border-radius: 12px;
+    padding: 10px 36px 10px 14px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    outline: none;
+  }
+  .modal-field select:focus { border-color: var(--ink); }
   .calendar-date-input {
     min-height: 48px;
     cursor: pointer;
@@ -3745,16 +3785,17 @@
   body.dark .calendar-date-input { color-scheme: dark; }
   .edit-type-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin-bottom: 12px;
   }
   .edit-type-option {
     position: relative;
+    min-width: 0;
     cursor: pointer;
   }
   .edit-type-option.fds {
-    grid-column: 2;
+    grid-column: auto;
   }
   .edit-type-option input {
     position: absolute;
@@ -3762,15 +3803,19 @@
     pointer-events: none;
   }
   .edit-type-option span {
-    min-height: 46px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 13px;
     border: 1.5px solid var(--line-hi);
     border-radius: 12px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     color: var(--ink-dim);
-    font-size: 12px;
-    font-weight: 650;
+    font-size: 11.5px;
+    font-weight: 680;
+    line-height: 1.15;
+    white-space: nowrap;
   }
   .edit-type-option input:checked + span {
     background: var(--ink);
@@ -4860,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '141';
+  const LEDGER_BUILD = '145';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5502,6 +5547,110 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
     })[ch]);
   }
+  const MOVEMENT_CATEGORIES = [
+    'Comida fuera',
+    'Efectivo / transferencias',
+    'Familia / apoyo',
+    'Fitness',
+    'Hogar / departamento',
+    'Mascotas',
+    'Ocio',
+    'Otros',
+    'Salud / personal',
+    'Servicios',
+    'Supermercado',
+    'Suscripciones',
+    'Tecnología',
+    'Trabajo',
+    'Transporte'
+  ];
+
+  function normalizarCategoriaMovimiento(value) {
+    const categoria = String(value || '').trim();
+    return categoria || '';
+  }
+
+  function categoriaMovimiento(mov) {
+    return normalizarCategoriaMovimiento(mov?.categoria);
+  }
+
+  function opcionesCategoriaMovimiento(selected = '') {
+    const actual = normalizarCategoriaMovimiento(selected);
+    const categorias = MOVEMENT_CATEGORIES.slice();
+    if (actual && !categorias.includes(actual)) categorias.unshift(actual);
+    return [
+      `<option value="" ${!actual ? 'selected' : ''}>Sin categoría</option>`,
+      ...categorias.map(cat =>
+        `<option value="${escapeHtml(cat)}" ${actual === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>`
+      )
+    ].join('');
+  }
+
+  function chipCategoriaMovimiento(mov, index, { editable = true } = {}) {
+    if (!mov || mov.etiqueta === 'recalcula') return '';
+    const categoria = categoriaMovimiento(mov);
+    const label = categoria || '+ Categoría';
+    if (!editable) {
+      return categoria
+        ? `<span class="movement-category-chip">${escapeHtml(categoria)}</span>`
+        : '';
+    }
+    return `<button
+      type="button"
+      class="movement-category-chip${categoria ? '' : ' is-empty'}"
+      onpointerdown="event.stopPropagation()"
+      onclick="openMovementCategory(${index}, event)"
+      aria-label="${categoria ? 'Editar categoría ' + escapeHtml(categoria) : 'Asignar categoría'}"
+    >${escapeHtml(label)}</button>`;
+  }
+
+  function openMovementCategory(index, event) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    const mov = state.log[index];
+    if (!mov || mov.etiqueta === 'recalcula') return;
+    openNestedModal(`
+      <h2>Categoría</h2>
+      <p class="modal-sub">${escapeHtml(mov.detalle || 'Sin detalle')}</p>
+      <div class="modal-field">
+        <label>Categoría</label>
+        <select id="quickMovementCategory">${opcionesCategoriaMovimiento(mov.categoria)}</select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeNestedModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveMovementCategory(${index})">Guardar</button>
+      </div>
+    `);
+    requestAnimationFrame(() => document.getElementById('quickMovementCategory')?.focus());
+  }
+
+  function saveMovementCategory(index) {
+    const mov = state.log[index];
+    if (!mov || mov.etiqueta === 'recalcula') {
+      closeNestedModal();
+      return;
+    }
+    const categoria = normalizarCategoriaMovimiento(document.getElementById('quickMovementCategory')?.value);
+
+    if (categoria) mov.categoria = categoria;
+    else delete mov.categoria;
+
+    // Si forma parte de una compra en cuotas, recordar la categoría para
+    // que las cuotas automáticas futuras hereden la misma clasificación.
+    if (mov.planCuotasId && Array.isArray(state.planesCuotas)) {
+      const plan = state.planesCuotas.find(item => item?.id === mov.planCuotasId);
+      if (plan) {
+        if (categoria) plan.categoria = categoria;
+        else delete plan.categoria;
+      }
+    }
+
+    saveState({ markModified: true, sync: true });
+    closeNestedModal();
+    renderAllMovements();
+    toast(categoria ? `Categoría · ${categoria}` : 'Categoría eliminada');
+  }
+
   function formatFecha(d) {
     return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
   }
@@ -7023,7 +7172,8 @@
               cuotasTotal: totalCuotas,
               cuotaMoneda: plan.moneda || 'PEN',
               cuotaOriginal: Number(plan.cuotaOriginal) || 0,
-              cuotaAutomatica: true
+              cuotaAutomatica: true,
+              categoria: normalizarCategoriaMovimiento(plan.categoria) || null
             }
           }
         );
@@ -7630,13 +7780,17 @@
           </label>
           <label class="edit-type-option fds">
             <input type="radio" name="editMovementType" value="FDS" ${normalizarTipoMovimiento(mov.tipo) === 'FDS' ? 'checked' : ''}>
-            <span>F+DS · Fondo con tarjeta</span>
+            <span>F+DS · Fondo/tarjeta</span>
           </label>
         </div>
       </div>
       <div class="modal-field">
         <label>Detalle</label>
         <input type="text" id="editMovementDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Categoría</label>
+        <select id="editMovementCategory">${opcionesCategoriaMovimiento(mov.categoria)}</select>
       </div>
       <label class="edit-sem-row" id="editMovementSemRow">
         <span>Repartir entre los bloques restantes</span>
@@ -7672,6 +7826,7 @@
     const monto = parseFloat(document.getElementById('editMovementAmount')?.value);
     const tipo = document.querySelector('input[name="editMovementType"]:checked')?.value;
     const detalle = document.getElementById('editMovementDetail')?.value.trim() || '';
+    const categoria = normalizarCategoriaMovimiento(document.getElementById('editMovementCategory')?.value);
     const etiqueta = afectaPresupuestoSalarial(tipo) && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
     if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F', 'FDS'].includes(tipo)) {
       toast('Revisa el monto y el tipo', true);
@@ -7696,6 +7851,8 @@
         detalle,
         snapshot: cloneMovementSnapshot(targetBefore)
       };
+      if (categoria) editedMov.categoria = categoria;
+      else delete editedMov.categoria;
 
       const expectedOriginalAfter = applyMovementToSnapshot(targetBefore, originalMov);
       let rebuiltState = applyMovementToSnapshot(targetBefore, editedMov);
@@ -7829,7 +7986,10 @@
   function renderAllMovements() {
     const q = searchQuery.toLowerCase().trim();
     const filtrados = q 
-      ? state.log.filter(m => (m.detalle || '').toLowerCase().includes(q))
+      ? state.log.filter(m =>
+          (m.detalle || '').toLowerCase().includes(q) ||
+          (m.categoria || '').toLowerCase().includes(q)
+        )
       : state.log;
     const pagosTarjeta = contextoPagosTarjeta();
     
@@ -7872,7 +8032,7 @@
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
@@ -8261,10 +8421,11 @@
       toast('Este ciclo no tiene movimientos para exportar', true);
       return;
     }
-    const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
+    const headers = ['Fecha', 'Tipo', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = movimientos.map(m => [
       m.fecha || '',
       etiquetaTipoMovimiento(m.tipo) || '',
+      categoriaMovimiento(m) || 'Sin categoría',
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
       Number(m.monto || 0).toFixed(2)
@@ -8650,6 +8811,7 @@
       tipo: normalizarTipoMovimiento(mov.tipo),
       etiqueta: mov.etiqueta || null,
       detalle: mov.detalle || '',
+      categoria: normalizarCategoriaMovimiento(mov.categoria) || null,
       fecha: mov.fecha || '',
       fechaISO: mov.fechaISO || null,
       timestamp: Number(mov.timestamp) || null,
@@ -8743,6 +8905,7 @@
         tipo: normalizarTipoMovimiento(m.tipo),
         etiqueta: m.etiqueta || null,
         detalle: m.detalle || '',
+        categoria: normalizarCategoriaMovimiento(m.categoria) || null,
         fecha: m.fecha || '',
         fechaISO: m.fechaISO || null,
         timestamp: Number(m.timestamp) || null,
@@ -8899,6 +9062,35 @@
     return resumen;
   }
 
+  function resumenCategoriasReporte(movimientos) {
+    const mapa = new Map();
+    (Array.isArray(movimientos) ? movimientos : [])
+      .filter(mov => mov?.etiqueta !== 'recalcula')
+      .forEach(mov => {
+        const tipo = normalizarTipoMovimiento(mov?.tipo);
+        if (!['S', 'DS', 'F', 'FDS'].includes(tipo)) return;
+        const categoria = categoriaMovimiento(mov) || 'Sin categoría';
+        const monto = Math.max(0, Number(mov?.monto) || 0);
+        if (!mapa.has(categoria)) {
+          mapa.set(categoria, { categoria, movimientos: 0, disponible: 0, fondo: 0, total: 0 });
+        }
+        const item = mapa.get(categoria);
+        item.movimientos += 1;
+        if (tipo === 'S' || tipo === 'DS') item.disponible += monto;
+        if (tipo === 'F' || tipo === 'FDS') item.fondo += monto;
+        item.total += monto;
+      });
+
+    const filas = [...mapa.values()].sort((a, b) =>
+      b.total - a.total || a.categoria.localeCompare(b.categoria, 'es')
+    );
+    const totalGeneral = filas.reduce((sum, item) => sum + item.total, 0);
+    filas.forEach(item => {
+      item.porcentaje = totalGeneral > 0 ? (item.total / totalGeneral) * 100 : 0;
+    });
+    return { filas, totalGeneral };
+  }
+
   function descargarArchivoBlob(blob, nombre) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -8949,7 +9141,7 @@
       : null;
     const summary = workbook.addWorksheet('Resumen', {
       views: [{ showGridLines: false }],
-      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 }
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
     });
     summary.columns = Array.from({ length: 6 }, () => ({ width: 17 }));
     summary.mergeCells('A1:F2');
@@ -9038,34 +9230,125 @@
     summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
 
+    const categoriasReporte = resumenCategoriasReporte(movimientos);
+    const categoryTitleRow = 30;
+    summary.mergeCells(`A${categoryTitleRow}:F${categoryTitleRow}`);
+    summary.getCell(`A${categoryTitleRow}`).value = 'GASTOS POR CATEGORÍA';
+    summary.getCell(`A${categoryTitleRow}`).font = {
+      name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink }
+    };
+    summary.getRow(categoryTitleRow).height = 24;
+
+    const categoryHeaderRow = categoryTitleRow + 1;
+    summary.mergeCells(`A${categoryHeaderRow}:B${categoryHeaderRow}`);
+    [
+      ['A', 'Categoría'],
+      ['C', 'Movimientos'],
+      ['D', 'Disponible'],
+      ['E', 'Fondo'],
+      ['F', 'Total']
+    ].forEach(([col, value]) => {
+      const cell = summary.getCell(`${col}${categoryHeaderRow}`);
+      cell.value = value;
+      cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } };
+      cell.fill = excelFill(EXCEL_PALETTE.ink);
+      cell.alignment = { vertical: 'middle', horizontal: col === 'A' ? 'left' : 'right' };
+    });
+    styleExcelRange(summary, categoryHeaderRow, 1, categoryHeaderRow, 6, {
+      fill: excelFill(EXCEL_PALETTE.ink),
+      font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } },
+      border: excelBorder(EXCEL_PALETTE.bg)
+    });
+
+    let categoryRow = categoryHeaderRow + 1;
+    if (categoriasReporte.filas.length === 0) {
+      summary.mergeCells(`A${categoryRow}:F${categoryRow}`);
+      summary.getCell(`A${categoryRow}`).value = 'Sin gastos categorizables';
+      summary.getCell(`A${categoryRow}`).font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
+      summary.getCell(`A${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
+        fill: excelFill(EXCEL_PALETTE.paleGray),
+        border: excelBorder(EXCEL_PALETTE.line)
+      });
+      categoryRow += 1;
+    } else {
+      categoriasReporte.filas.forEach((item, index) => {
+        summary.mergeCells(`A${categoryRow}:B${categoryRow}`);
+        summary.getCell(`A${categoryRow}`).value =
+          `${item.categoria} · ${item.porcentaje.toLocaleString('es-PE', { maximumFractionDigits: 1 })}%`;
+        summary.getCell(`C${categoryRow}`).value = item.movimientos;
+        summary.getCell(`D${categoryRow}`).value = item.disponible;
+        summary.getCell(`E${categoryRow}`).value = item.fondo;
+        summary.getCell(`F${categoryRow}`).value = item.total;
+
+        ['D', 'E', 'F'].forEach(col => {
+          summary.getCell(`${col}${categoryRow}`).numFmt = '"S/" #,##0.00';
+        });
+        ['C', 'D', 'E', 'F'].forEach(col => {
+          summary.getCell(`${col}${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+        });
+        styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
+          fill: excelFill(index % 2 === 0 ? EXCEL_PALETTE.bg : EXCEL_PALETTE.paleGray),
+          border: excelBorder(EXCEL_PALETTE.line),
+          font: { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } },
+          alignment: { vertical: 'middle' }
+        });
+        summary.getCell(`A${categoryRow}`).font = {
+          name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink }
+        };
+        summary.getRow(categoryRow).height = 22;
+        categoryRow += 1;
+      });
+
+      const totalDisponibleCategorias = categoriasReporte.filas.reduce((s, item) => s + item.disponible, 0);
+      const totalFondoCategorias = categoriasReporte.filas.reduce((s, item) => s + item.fondo, 0);
+      summary.mergeCells(`A${categoryRow}:B${categoryRow}`);
+      summary.getCell(`A${categoryRow}`).value = 'TOTAL';
+      summary.getCell(`C${categoryRow}`).value = categoriasReporte.filas.reduce((s, item) => s + item.movimientos, 0);
+      summary.getCell(`D${categoryRow}`).value = totalDisponibleCategorias;
+      summary.getCell(`E${categoryRow}`).value = totalFondoCategorias;
+      summary.getCell(`F${categoryRow}`).value = categoriasReporte.totalGeneral;
+      ['D', 'E', 'F'].forEach(col => {
+        summary.getCell(`${col}${categoryRow}`).numFmt = '"S/" #,##0.00';
+      });
+      styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
+        fill: excelFill(EXCEL_PALETTE.cream),
+        border: excelBorder(EXCEL_PALETTE.ink),
+        font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } }
+      });
+      ['C', 'D', 'E', 'F'].forEach(col => {
+        summary.getCell(`${col}${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+      });
+    }
+
     const sheet = workbook.addWorksheet('Movimientos', {
       views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
       pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
     });
     sheet.columns = [
-      { key: 'fecha', width: 22 }, { key: 'tipo', width: 12 }, { key: 'detalle', width: 38 },
-      { key: 'etiqueta', width: 16 }, { key: 'impacto', width: 24 }, { key: 'monto', width: 18 },
-      { key: 'cuota', width: 18 }
+      { key: 'fecha', width: 22 }, { key: 'tipo', width: 12 }, { key: 'detalle', width: 34 },
+      { key: 'categoria', width: 24 }, { key: 'etiqueta', width: 16 }, { key: 'impacto', width: 24 },
+      { key: 'monto', width: 18 }, { key: 'cuota', width: 18 }
     ];
-    sheet.mergeCells('A1:G1');
+    sheet.mergeCells('A1:H1');
     sheet.getCell('A1').value = 'LEDGER · MOVIMIENTOS';
     sheet.getCell('A1').font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white } };
     sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(sheet, 1, 1, 1, 7, { fill: excelFill(EXCEL_PALETTE.ink) });
+    styleExcelRange(sheet, 1, 1, 1, 8, { fill: excelFill(EXCEL_PALETTE.ink) });
     sheet.getRow(1).height = 32;
-    sheet.mergeCells('A2:G2');
+    sheet.mergeCells('A2:H2');
     sheet.getCell('A2').value = `${periodo} · ${resumen.movimientos} movimientos reales`;
     sheet.getCell('A2').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
     sheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(sheet, 2, 1, 2, 7, { fill: excelFill(EXCEL_PALETTE.cream) });
+    styleExcelRange(sheet, 2, 1, 2, 8, { fill: excelFill(EXCEL_PALETTE.cream) });
 
-    const headers = ['Fecha', 'Tipo', 'Detalle', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'];
+    const headers = ['Fecha', 'Tipo', 'Detalle', 'Categoría', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'];
     headers.forEach((header, index) => {
       const cell = sheet.getCell(4, index + 1);
       cell.value = header;
       cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } };
       cell.fill = excelFill(EXCEL_PALETTE.ink);
-      cell.alignment = { vertical: 'middle', horizontal: index >= 5 ? 'center' : 'left' };
+      cell.alignment = { vertical: 'middle', horizontal: index >= 6 ? 'center' : 'left' };
       cell.border = excelBorder(EXCEL_PALETTE.bg);
     });
     sheet.getRow(4).height = 25;
@@ -9089,6 +9372,7 @@
         fecha,
         tipo,
         mov?.detalle || (ajuste ? 'Redistribución' : 'Sin detalle'),
+        ajuste ? '—' : (categoriaMovimiento(mov) || 'Sin categoría'),
         ajuste ? 'Redistribución' : (mov?.etiqueta || ''),
         impactoReporteMovimiento(mov),
         Number(mov?.monto) || 0,
@@ -9104,13 +9388,13 @@
       row.getCell(2).fill = excelFill(typeFills[tipo] || EXCEL_PALETTE.gray);
       row.getCell(2).font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(6).numFmt = '"S/" #,##0.00';
-      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'right' };
+      row.getCell(7).numFmt = '"S/" #,##0.00';
+      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
       if (fecha instanceof Date) row.getCell(1).numFmt = 'dd-mmm-yyyy hh:mm';
     });
 
     const lastRow = Math.max(5, movimientos.length + 4);
-    sheet.autoFilter = { from: 'A4', to: `G${lastRow}` };
+    sheet.autoFilter = { from: 'A4', to: `H${lastRow}` };
 
     const buffer = await workbook.xlsx.writeBuffer();
     descargarArchivoBlob(
@@ -9172,10 +9456,11 @@
       toast('Nada que exportar', true);
       return;
     }
-    const headers = ['Fecha', 'Tipo', 'Etiqueta', 'Detalle', 'Monto'];
+    const headers = ['Fecha', 'Tipo', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = state.log.map(m => [
       m.fecha,
       etiquetaTipoMovimiento(m.tipo),
+      m.etiqueta === 'recalcula' ? '' : (categoriaMovimiento(m) || 'Sin categoría'),
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
       m.monto.toFixed(2)
@@ -9562,7 +9847,10 @@
         cuotasTotal: Number(metadata.cuotasTotal) || 1,
         cuotaMoneda: metadata.cuotaMoneda || 'PEN',
         cuotaOriginal: Number(metadata.cuotaOriginal) || 0,
-        cuotaAutomatica: !!metadata.cuotaAutomatica
+        cuotaAutomatica: !!metadata.cuotaAutomatica,
+        ...(normalizarCategoriaMovimiento(metadata.categoria)
+          ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) }
+          : {})
       } : {}),
       ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       snapshot: {
