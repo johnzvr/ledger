@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '152';
+  const LEDGER_BUILD = '153';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5598,6 +5598,7 @@
     return `<button
       type="button"
       class="movement-category-chip${categoria ? '' : ' is-empty'}"
+      data-category-index="${index}"
       onpointerdown="event.stopPropagation()"
       onclick="openMovementCategory(${index}, event)"
       aria-label="${categoria ? 'Editar categoría ' + escapeHtml(categoria) : 'Asignar categoría'}"
@@ -5607,6 +5608,7 @@
   function openMovementCategory(index, event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
+    allMovementsScrollTop = document.getElementById('modalContent')?.scrollTop || 0;
     const mov = state.log[index];
     if (!mov || mov.etiqueta === 'recalcula') return;
     openNestedModal(`
@@ -5622,6 +5624,20 @@
       </div>
     `);
     requestAnimationFrame(() => document.getElementById('quickMovementCategory')?.focus());
+  }
+
+  function actualizarChipCategoriaEnLista(index, categoria) {
+    const modal = document.getElementById('modalContent');
+    const chip = modal?.querySelector(`[data-category-index="${index}"]`);
+    if (!chip) return false;
+
+    chip.textContent = categoria || '+ Categoría';
+    chip.classList.toggle('is-empty', !categoria);
+    chip.setAttribute(
+      'aria-label',
+      categoria ? `Editar categoría ${categoria}` : 'Asignar categoría'
+    );
+    return true;
   }
 
   function saveMovementCategory(index) {
@@ -5647,7 +5663,17 @@
 
     saveState({ markModified: true, sync: true });
     closeNestedModal();
-    renderAllMovements();
+
+    // Categoría es metadata: en una lista normal actualizamos solo el chip,
+    // evitando reconstruir el modal y perder la posición de scroll.
+    if (searchQuery.trim()) {
+      renderAllMovements({ preserveScroll: true });
+    } else {
+      actualizarChipCategoriaEnLista(index, categoria);
+      const modal = document.getElementById('modalContent');
+      if (modal) modal.scrollTop = allMovementsScrollTop;
+    }
+
     toast(categoria ? `Categoría · ${categoria}` : 'Categoría eliminada');
   }
 
@@ -8048,13 +8074,15 @@
   
   // ============ VER TODOS ============
   let searchQuery = '';
+  let allMovementsScrollTop = 0;
   
   function showAllMovements() {
     searchQuery = '';
+    allMovementsScrollTop = 0;
     renderAllMovements();
   }
   
-  function renderAllMovements() {
+  function renderAllMovements({ preserveScroll = false } = {}) {
     const q = searchQuery.toLowerCase().trim();
     const filtrados = q 
       ? state.log.filter(m =>
@@ -8167,8 +8195,15 @@
     
     // Foco no destructivo
     setTimeout(() => {
+      const modal = document.getElementById('modalContent');
       const inp = document.getElementById('searchInput');
-      initSwipeRows(document.getElementById('modalContent'));
+      initSwipeRows(modal);
+
+      if (preserveScroll && modal) {
+        const maxScroll = Math.max(0, modal.scrollHeight - modal.clientHeight);
+        modal.scrollTop = Math.min(allMovementsScrollTop, maxScroll);
+      }
+
       if (inp && q) {
         inp.focus();
         inp.setSelectionRange(inp.value.length, inp.value.length);
