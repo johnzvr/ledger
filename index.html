@@ -4905,7 +4905,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '145';
+  const LEDGER_BUILD = '146';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9230,7 +9230,6 @@
     summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
 
-    const categoriasReporte = resumenCategoriasReporte(movimientos);
     const categoryTitleRow = 30;
     summary.mergeCells(`A${categoryTitleRow}:F${categoryTitleRow}`);
     summary.getCell(`A${categoryTitleRow}`).value = 'GASTOS POR CATEGORÍA';
@@ -9240,9 +9239,9 @@
     summary.getRow(categoryTitleRow).height = 24;
 
     const categoryHeaderRow = categoryTitleRow + 1;
-    summary.mergeCells(`A${categoryHeaderRow}:B${categoryHeaderRow}`);
     [
       ['A', 'Categoría'],
+      ['B', '%'],
       ['C', 'Movimientos'],
       ['D', 'Disponible'],
       ['E', 'Fondo'],
@@ -9260,66 +9259,96 @@
       border: excelBorder(EXCEL_PALETTE.bg)
     });
 
-    let categoryRow = categoryHeaderRow + 1;
-    if (categoriasReporte.filas.length === 0) {
-      summary.mergeCells(`A${categoryRow}:F${categoryRow}`);
-      summary.getCell(`A${categoryRow}`).value = 'Sin gastos categorizables';
-      summary.getCell(`A${categoryRow}`).font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
-      summary.getCell(`A${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
-      styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
-        fill: excelFill(EXCEL_PALETTE.paleGray),
-        border: excelBorder(EXCEL_PALETTE.line)
-      });
-      categoryRow += 1;
-    } else {
-      categoriasReporte.filas.forEach((item, index) => {
-        summary.mergeCells(`A${categoryRow}:B${categoryRow}`);
-        summary.getCell(`A${categoryRow}`).value =
-          `${item.categoria} · ${item.porcentaje.toLocaleString('es-PE', { maximumFractionDigits: 1 })}%`;
-        summary.getCell(`C${categoryRow}`).value = item.movimientos;
-        summary.getCell(`D${categoryRow}`).value = item.disponible;
-        summary.getCell(`E${categoryRow}`).value = item.fondo;
-        summary.getCell(`F${categoryRow}`).value = item.total;
+    // Esta sección es dinámica. La categoría se puede cambiar directamente
+    // en la hoja Movimientos y Excel recalcula automáticamente estos totales.
+    const excelCategories = ['Sin categoría', ...MOVEMENT_CATEGORIES];
+    const excelDataStartRow = 5;
+    const excelDataEndRow = 5000;
+    const categoryFirstRow = categoryHeaderRow + 1;
+    const categoryLastRow = categoryFirstRow + excelCategories.length - 1;
 
-        ['D', 'E', 'F'].forEach(col => {
-          summary.getCell(`${col}${categoryRow}`).numFmt = '"S/" #,##0.00';
-        });
-        ['C', 'D', 'E', 'F'].forEach(col => {
-          summary.getCell(`${col}${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
-        });
-        styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
-          fill: excelFill(index % 2 === 0 ? EXCEL_PALETTE.bg : EXCEL_PALETTE.paleGray),
-          border: excelBorder(EXCEL_PALETTE.line),
-          font: { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } },
-          alignment: { vertical: 'middle' }
-        });
-        summary.getCell(`A${categoryRow}`).font = {
-          name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink }
-        };
-        summary.getRow(categoryRow).height = 22;
-        categoryRow += 1;
-      });
+    excelCategories.forEach((categoria, index) => {
+      const row = categoryFirstRow + index;
+      summary.getCell(`A${row}`).value = categoria;
+      summary.getCell(`B${row}`).value = {
+        formula: `IFERROR(F${row}/SUM($F$${categoryFirstRow}:$F$${categoryLastRow}),0)`
+      };
+      summary.getCell(`C${row}`).value = {
+        formula: `COUNTIF(Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row})`
+      };
+      summary.getCell(`D${row}`).value = {
+        formula:
+          `SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
+          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"S")` +
+          `+SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
+          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"DS")`
+      };
+      summary.getCell(`E${row}`).value = {
+        formula:
+          `SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
+          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F")` +
+          `+SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
+          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F+DS")`
+      };
+      summary.getCell(`F${row}`).value = {
+        formula:
+          `SUMIF(Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},` +
+          `A${row},Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow})`
+      };
 
-      const totalDisponibleCategorias = categoriasReporte.filas.reduce((s, item) => s + item.disponible, 0);
-      const totalFondoCategorias = categoriasReporte.filas.reduce((s, item) => s + item.fondo, 0);
-      summary.mergeCells(`A${categoryRow}:B${categoryRow}`);
-      summary.getCell(`A${categoryRow}`).value = 'TOTAL';
-      summary.getCell(`C${categoryRow}`).value = categoriasReporte.filas.reduce((s, item) => s + item.movimientos, 0);
-      summary.getCell(`D${categoryRow}`).value = totalDisponibleCategorias;
-      summary.getCell(`E${categoryRow}`).value = totalFondoCategorias;
-      summary.getCell(`F${categoryRow}`).value = categoriasReporte.totalGeneral;
+      summary.getCell(`B${row}`).numFmt = '0.0%';
       ['D', 'E', 'F'].forEach(col => {
-        summary.getCell(`${col}${categoryRow}`).numFmt = '"S/" #,##0.00';
+        summary.getCell(`${col}${row}`).numFmt = '"S/" #,##0.00';
       });
-      styleExcelRange(summary, categoryRow, 1, categoryRow, 6, {
-        fill: excelFill(EXCEL_PALETTE.cream),
-        border: excelBorder(EXCEL_PALETTE.ink),
-        font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } }
+      ['B', 'C', 'D', 'E', 'F'].forEach(col => {
+        summary.getCell(`${col}${row}`).alignment = { vertical: 'middle', horizontal: 'right' };
       });
-      ['C', 'D', 'E', 'F'].forEach(col => {
-        summary.getCell(`${col}${categoryRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      styleExcelRange(summary, row, 1, row, 6, {
+        fill: excelFill(index % 2 === 0 ? EXCEL_PALETTE.bg : EXCEL_PALETTE.paleGray),
+        border: excelBorder(EXCEL_PALETTE.line),
+        font: { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } },
+        alignment: { vertical: 'middle' }
       });
-    }
+      summary.getCell(`A${row}`).font = {
+        name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink }
+      };
+      summary.getRow(row).height = 22;
+    });
+
+    const categoryTotalRow = categoryLastRow + 1;
+    summary.getCell(`A${categoryTotalRow}`).value = 'TOTAL';
+    summary.getCell(`B${categoryTotalRow}`).value = {
+      formula: `IF(SUM($F$${categoryFirstRow}:$F$${categoryLastRow})>0,1,0)`
+    };
+    summary.getCell(`C${categoryTotalRow}`).value = {
+      formula: `SUM($C$${categoryFirstRow}:$C$${categoryLastRow})`
+    };
+    summary.getCell(`D${categoryTotalRow}`).value = {
+      formula: `SUM($D$${categoryFirstRow}:$D$${categoryLastRow})`
+    };
+    summary.getCell(`E${categoryTotalRow}`).value = {
+      formula: `SUM($E$${categoryFirstRow}:$E$${categoryLastRow})`
+    };
+    summary.getCell(`F${categoryTotalRow}`).value = {
+      formula: `SUM($F$${categoryFirstRow}:$F$${categoryLastRow})`
+    };
+    summary.getCell(`B${categoryTotalRow}`).numFmt = '0.0%';
+    ['D', 'E', 'F'].forEach(col => {
+      summary.getCell(`${col}${categoryTotalRow}`).numFmt = '"S/" #,##0.00';
+    });
+    styleExcelRange(summary, categoryTotalRow, 1, categoryTotalRow, 6, {
+      fill: excelFill(EXCEL_PALETTE.cream),
+      border: excelBorder(EXCEL_PALETTE.ink),
+      font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } }
+    });
+    ['B', 'C', 'D', 'E', 'F'].forEach(col => {
+      summary.getCell(`${col}${categoryTotalRow}`).alignment = { vertical: 'middle', horizontal: 'right' };
+    });
 
     const sheet = workbook.addWorksheet('Movimientos', {
       views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
@@ -9390,10 +9419,42 @@
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).numFmt = '"S/" #,##0.00';
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+
+      // Categoría editable directamente en Excel.
+      // "Sin categoría" permanece como una opción explícita.
+      if (!ajuste) {
+        const validationValues = ['Sin categoría', ...MOVEMENT_CATEGORIES].join(',');
+        row.getCell(4).dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          showErrorMessage: true,
+          errorStyle: 'stop',
+          errorTitle: 'Categoría',
+          error: 'Selecciona una categoría de la lista.',
+          formulae: [`"${validationValues}"`]
+        };
+      }
+
       if (fecha instanceof Date) row.getCell(1).numFmt = 'dd-mmm-yyyy hh:mm';
     });
 
     const lastRow = Math.max(5, movimientos.length + 4);
+
+    if (movimientos.length > 0) {
+      for (let rowNumber = 5; rowNumber <= movimientos.length + 4; rowNumber++) {
+        const categoryCell = sheet.getCell(rowNumber, 4);
+        if (categoryCell.value !== '—') {
+          categoryCell.fill = excelFill(EXCEL_PALETTE.paleLavender);
+          categoryCell.font = {
+            name: 'Aptos',
+            size: 10,
+            bold: true,
+            color: { argb: EXCEL_PALETTE.ink }
+          };
+        }
+      }
+    }
+
     sheet.autoFilter = { from: 'A4', to: `H${lastRow}` };
 
     const buffer = await workbook.xlsx.writeBuffer();
