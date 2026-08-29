@@ -4860,7 +4860,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '140';
+  const LEDGER_BUILD = '141';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11085,7 +11085,6 @@
       resultado.innerHTML = `
         ${conversionResumen}
         ${resumenFinanciamiento(planCuotas, currencyInfo)}
-        ${resumenRecomendacionCuotas(esperarHasta, compraEsperando, planCuotas)}
         ${resumenImpactoCuota(capacidad)}
         ${resumenCiclosBanco(compraHoy, planCuotas, hoy)}
         <button class="purchase-comparison-toggle" type="button" aria-expanded="false" onclick="togglePurchaseComparison(this)">
