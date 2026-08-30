@@ -4914,7 +4914,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '155';
+  const LEDGER_BUILD = '156';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9590,115 +9590,287 @@
     sheet.autoFilter = { from: 'A4', to: `H${lastRow}` };
 
     // ================================================================
-    // DESGLOSE POR CATEGORÍA
-    // Detalle vivo del reporte: se alimenta directamente de Movimientos.
-    // Al cambiar una categoría allí, Excel recalcula y vuelve a ordenar.
+    // DESGLOSE POR CATEGORÍA · BLOQUES
+    // Cada categoría funciona como una sección independiente:
+    // título + movimientos + subtotal.
     // ================================================================
     const detailSheet = workbook.addWorksheet('Desglose', {
-      views: [{ state: 'frozen', ySplit: 4, showGridLines: false }],
+      views: [{ state: 'frozen', ySplit: 2, showGridLines: false }],
       pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
     });
 
     detailSheet.columns = [
-      { key: 'categoria', width: 25 },
       { key: 'fecha', width: 22 },
-      { key: 'detalle', width: 34 },
+      { key: 'detalle', width: 38 },
       { key: 'tipo', width: 12 },
       { key: 'etiqueta', width: 16 },
-      { key: 'impacto', width: 24 },
+      { key: 'impacto', width: 25 },
       { key: 'monto', width: 18 },
       { key: 'cuota', width: 18 }
     ];
 
-    detailSheet.mergeCells('A1:H1');
+    detailSheet.mergeCells('A1:G1');
     detailSheet.getCell('A1').value = 'LEDGER · DESGLOSE POR CATEGORÍA';
     detailSheet.getCell('A1').font = {
       name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white }
     };
     detailSheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(detailSheet, 1, 1, 1, 8, { fill: excelFill(EXCEL_PALETTE.ink) });
+    styleExcelRange(detailSheet, 1, 1, 1, 7, { fill: excelFill(EXCEL_PALETTE.ink) });
     detailSheet.getRow(1).height = 32;
 
-    detailSheet.mergeCells('A2:H2');
+    detailSheet.mergeCells('A2:G2');
     detailSheet.getCell('A2').value =
-      `${periodo} · gastos ordenados por categoría · se actualiza desde Movimientos`;
+      `${periodo} · detalle de los movimientos que forman cada categoría`;
     detailSheet.getCell('A2').font = {
       name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted }
     };
     detailSheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(detailSheet, 2, 1, 2, 8, { fill: excelFill(EXCEL_PALETTE.cream) });
+    styleExcelRange(detailSheet, 2, 1, 2, 7, { fill: excelFill(EXCEL_PALETTE.cream) });
 
-    const detailHeaders = [
-      'Categoría', 'Fecha', 'Detalle', 'Tipo',
-      'Etiqueta', 'Impacto', 'Monto', 'Cuota'
-    ];
-    detailHeaders.forEach((header, index) => {
-      const cell = detailSheet.getCell(4, index + 1);
-      cell.value = header;
-      cell.font = {
-        name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white }
-      };
-      cell.fill = excelFill(EXCEL_PALETTE.ink);
-      cell.alignment = {
-        vertical: 'middle',
-        horizontal: index >= 6 ? 'center' : 'left'
-      };
-      cell.border = excelBorder(EXCEL_PALETTE.bg);
-    });
-    detailSheet.getRow(4).height = 25;
-
-    const realMovementCount = movimientos.filter(
+    const gastosDetalle = movimientos.filter(
       mov => tipoReporteMovimiento(mov) !== 'AJUSTE'
-    ).length;
-    const detailLastRow = Math.max(5, realMovementCount + 4);
+    );
 
-    // FILTER toma únicamente gastos reales, SORTBY agrupa por categoría y
-    // ordena por fecha dentro de cada grupo. CHOOSECOLS pone Categoría primero.
-    // "Sin categoría" queda antes que las categorías ya clasificadas.
-    detailSheet.getCell('A5').value = {
-      formula:
-        `LET(` +
-          `data,FILTER(Movimientos!A5:H5000,` +
-            `(Movimientos!A5:A5000<>"")*(Movimientos!D5:D5000<>"—")` +
-          `),` +
-          `sorted,SORTBY(` +
-            `data,` +
-            `--(INDEX(data,,4)<>"Sin categoría"),1,` +
-            `INDEX(data,,4),1,` +
-            `INDEX(data,,1),1` +
-          `),` +
-          `CHOOSECOLS(sorted,4,1,3,2,5,6,7,8)` +
-        `)`
+    const gruposCategoria = new Map();
+
+    gastosDetalle.forEach(mov => {
+      const categoria = categoriaMovimiento(mov) || 'Sin categoría';
+      if (!gruposCategoria.has(categoria)) gruposCategoria.set(categoria, []);
+      gruposCategoria.get(categoria).push(mov);
+    });
+
+    const categoriasConGasto = [...gruposCategoria.keys()].sort((a, b) => {
+      if (a === 'Sin categoría') return -1;
+      if (b === 'Sin categoría') return 1;
+      return a.localeCompare(b, 'es', { sensitivity: 'base' });
+    });
+
+    const timestampMovimientoDetalle = mov => {
+      const timestamp = Number(mov?.timestamp);
+      if (Number.isFinite(timestamp) && timestamp > 0) return timestamp;
+
+      if (mov?.fechaISO) {
+        const parsed = new Date(mov.fechaISO).getTime();
+        if (Number.isFinite(parsed)) return parsed;
+      }
+
+      return 0;
     };
 
-    // Preformatear todo el rango que ocupará el derrame dinámico.
-    if (realMovementCount > 0) {
-      styleExcelRange(detailSheet, 5, 1, detailLastRow, 8, {
-        fill: excelFill(EXCEL_PALETTE.bg),
-        border: { bottom: { style: 'thin', color: { argb: EXCEL_PALETTE.line } } },
-        font: { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.ink } },
-        alignment: { vertical: 'middle', horizontal: 'left' }
+    if (!categoriasConGasto.length) {
+      detailSheet.mergeCells('A4:G4');
+      detailSheet.getCell('A4').value = 'Sin gastos para mostrar';
+      detailSheet.getCell('A4').font = {
+        name: 'Aptos', size: 11, color: { argb: EXCEL_PALETTE.muted }
+      };
+      styleExcelRange(detailSheet, 4, 1, 4, 7, {
+        fill: excelFill(EXCEL_PALETTE.paleGray),
+        border: excelBorder(EXCEL_PALETTE.line)
       });
+    } else {
+      let currentRow = 4;
 
-      for (let rowNumber = 5; rowNumber <= detailLastRow; rowNumber++) {
-        detailSheet.getRow(rowNumber).height = 23;
+      categoriasConGasto.forEach((categoria, categoryIndex) => {
+        const items = gruposCategoria.get(categoria)
+          .slice()
+          .sort((a, b) => timestampMovimientoDetalle(a) - timestampMovimientoDetalle(b));
 
-        // Categoría, más visible para leer los grupos.
-        detailSheet.getCell(rowNumber, 1).fill = excelFill(EXCEL_PALETTE.paleLavender);
-        detailSheet.getCell(rowNumber, 1).font = {
-          name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink }
+        const subtotal = items.reduce(
+          (sum, mov) => sum + Math.max(0, Number(mov?.monto) || 0),
+          0
+        );
+
+        // ------------------------------------------------------------
+        // CABECERA DEL BLOQUE
+        // ------------------------------------------------------------
+        detailSheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        detailSheet.getCell(`A${currentRow}`).value = categoria.toUpperCase();
+        detailSheet.getCell(`A${currentRow}`).font = {
+          name: 'Aptos',
+          size: 13,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.white }
+        };
+        detailSheet.getCell(`A${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'left'
         };
 
-        // Fecha y monto mantienen formato consistente con Movimientos.
-        detailSheet.getCell(rowNumber, 2).numFmt = 'dd-mmm-yyyy hh:mm';
-        detailSheet.getCell(rowNumber, 7).numFmt = '"S/" #,##0.00';
-        detailSheet.getCell(rowNumber, 7).alignment = {
-          vertical: 'middle', horizontal: 'right'
+        detailSheet.mergeCells(`E${currentRow}:F${currentRow}`);
+        detailSheet.getCell(`E${currentRow}`).value =
+          `${items.length} ${items.length === 1 ? 'movimiento' : 'movimientos'}`;
+        detailSheet.getCell(`E${currentRow}`).font = {
+          name: 'Aptos',
+          size: 10,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.white }
         };
-      }
+        detailSheet.getCell(`E${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'right'
+        };
+
+        detailSheet.getCell(`G${currentRow}`).value = subtotal;
+        detailSheet.getCell(`G${currentRow}`).numFmt = '"S/" #,##0.00';
+        detailSheet.getCell(`G${currentRow}`).font = {
+          name: 'Aptos',
+          size: 12,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.white }
+        };
+        detailSheet.getCell(`G${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'right'
+        };
+
+        styleExcelRange(detailSheet, currentRow, 1, currentRow, 7, {
+          fill: excelFill(EXCEL_PALETTE.ink),
+          border: excelBorder(EXCEL_PALETTE.ink)
+        });
+        detailSheet.getRow(currentRow).height = 28;
+        currentRow += 1;
+
+        // ------------------------------------------------------------
+        // CABECERA DE MOVIMIENTOS DEL BLOQUE
+        // ------------------------------------------------------------
+        const blockHeaders = [
+          'Fecha', 'Detalle', 'Tipo', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'
+        ];
+
+        blockHeaders.forEach((header, index) => {
+          const cell = detailSheet.getCell(currentRow, index + 1);
+          cell.value = header;
+          cell.font = {
+            name: 'Aptos',
+            size: 9,
+            bold: true,
+            color: { argb: EXCEL_PALETTE.ink }
+          };
+          cell.fill = excelFill(EXCEL_PALETTE.cream);
+          cell.border = excelBorder(EXCEL_PALETTE.line);
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: index >= 5 ? 'right' : 'left'
+          };
+        });
+        detailSheet.getRow(currentRow).height = 22;
+        currentRow += 1;
+
+        // ------------------------------------------------------------
+        // MOVIMIENTOS DEL BLOQUE
+        // ------------------------------------------------------------
+        items.forEach((mov, itemIndex) => {
+          const tipo = tipoReporteMovimiento(mov);
+          const fecha = fechaReporteMovimiento(mov);
+          const row = detailSheet.getRow(currentRow);
+
+          row.values = [
+            fecha,
+            mov?.detalle || 'Sin detalle',
+            tipo,
+            mov?.etiqueta || '',
+            impactoReporteMovimiento(mov),
+            Number(mov?.monto) || 0,
+            cuotaReporteMovimiento(mov)
+          ];
+
+          const tipoNormalizado = normalizarTipoMovimiento(mov?.tipo);
+          let rowFill = EXCEL_PALETTE.bg;
+          if (tipoNormalizado === 'S') rowFill = EXCEL_PALETTE.paleGreen;
+          else if (tipoNormalizado === 'DS') rowFill = EXCEL_PALETTE.paleRed;
+          else if (tipoNormalizado === 'F' || tipoNormalizado === 'FDS') {
+            rowFill = EXCEL_PALETTE.paleLavender;
+          }
+
+          styleExcelRange(detailSheet, currentRow, 1, currentRow, 7, {
+            fill: excelFill(rowFill),
+            border: {
+              bottom: { style: 'thin', color: { argb: EXCEL_PALETTE.line } }
+            },
+            font: {
+              name: 'Aptos',
+              size: 10,
+              color: { argb: EXCEL_PALETTE.ink }
+            },
+            alignment: { vertical: 'middle', horizontal: 'left' }
+          });
+
+          detailSheet.getCell(currentRow, 3).font = {
+            name: 'Aptos',
+            size: 10,
+            bold: true,
+            color: { argb: EXCEL_PALETTE.ink }
+          };
+
+          detailSheet.getCell(currentRow, 6).numFmt = '"S/" #,##0.00';
+          detailSheet.getCell(currentRow, 6).alignment = {
+            vertical: 'middle',
+            horizontal: 'right'
+          };
+
+          if (fecha instanceof Date) {
+            detailSheet.getCell(currentRow, 1).numFmt = 'dd-mmm-yyyy hh:mm';
+          }
+
+          row.height = 23;
+          currentRow += 1;
+        });
+
+        // ------------------------------------------------------------
+        // SUBTOTAL DEL BLOQUE
+        // ------------------------------------------------------------
+        detailSheet.mergeCells(`A${currentRow}:E${currentRow}`);
+        detailSheet.getCell(`A${currentRow}`).value = `Subtotal · ${categoria}`;
+        detailSheet.getCell(`A${currentRow}`).font = {
+          name: 'Aptos',
+          size: 10,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.ink }
+        };
+        detailSheet.getCell(`A${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'right'
+        };
+
+        detailSheet.getCell(`F${currentRow}`).value = items.length;
+        detailSheet.getCell(`F${currentRow}`).font = {
+          name: 'Aptos',
+          size: 10,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.ink }
+        };
+        detailSheet.getCell(`F${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'right'
+        };
+
+        detailSheet.getCell(`G${currentRow}`).value = subtotal;
+        detailSheet.getCell(`G${currentRow}`).numFmt = '"S/" #,##0.00';
+        detailSheet.getCell(`G${currentRow}`).font = {
+          name: 'Aptos',
+          size: 10,
+          bold: true,
+          color: { argb: EXCEL_PALETTE.ink }
+        };
+        detailSheet.getCell(`G${currentRow}`).alignment = {
+          vertical: 'middle',
+          horizontal: 'right'
+        };
+
+        styleExcelRange(detailSheet, currentRow, 1, currentRow, 7, {
+          fill: excelFill(EXCEL_PALETTE.paleGray),
+          border: excelBorder(EXCEL_PALETTE.line)
+        });
+        detailSheet.getRow(currentRow).height = 23;
+        currentRow += 1;
+
+        // Separación real entre categorías.
+        if (categoryIndex < categoriasConGasto.length - 1) {
+          detailSheet.getRow(currentRow).height = 12;
+          currentRow += 1;
+        }
+      });
     }
-
-    detailSheet.autoFilter = { from: 'A4', to: `H${detailLastRow}` };
 
     const buffer = await workbook.xlsx.writeBuffer();
     descargarArchivoBlob(
