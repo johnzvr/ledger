@@ -4914,7 +4914,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '156';
+  const LEDGER_BUILD = '158';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9618,14 +9618,45 @@
     styleExcelRange(detailSheet, 1, 1, 1, 7, { fill: excelFill(EXCEL_PALETTE.ink) });
     detailSheet.getRow(1).height = 32;
 
-    detailSheet.mergeCells('A2:G2');
+    detailSheet.mergeCells('A2:E2');
     detailSheet.getCell('A2').value =
       `${periodo} · detalle de los movimientos que forman cada categoría`;
     detailSheet.getCell('A2').font = {
       name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted }
     };
     detailSheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
+
+    detailSheet.getCell('F2').value = 'ORDEN';
+    detailSheet.getCell('F2').font = {
+      name: 'Aptos', size: 9, bold: true, color: { argb: EXCEL_PALETTE.muted }
+    };
+    detailSheet.getCell('F2').alignment = { vertical: 'middle', horizontal: 'right' };
+
+    detailSheet.getCell('G2').value = 'Monto';
+    detailSheet.getCell('G2').font = {
+      name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink }
+    };
+    detailSheet.getCell('G2').alignment = { vertical: 'middle', horizontal: 'center' };
+    detailSheet.getCell('G2').border = excelBorder(EXCEL_PALETTE.line);
+    detailSheet.getCell('G2').dataValidation = {
+      type: 'list',
+      allowBlank: false,
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: 'Orden del desglose',
+      error: 'Selecciona Fecha o Monto.',
+      formulae: ['"Monto,Fecha"']
+    };
+
     styleExcelRange(detailSheet, 2, 1, 2, 7, { fill: excelFill(EXCEL_PALETTE.cream) });
+    detailSheet.getCell('G2').fill = excelFill(EXCEL_PALETTE.white);
+    detailSheet.getRow(2).height = 24;
+
+    // Columnas auxiliares ocultas. Guardan ambos órdenes y permiten cambiar
+    // el Desglose desde G2 sin macros ni reconstruir el archivo.
+    for (let helperCol = 8; helperCol <= 21; helperCol++) {
+      detailSheet.getColumn(helperCol).hidden = true;
+    }
 
     const gastosDetalle = movimientos.filter(
       mov => tipoReporteMovimiento(mov) !== 'AJUSTE'
@@ -9657,6 +9688,24 @@
       return 0;
     };
 
+
+    const datosFilaDesglose = mov => {
+      const tipo = tipoReporteMovimiento(mov);
+      const fecha = fechaReporteMovimiento(mov);
+      return [
+        fecha,
+        mov?.detalle || 'Sin detalle',
+        tipo,
+        mov?.etiqueta || '',
+        impactoReporteMovimiento(mov),
+        Number(mov?.monto) || 0,
+        cuotaReporteMovimiento(mov)
+      ];
+    };
+
+    const helperColsFecha = ['H', 'I', 'J', 'K', 'L', 'M', 'N'];
+    const helperColsMonto = ['O', 'P', 'Q', 'R', 'S', 'T', 'U'];
+
     if (!categoriasConGasto.length) {
       detailSheet.mergeCells('A4:G4');
       detailSheet.getCell('A4').value = 'Sin gastos para mostrar';
@@ -9671,11 +9720,27 @@
       let currentRow = 4;
 
       categoriasConGasto.forEach((categoria, categoryIndex) => {
-        const items = gruposCategoria.get(categoria)
+        const itemsBase = gruposCategoria.get(categoria).slice();
+
+        // Fecha: orden cronológico, como el Desglose original.
+        const itemsFecha = itemsBase
           .slice()
           .sort((a, b) => timestampMovimientoDetalle(a) - timestampMovimientoDetalle(b));
 
-        const subtotal = items.reduce(
+        // Monto: gasto más grande → gasto más pequeño.
+        const itemsMonto = itemsBase
+          .slice()
+          .sort((a, b) => {
+            const montoA = Math.max(0, Number(a?.monto) || 0);
+            const montoB = Math.max(0, Number(b?.monto) || 0);
+            if (Math.abs(montoB - montoA) > 0.0001) return montoB - montoA;
+            return timestampMovimientoDetalle(a) - timestampMovimientoDetalle(b);
+          });
+
+        // Monto es la vista inicial del archivo.
+        const items = itemsMonto;
+
+        const subtotal = itemsBase.reduce(
           (sum, mov) => sum + Math.max(0, Number(mov?.monto) || 0),
           0
         );
@@ -9759,31 +9824,34 @@
         // ------------------------------------------------------------
         // MOVIMIENTOS DEL BLOQUE
         // ------------------------------------------------------------
-        items.forEach((mov, itemIndex) => {
-          const tipo = tipoReporteMovimiento(mov);
-          const fecha = fechaReporteMovimiento(mov);
+        itemsMonto.forEach((movMonto, itemIndex) => {
+          const movFecha = itemsFecha[itemIndex];
+          const datosFecha = datosFilaDesglose(movFecha);
+          const datosMonto = datosFilaDesglose(movMonto);
           const row = detailSheet.getRow(currentRow);
 
-          row.values = [
-            fecha,
-            mov?.detalle || 'Sin detalle',
-            tipo,
-            mov?.etiqueta || '',
-            impactoReporteMovimiento(mov),
-            Number(mov?.monto) || 0,
-            cuotaReporteMovimiento(mov)
-          ];
+          // Guardar ambos órdenes en columnas ocultas de la misma hoja.
+          datosFecha.forEach((valor, colIndex) => {
+            detailSheet.getCell(currentRow, 8 + colIndex).value = valor;
+          });
+          datosMonto.forEach((valor, colIndex) => {
+            detailSheet.getCell(currentRow, 15 + colIndex).value = valor;
+          });
 
-          const tipoNormalizado = normalizarTipoMovimiento(mov?.tipo);
-          let rowFill = EXCEL_PALETTE.bg;
-          if (tipoNormalizado === 'S') rowFill = EXCEL_PALETTE.paleGreen;
-          else if (tipoNormalizado === 'DS') rowFill = EXCEL_PALETTE.paleRed;
-          else if (tipoNormalizado === 'F' || tipoNormalizado === 'FDS') {
-            rowFill = EXCEL_PALETTE.paleLavender;
-          }
+          // Las columnas visibles cambian instantáneamente según G2.
+          datosMonto.forEach((valorInicial, colIndex) => {
+            detailSheet.getCell(currentRow, colIndex + 1).value = {
+              formula:
+                `IF($G$2="Fecha",${helperColsFecha[colIndex]}${currentRow},` +
+                `${helperColsMonto[colIndex]}${currentRow})`,
+              result: valorInicial
+            };
+          });
 
+          // Fondo neutro: el orden puede cambiar y no queremos que el color
+          // quede asociado a una fila distinta del movimiento mostrado.
           styleExcelRange(detailSheet, currentRow, 1, currentRow, 7, {
-            fill: excelFill(rowFill),
+            fill: excelFill(EXCEL_PALETTE.bg),
             border: {
               bottom: { style: 'thin', color: { argb: EXCEL_PALETTE.line } }
             },
@@ -9807,10 +9875,7 @@
             vertical: 'middle',
             horizontal: 'right'
           };
-
-          if (fecha instanceof Date) {
-            detailSheet.getCell(currentRow, 1).numFmt = 'dd-mmm-yyyy hh:mm';
-          }
+          detailSheet.getCell(currentRow, 1).numFmt = 'dd-mmm-yyyy hh:mm';
 
           row.height = 23;
           currentRow += 1;
