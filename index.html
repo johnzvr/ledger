@@ -4962,7 +4962,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '159';
+  const LEDGER_BUILD = '160';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -8715,9 +8715,26 @@
         <label>Meta de ahorro</label>
         <input type="number" step="0.01" id="newMeta" value="${(state.metaResidual || 0).toFixed(2)}" oninput="previewNuevoCiclo()">
       </div>
-      <div class="modal-field">
-        <label>Deuda total que muestra el banco</label>
-        <input type="number" step="0.01" id="newDeuda" value="${state.deudaActual.toFixed(2)}">
+      <div class="new-cycle-accounts">
+        <div class="modal-field">
+          <label>Deuda soles · S/</label>
+          <input type="number" min="0" step="0.01" id="newDeudaSoles" value="${state.deudaActual.toFixed(2)}" oninput="previewNuevoCiclo()">
+        </div>
+        <div class="modal-field">
+          <label>Deuda dólares · US$</label>
+          <input type="number" min="0" step="0.01" id="newDeudaDolares" value="0.00" oninput="previewNuevoCiclo()">
+        </div>
+      </div>
+
+      <div class="rollover-breakdown new-cycle-derived">
+        <div class="rollover-row">
+          <span class="rollover-week">Deuda USD en soles</span>
+          <span class="rollover-amount" id="newDeudaUsdPenPreview">S/ 0.00</span>
+        </div>
+        <div class="rollover-row highlight">
+          <span class="rollover-week">Deuda total</span>
+          <span class="rollover-amount" id="newDeudaTotalPreview">S/ ${fmt(state.deudaActual)}</span>
+        </div>
       </div>
       <div class="modal-field">
         <label>Fecha de inicio</label>
@@ -8754,7 +8771,7 @@
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y el resto se convierte en Disponible del ciclo.
+        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y el resto se convierte en Disponible del ciclo. La deuda en dólares se convierte a soles solo para obtener la Deuda total que usa Ledger.
       </p>
 
       <div class="modal-buttons">
@@ -8814,14 +8831,44 @@
     };
   }
 
+  function datosDeudaNuevoCiclo() {
+    const deudaSoles = Math.max(
+      0,
+      parseFloat(document.getElementById('newDeudaSoles')?.value) || 0
+    );
+    const deudaDolares = Math.max(
+      0,
+      parseFloat(document.getElementById('newDeudaDolares')?.value) || 0
+    );
+    const tc = getExchangeRate();
+    const tcValido = Number.isFinite(Number(tc)) && Number(tc) > 0;
+    const requiereTc = deudaDolares > 0.0001;
+    const deudaDolaresEnSoles = tcValido
+      ? redondearDinero(deudaDolares * Number(tc))
+      : 0;
+    const total = redondearDinero(deudaSoles + deudaDolaresEnSoles);
+
+    return {
+      deudaSoles,
+      deudaDolares,
+      tc: tcValido ? Number(tc) : null,
+      requiereTc,
+      deudaDolaresEnSoles,
+      total
+    };
+  }
+
   function updateNewCycleAccountsPreview() {
     const tcLabel = document.getElementById('newCycleTcLabel');
     const usdPreview = document.getElementById('newUsdPenPreview');
     const totalPreview = document.getElementById('newTotalGeneralPreview');
     const disponiblePreview = document.getElementById('newDisponiblePreview');
-    if (!tcLabel && !usdPreview && !totalPreview && !disponiblePreview) return;
+    const deudaUsdPreview = document.getElementById('newDeudaUsdPenPreview');
+    const deudaTotalPreview = document.getElementById('newDeudaTotalPreview');
+    if (!tcLabel && !usdPreview && !totalPreview && !disponiblePreview && !deudaUsdPreview && !deudaTotalPreview) return;
 
     const datos = datosCuentasNuevoCiclo();
+    const deuda = datosDeudaNuevoCiclo();
     const ageHours = getTcAgeHours();
     const stale = ageHours !== null && ageHours > TC_CACHE_HOURS;
 
@@ -8856,12 +8903,26 @@
         disponiblePreview.textContent = `S/ ${fmt(Math.max(0, datos.disponible))}`;
       }
     }
+
+    if (deudaUsdPreview) {
+      deudaUsdPreview.textContent = deuda.requiereTc && !deuda.tc
+        ? 'TC pendiente'
+        : `S/ ${fmt(deuda.deudaDolaresEnSoles)}`;
+    }
+    if (deudaTotalPreview) {
+      deudaTotalPreview.textContent = deuda.requiereTc && !deuda.tc
+        ? 'TC pendiente'
+        : `S/ ${fmt(deuda.total)}`;
+    }
   }
 
   function previewNuevoCiclo() {
     if (!document.getElementById('newCuentaSoles')) return;
     updateNewCycleAccountsPreview();
     const cuentas = datosCuentasNuevoCiclo();
+    const deuda = datosDeudaNuevoCiclo();
+    const requiereTcFormulario = cuentas.requiereTc || deuda.requiereTc;
+    const tcFormulario = cuentas.tc || deuda.tc;
     const disp = cuentas.disponible;
     const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
     const fechaInicio = document.getElementById('newFechaInicio')?.value;
@@ -8873,10 +8934,10 @@
     const wrapManual = document.getElementById('newNumSemWrap');
     if (!preview || !detalle) return;
     if (wrapManual) wrapManual.style.display = manual ? 'block' : 'none';
-    if ((cuentas.requiereTc && !cuentas.tc) || disp < -0.005 || meta < 0 || meta > Math.max(0, disp)
+    if ((requiereTcFormulario && !tcFormulario) || disp < -0.005 || meta < 0 || meta > Math.max(0, disp)
       || !fechaInicio || (!manual && !fechaProximo)
       || (manual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
-      preview.textContent = cuentas.requiereTc && !cuentas.tc
+      preview.textContent = requiereTcFormulario && !tcFormulario
         ? 'Esperando TC'
         : (disp < -0.005 ? 'Fondo excede total' : 'Revisa los datos');
       detalle.innerHTML = '';
@@ -8906,23 +8967,31 @@
 
   function ejecutarNuevoCiclo() {
     const cuentas = datosCuentasNuevoCiclo();
+    const deudaDetalle = datosDeudaNuevoCiclo();
     const disponible = cuentas.disponible;
     const meta = parseFloat(document.getElementById('newMeta')?.value) || 0;
     const intocable = cuentas.fondo;
-    const deuda = parseFloat(document.getElementById('newDeuda')?.value);
+    const deuda = deudaDetalle.total;
     const fechaInicio = document.getElementById('newFechaInicio')?.value;
     const fechaProximoSueldo = document.getElementById('newProximoSueldo')?.value;
     const modoManual = !!document.getElementById('newModoManual')?.checked;
     const numSem = parseInt(document.getElementById('newNumSem')?.value);
 
-    if ((cuentas.requiereTc && !cuentas.tc) || disponible < -0.005
+    const requiereTcFormulario = cuentas.requiereTc || deudaDetalle.requiereTc;
+    const tcFormulario = cuentas.tc || deudaDetalle.tc;
+
+    if ((requiereTcFormulario && !tcFormulario) || disponible < -0.005
       || meta < 0 || meta > Math.max(0, disponible)
       || isNaN(deuda) || deuda < 0
       || !fechaInicio || (!modoManual && !fechaProximoSueldo)
       || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
-      if (cuentas.requiereTc && !cuentas.tc) toast('No hay tipo de cambio para convertir la cuenta en dólares', true);
-      else if (disponible < -0.005) toast('El Fondo no puede superar el Total general', true);
-      else toast('Revisa los datos del nuevo ciclo', true);
+      if (requiereTcFormulario && !tcFormulario) {
+        toast('No hay tipo de cambio para convertir los montos en dólares', true);
+      } else if (disponible < -0.005) {
+        toast('El Fondo no puede superar el Total general', true);
+      } else {
+        toast('Revisa los datos del nuevo ciclo', true);
+      }
       return;
     }
 
@@ -8974,6 +9043,13 @@
       meta,
       intocable,
       cuentasInicioCiclo,
+      deudaInicioCiclo: {
+        soles: redondearDinero(deudaDetalle.deudaSoles),
+        dolares: redondearDinero(deudaDetalle.deudaDolares),
+        tcUsdPen: deudaDetalle.tc ? Number(deudaDetalle.tc) : null,
+        dolaresEnSoles: redondearDinero(deudaDetalle.deudaDolaresEnSoles),
+        totalSoles: deudaOficial
+      },
       deuda: deudaOficial,
       fechaInicio,
       fechaProximoSueldo,
@@ -9073,7 +9149,8 @@
       newCuentaAhorros: datos.cuentasInicioCiclo?.cuentaAhorros,
       newFondo: datos.cuentasInicioCiclo?.fondo ?? datos.intocable,
       newMeta: datos.meta,
-      newDeuda: datos.deuda,
+      newDeudaSoles: datos.deudaInicioCiclo?.soles ?? datos.deuda,
+      newDeudaDolares: datos.deudaInicioCiclo?.dolares ?? 0,
       newFechaInicio: datos.fechaInicio,
       newProximoSueldo: datos.fechaProximoSueldo,
       newNumSem: datos.numSem
