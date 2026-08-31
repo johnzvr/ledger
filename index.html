@@ -5004,7 +5004,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '161';
+  const LEDGER_BUILD = '162';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5067,6 +5067,9 @@
     { id: 'interbank-p20-2027-01', inicio: '2026-12-24', cierre: '2027-01-26', pago: '2027-02-22' }
   ]);
   
+  // Constante base de fechas: debe existir antes de cualquier migración/render de estado.
+  const MS_DIA = 1000 * 60 * 60 * 24;
+
   let state = loadState();
   // BUILD 94: los estados anteriores no tenían una foto separada del inicio del ciclo.
   // Se reconstruye una sola vez con el saldo actual + los gastos S/DS del log vigente.
@@ -6073,8 +6076,6 @@
       }
     }
   }
-
-  const MS_DIA = 1000 * 60 * 60 * 24;
 
   function inicioDelDia(fecha) {
     const d = new Date(fecha);
