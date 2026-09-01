@@ -5004,7 +5004,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '162';
+  const LEDGER_BUILD = '163';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5680,7 +5680,9 @@
 
   function opcionesCategoriaMovimiento(selected = '') {
     const actual = normalizarCategoriaMovimiento(selected);
-    const categorias = MOVEMENT_CATEGORIES.slice();
+    const categorias = MOVEMENT_CATEGORIES
+      .slice()
+      .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
     if (actual && !categorias.includes(actual)) categorias.unshift(actual);
     return [
       `<option value="" ${!actual ? 'selected' : ''}>Sin categoría</option>`,
@@ -10583,6 +10585,65 @@
     render();
   }
   
+  let pendingQuickMovement = null;
+
+  function openQuickMovementCategory(datos) {
+    pendingQuickMovement = datos ? { ...datos } : null;
+    if (!pendingQuickMovement) return;
+
+    openModal(`
+      <h2>Categoría</h2>
+      <p class="modal-sub">${escapeHtml(pendingQuickMovement.detalle || 'Sin detalle')}</p>
+      <div class="modal-field">
+        <label>Categoría</label>
+        <select id="quickRegisterMovementCategory">${opcionesCategoriaMovimiento('')}</select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="cancelQuickMovementCategory()">Cancelar</button>
+        <button class="btn-primary" onclick="saveQuickMovementCategory()">Guardar</button>
+      </div>
+    `);
+    requestAnimationFrame(() => document.getElementById('quickRegisterMovementCategory')?.focus());
+  }
+
+  function cancelQuickMovementCategory() {
+    pendingQuickMovement = null;
+    closeModal();
+    requestAnimationFrame(() => document.getElementById('inputAmount')?.focus());
+  }
+
+  function saveQuickMovementCategory() {
+    if (!pendingQuickMovement) {
+      closeModal();
+      return;
+    }
+
+    const categoria = normalizarCategoriaMovimiento(
+      document.getElementById('quickRegisterMovementCategory')?.value
+    );
+    const datos = { ...pendingQuickMovement, categoria };
+    pendingQuickMovement = null;
+    closeModal();
+
+    const { monto, tipo, etiqueta, detalle } = datos;
+
+    if (afectaPresupuestoSalarial(tipo) && etiqueta !== 'sem') {
+      const currentIdx = calcularSemanaActualIdx();
+      const semActual = currentIdx >= 0 && currentIdx < state.semanas.length
+        ? state.semanas[currentIdx]
+        : null;
+      if (semActual && monto > (Number(semActual.presupuesto) || 0)) {
+        confirmarRollover(monto, tipo, etiqueta, detalle, categoria);
+        return;
+      }
+    }
+
+    const ok = aplicarMovimiento(monto, tipo, etiqueta, detalle, {
+      metadata: { categoria }
+    });
+    if (ok) resetInputs();
+  }
+
   function processStructuredCommand() {
     const amountEl = document.getElementById('inputAmount');
     const detalleEl = document.getElementById('inputDetalle');
@@ -10611,18 +10672,13 @@
       return;
     }
     
-    // Si es un gasto normal (no sem) y excede el bloque actual → confirmación previa
-    if (afectaPresupuestoSalarial(selectedType) && selectedMod !== 'sem') {
-      const currentIdx = calcularSemanaActualIdx();
-      const semActual = currentIdx >= 0 && currentIdx < state.semanas.length ? state.semanas[currentIdx] : null;
-      if (semActual && monto > semActual.presupuesto) {
-        confirmarRollover(monto, selectedType, selectedMod, detalle);
-        return;
-      }
-    }
-    
-    aplicarMovimiento(monto, selectedType, selectedMod, detalle);
-    resetInputs();
+    // La operación financiera ocurre recién después de elegir la categoría.
+    openQuickMovementCategory({
+      monto,
+      tipo: selectedType,
+      etiqueta: selectedMod,
+      detalle
+    });
   }
   
   function resetInputs() {
@@ -10638,7 +10694,7 @@
     document.getElementById('inputAmount').focus();
   }
   
-  function confirmarRollover(monto, tipo, etiqueta, detalle) {
+  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '') {
     const ahora = new Date();
     const semActualIdx = calcularSemanaIdxParaFecha(ahora);
     const semActual = semActualIdx >= 0 && semActualIdx < state.semanas.length ? state.semanas[semActualIdx] : null;
@@ -10699,15 +10755,21 @@
       
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick="ejecutarConRollover(${monto}, '${tipo}', ${etiqueta ? "'"+etiqueta+"'" : 'null'}, '${detalle.replace(/'/g, "\\'")}')">Confirmar gasto</button>
+        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)})'>Confirmar gasto</button>
       </div>
     `);
   }
   
-  function ejecutarConRollover(monto, tipo, etiqueta, detalle) {
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '') {
     closeModal();
-    aplicarMovimiento(monto, tipo, etiqueta === 'null' ? null : etiqueta, detalle);
-    resetInputs();
+    const ok = aplicarMovimiento(
+      monto,
+      tipo,
+      etiqueta === 'null' ? null : etiqueta,
+      detalle,
+      { metadata: { categoria: normalizarCategoriaMovimiento(categoria) } }
+    );
+    if (ok) resetInputs();
   }
   
   function aplicarMovimiento(monto, tipo, etiqueta, detalle, opciones = {}) {
@@ -10730,11 +10792,11 @@
         cuotasTotal: Number(metadata.cuotasTotal) || 1,
         cuotaMoneda: metadata.cuotaMoneda || 'PEN',
         cuotaOriginal: Number(metadata.cuotaOriginal) || 0,
-        cuotaAutomatica: !!metadata.cuotaAutomatica,
-        ...(normalizarCategoriaMovimiento(metadata.categoria)
-          ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) }
-          : {})
+        cuotaAutomatica: !!metadata.cuotaAutomatica
       } : {}),
+      ...(normalizarCategoriaMovimiento(metadata.categoria)
+        ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) }
+        : {}),
       ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       ...(opciones.soloBloqueActual ? { soloBloqueActualSimulador: true } : {}),
       snapshot: {
