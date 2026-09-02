@@ -5004,7 +5004,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '163';
+  const LEDGER_BUILD = '165';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -10288,19 +10288,29 @@
     );
   }
 
+  function nombreArchivoCicloMesAnio(fechaReferencia) {
+    const fecha = fechaReferencia ? new Date(fechaReferencia) : new Date();
+    const segura = Number.isNaN(fecha.getTime()) ? new Date() : fecha;
+    const mes = segura.toLocaleDateString('es-PE', { month: 'long' })
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const anio = segura.getFullYear();
+    return `${mes}-${anio}.xlsx`;
+  }
+
   async function exportarExcel() {
     if (!state.log.length) {
       toast('Nada que exportar', true);
       return;
     }
-    const fecha = new Date().toISOString().slice(0, 10);
     const periodo = `${formatCycleDate(state.fechaInicioCiclo)} — ${formatCycleDate(new Date())}`;
     toast('Preparando Excel…');
     try {
       await construirReporteExcel({
         movimientos: state.log,
         periodo,
-        nombreArchivo: `ledger-${fecha}.xlsx`,
+        nombreArchivo: nombreArchivoCicloMesAnio(state.fechaInicioCiclo),
         saldoInicialCiclo: state.saldoInicialCiclo
       });
       toast('Excel descargado');
@@ -10323,7 +10333,7 @@
       await construirReporteExcel({
         movimientos,
         periodo: formatCycleRange(ciclo),
-        nombreArchivo: `ledger-ciclo-${String(ciclo.fechaFin || '').slice(0, 10) || index + 1}.xlsx`,
+        nombreArchivo: nombreArchivoCicloMesAnio(ciclo.fechaInicio || ciclo.fechaFin),
         saldoInicialCiclo: Number.isFinite(Number(ciclo.saldoInicialCiclo))
           ? Number(ciclo.saldoInicialCiclo)
           : (Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null)
