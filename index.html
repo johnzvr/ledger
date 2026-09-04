@@ -5004,7 +5004,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '165';
+  const LEDGER_BUILD = '166';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5025,7 +5025,7 @@
     fechaProximoSueldo: null, // límite proyectado del ciclo automático
     bloquesAdaptables: true, // ciclos nuevos: 4 o 5 bloques según los días reales
     modoManualSemanas: false, // true = el usuario define los rangos manualmente
-    ultimoBloqueProcesado: null, // bloque cuya entrada ya disparó la redistribución automática
+    ultimoBloqueProcesado: null, // último bloque cuya transición automática ya fue procesada
     cicloAnterior: null,
     historialCiclos: [], // máximo 2 ciclos cerrados, con movimientos compactos
     darkMode: false,
@@ -6304,6 +6304,62 @@
     return false;
   }
   
+  function actualizarRitmoBloqueTrasArrastre(index, rangos = calcularRangoSemanas(), fechaReferencia = new Date()) {
+    if (!Array.isArray(state.semanas) || index < 0 || index >= state.semanas.length) return;
+    const sem = state.semanas[index];
+    const rango = rangos[index] || null;
+    const presupuesto = Number(sem?.presupuesto) || 0;
+    const dias = Math.max(
+      1,
+      rango ? diasRestantesParaBloque(rango, fechaReferencia) : 0,
+      Number(sem?.diasRitmo) || 0
+    );
+
+    // Al recibir saldo por cambio de bloque, solo cambia la base del bloque receptor.
+    sem.presupuestoAsignado = Math.max(0, presupuesto);
+    sem.diasRitmo = dias;
+    sem.ritmoDiarioFijo = redondearDinero(Math.max(0, presupuesto) / dias);
+  }
+
+  function trasladarSaldoEntreBloques(desdeIdx, hastaIdx, fechaReferencia = new Date()) {
+    if (!Array.isArray(state.semanas) || state.semanas.length === 0) {
+      return { cambio: false, saldoNeto: 0, traslados: [] };
+    }
+
+    const inicio = Math.max(0, Number(desdeIdx) || 0);
+    const fin = Math.min(
+      Math.max(inicio, Number(hastaIdx) || 0),
+      state.semanas.length - 1
+    );
+    if (fin <= inicio) return { cambio: false, saldoNeto: 0, traslados: [] };
+
+    const rangos = calcularRangoSemanas();
+    const traslados = [];
+    let saldoNeto = 0;
+    let cambio = false;
+
+    // Cada transición es estrictamente adyacente: bloque i → bloque i+1.
+    // Si la app estuvo cerrada varios bloques, el saldo avanza uno por uno.
+    for (let i = inicio; i < fin; i++) {
+      const origen = state.semanas[i];
+      const destino = state.semanas[i + 1];
+      if (!origen || !destino) continue;
+
+      const saldo = redondearDinero(Number(origen.presupuesto) || 0);
+      origen.presupuesto = 0;
+
+      if (Math.abs(saldo) > 0.005) {
+        destino.presupuesto = redondearDinero((Number(destino.presupuesto) || 0) + saldo);
+        saldoNeto = redondearDinero(saldoNeto + saldo);
+        traslados.push({ desde: i, hacia: i + 1, saldo });
+        cambio = true;
+      }
+    }
+
+    if (cambio) actualizarRitmoBloqueTrasArrastre(fin, rangos, fechaReferencia);
+    return { cambio, saldoNeto, traslados };
+  }
+
   function detectarCambioSemana() {
     const currentIdx = calcularSemanaActualIdx();
     const marcadorGuardado = state.ultimoBloqueProcesado;
@@ -6320,7 +6376,7 @@
     if (dentroDelCiclo) {
       if (!tieneGuardado) {
         // Migración o descarga sin marcador: si ya no estamos en el primer bloque,
-        // rehacer el reparto desde hoy para recuperar cualquier transición perdida.
+        // recuperar las transiciones pendientes arrastrando cada saldo al bloque siguiente.
         debeProcesar = currentIdx > 0;
         esRecuperacion = debeProcesar;
       } else if (currentIdx > ultimoGuardado) {
@@ -6330,14 +6386,17 @@
 
     let huboCambioNumerico = false;
     if (debeProcesar) {
-      const antes = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-      const asignaciones = autoRecalcRestantes();
-      const despues = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-      huboCambioNumerico = presupuestosCambiaron(antes, despues, currentIdx);
-      const resumen = presupuestosDeAsignaciones(asignaciones);
+      const desdeIdx = tieneGuardado ? Math.min(ultimoGuardado, currentIdx) : 0;
+      const resultado = trasladarSaldoEntreBloques(desdeIdx, currentIdx);
+      huboCambioNumerico = resultado.cambio;
+
       setTimeout(() => {
-        if (resumen) {
-          toast(`${esRecuperacion ? 'Presupuesto recuperado' : 'Nuevo bloque'} · ${resumen}`);
+        if (resultado.saldoNeto > 0.005) {
+          toast(`${esRecuperacion ? 'Presupuesto recuperado' : 'Nuevo bloque'} · + S/ ${fmt(resultado.saldoNeto)} del bloque anterior`);
+        } else if (resultado.saldoNeto < -0.005) {
+          toast(`${esRecuperacion ? 'Presupuesto recuperado' : 'Nuevo bloque'} · déficit S/ ${fmt(Math.abs(resultado.saldoNeto))} arrastrado`);
+        } else if (!esRecuperacion) {
+          toast('Nuevo bloque · sin saldo por arrastrar');
         }
       }, 500);
     }
@@ -6429,24 +6488,38 @@
     const currentIdx = calcularSemanaIdxParaFecha(fechaReferencia, rangos);
     if (currentIdx < 0 || currentIdx >= state.semanas.length) return false;
 
-    const gastable = redondearDinero(Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0)));
-    const bloquesActivos = state.semanas.slice(currentIdx);
-    const hayDeficitActivo = bloquesActivos.some(sem => (Number(sem?.presupuesto) || 0) < -0.005);
-    const sumaActivos = redondearDinero(bloquesActivos.reduce(
-      (total, sem) => total + (hayDeficitActivo
-        ? (Number(sem?.presupuesto) || 0)
-        : Math.max(0, Number(sem?.presupuesto) || 0)),
-      0
-    ));
+    let cambio = false;
+
+    // Si quedó algún saldo en bloques ya cerrados (por cierre inesperado, migración
+    // o sync), se arrastra de forma secuencial hasta el bloque actual.
     const haySaldoEnCerrados = state.semanas
       .slice(0, currentIdx)
       .some(sem => Math.abs(Number(sem?.presupuesto) || 0) > 0.005);
-    const descuadre = Math.abs(sumaActivos - gastable) > 0.005;
 
-    if (!haySaldoEnCerrados && !descuadre) return false;
+    if (haySaldoEnCerrados) {
+      const traslado = trasladarSaldoEntreBloques(0, currentIdx, fechaReferencia);
+      cambio = traslado.cambio || cambio;
+    }
 
-    distribuirEntreBloques(state.semanas, gastable, currentIdx, rangos, fechaReferencia);
-    return true;
+    const gastable = redondearDinero(
+      Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0))
+    );
+    const bloquesActivos = state.semanas.slice(currentIdx);
+    const sumaActivos = redondearDinero(
+      bloquesActivos.reduce((total, sem) => total + (Number(sem?.presupuesto) || 0), 0)
+    );
+    const diferencia = redondearDinero(gastable - sumaActivos);
+
+    // Última defensa contable: cualquier diferencia se corrige solo en el bloque
+    // actual. Nunca modifica automáticamente los bloques futuros.
+    if (Math.abs(diferencia) > 0.005) {
+      const actual = state.semanas[currentIdx];
+      actual.presupuesto = redondearDinero((Number(actual.presupuesto) || 0) + diferencia);
+      actualizarRitmoBloqueTrasArrastre(currentIdx, rangos, fechaReferencia);
+      cambio = true;
+    }
+
+    return cambio;
   }
   
   function formatRangoCorto(r) {
@@ -6504,14 +6577,14 @@
       toast(`${cuotasActivadas} cuota${cuotasActivadas === 1 ? '' : 's'} activada${cuotasActivadas === 1 ? '' : 's'} automáticamente`);
     }
 
-    // Última defensa: el dinero gastable debe existir solo en bloques abiertos.
+    // Última defensa: saldos cerrados pasan al actual; nunca se redistribuyen automáticamente.
     const integridadCorregida = asegurarIntegridadBloques();
     if (integridadCorregida) {
       huboCambioAutomatico = true;
       if (!cambioSemana) {
         const currentIdx = calcularSemanaActualIdx();
-        const activos = state.semanas.slice(Math.max(0, currentIdx)).map(sem => `S/ ${fmt(sem.presupuesto)}`).join(' · ');
-        setTimeout(() => toast(`Presupuesto corregido · ${activos}`), 500);
+        const actual = state.semanas[Math.max(0, currentIdx)];
+        setTimeout(() => toast(`Presupuesto corregido · bloque actual S/ ${fmt(actual?.presupuesto || 0)}`), 500);
       }
     }
     
