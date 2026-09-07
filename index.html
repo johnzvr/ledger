@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="theme-color" content="#FAF8F3">
+<meta name="theme-color" content="#F6F7F8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
 <style>
@@ -233,7 +233,7 @@
   html, body {
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: hidden;
@@ -242,8 +242,8 @@
   }
   body { touch-action: pan-y pinch-zoom; }
   
-  .num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  .serif-italic { font-family: 'Instrument Serif', serif; font-style: italic; }
+  .num { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .serif-italic { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-style: normal; }
   
   .app {
     max-width: 460px;
@@ -404,7 +404,7 @@
   }
   .note-date {
     color: var(--ink-dim);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 650;
   }
@@ -472,8 +472,8 @@
     border: 1.5px dashed var(--line-hi);
     border-radius: 18px;
     color: var(--ink-mute);
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-style: normal;
     font-size: 16px;
   }
   
@@ -588,7 +588,7 @@
     color: rgba(250,248,243,0.85);
     padding: 10px 14px;
     border-radius: 12px;
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
@@ -626,7 +626,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
     color: rgba(250,248,243,0.7);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
@@ -657,7 +657,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
     color: rgba(250,248,243,0.7);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -763,7 +763,7 @@
     min-width: 0;
   }
   .sync-action-title {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 15px;
     letter-spacing: -0.02em;
@@ -856,7 +856,7 @@
     font-weight: 500;
   }
   .hero-amount {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 52px;
     letter-spacing: -0.05em;
@@ -946,7 +946,7 @@
   .hero-meta-chip strong {
     color: var(--ink);
     font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
     font-size: 12px;
   }
@@ -963,7 +963,7 @@
     font-weight: 500;
   }
   .hero-meta-total span {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
   }
   .hero-card.meta-active .hero-amount {
@@ -1031,7 +1031,7 @@
     min-width: 0;
   }
   .bento-value {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 760;
     font-size: clamp(29px, 5vw, 34px);
     letter-spacing: -0.045em;
@@ -1197,7 +1197,7 @@
     margin-bottom: 3px;
   }
   .cycle-history-stat strong {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     color: var(--ink);
   }
@@ -1205,7 +1205,7 @@
     margin-top: 9px;
     font-size: 10px;
     color: var(--ink-mute);
-    font-style: italic;
+    font-style: normal;
   }
   .comparison-row {
     display: flex;
@@ -1224,7 +1224,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
   }
   .comp-prev {
@@ -1434,7 +1434,7 @@
   }
   .week-chip.current .wk-label { color: rgba(250,248,243,0.65); }
   .week-chip .wk-amount {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 15px;
     letter-spacing: -0.02em;
@@ -1443,7 +1443,7 @@
   }
   .week-chip.current .wk-amount { color: var(--bg); }
   .wk-closed-status {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: -0.01em;
@@ -1481,7 +1481,7 @@
     font-size: 9px;
     color: var(--ink-mute);
     margin-top: 4px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 500;
     letter-spacing: 0.02em;
     line-height: 1;
@@ -1810,7 +1810,7 @@
     margin-bottom: 4px;
   }
   .tc-date-value {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 17px;
     color: var(--ink);
@@ -1895,7 +1895,7 @@
     border-radius: 8px;
     background: transparent;
     color: var(--ink-dim);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 700;
     cursor: pointer;
@@ -1917,7 +1917,7 @@
     border-radius: 11px;
     background: rgba(207,222,232,0.28);
     color: var(--ink-dim);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     line-height: 1.35;
   }
@@ -1955,7 +1955,7 @@
   }
   .purchase-installment-head strong {
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
   }
   .purchase-installment-stepper {
@@ -1992,7 +1992,7 @@
     border-radius: 11px;
     background: var(--ink);
     color: var(--bg);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 750;
     text-align: center;
@@ -2106,7 +2106,7 @@
     border-radius: 11px;
     background: var(--line);
     color: var(--ink-dim);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 600;
     line-height: 1.4;
@@ -2137,7 +2137,7 @@
   }
   .purchase-finance-payment {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 22px;
     font-weight: 750;
     letter-spacing: -0.03em;
@@ -2157,7 +2157,7 @@
     align-items: center;
     min-height: 36px;
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 22px;
     font-weight: 750;
     letter-spacing: -0.03em;
@@ -2203,7 +2203,7 @@
   .purchase-finance-metric strong {
     display: block;
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     line-height: 1.25;
   }
@@ -2251,7 +2251,7 @@
     margin-top: 0;
     padding-right: 0;
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 20px;
     font-weight: 750;
     letter-spacing: -0.025em;
@@ -2289,7 +2289,7 @@
   }
   .purchase-budget-title {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 750;
     letter-spacing: -0.02em;
@@ -2418,7 +2418,7 @@
   }
   .purchase-impact-heading {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 750;
     letter-spacing: -0.02em;
@@ -2538,7 +2538,7 @@
   .purchase-plan-amount {
     display: block;
     margin-top: 3px;
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 750;
     letter-spacing: -0.015em;
@@ -2717,7 +2717,7 @@
   }
   .purchase-section-label {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 22px;
     font-weight: 700;
@@ -2728,7 +2728,7 @@
   }
   .purchase-result-heading {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 20px;
     font-weight: 700;
@@ -2784,7 +2784,7 @@
   }
   .purchase-option-title {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 18px;
     font-weight: 700;
@@ -2931,7 +2931,7 @@
     justify-content: flex-start;
   }
   .section-head h2 {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 26px;
     font-weight: 700;
     letter-spacing: -0.04em;
@@ -3005,7 +3005,7 @@
     margin-bottom: 4px;
   }
   .all-sum-value {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 18px;
     color: var(--ink);
@@ -3030,8 +3030,8 @@
     text-align: center;
     padding: 32px;
     color: var(--ink-mute);
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-style: normal;
     font-size: 16px;
   }
   
@@ -3275,7 +3275,7 @@
   .installment-plan-progress {
     flex: 0 0 auto;
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 700;
   }
@@ -3433,7 +3433,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
@@ -3510,7 +3510,7 @@
     margin-left: 12px;
   }
   .log-amount {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -3534,8 +3534,8 @@
     text-align: center;
     padding: 40px 20px;
     color: var(--ink-mute);
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-style: normal;
     font-size: 18px;
   }
   
@@ -3572,7 +3572,7 @@
     border-radius: 14px;
     padding: 12px 10px;
     color: var(--input-ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 17px;
     font-weight: 700;
     text-align: center;
@@ -3602,7 +3602,7 @@
     border: none;
     border-radius: 10px;
     color: rgba(250,248,243,0.85);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -3626,7 +3626,7 @@
     border-radius: 10px;
     padding: 8px 12px;
     color: rgba(250,248,243,0.75);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -3648,7 +3648,7 @@
   }
   .conversion-preview .tc-loading {
     color: rgba(250,248,243,0.5);
-    font-style: italic;
+    font-style: normal;
   }
   .input-amount::-webkit-outer-spin-button,
   .input-amount::-webkit-inner-spin-button {
@@ -3683,7 +3683,7 @@
     color: rgba(250,248,243,0.7);
     padding: 0;
     border-radius: 12px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -3830,7 +3830,7 @@
   }
   .sync-notice-title {
     margin: 0;
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: clamp(22px, 6vw, 28px);
     line-height: 1.02;
     letter-spacing: -0.04em;
@@ -3847,7 +3847,7 @@
     border-radius: 50%;
     background: transparent;
     color: var(--ink-mute);
-    font: 500 25px/1 'Bricolage Grotesque', sans-serif;
+    font: 500 25px/1 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     cursor: pointer;
   }
   .sync-notice-close:hover,
@@ -3898,7 +3898,7 @@
     border-radius: 16px;
     appearance: none;
     -webkit-appearance: none;
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     line-height: 1;
@@ -3944,7 +3944,7 @@
   .nested-modal h3 {
     margin: 0 0 8px;
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 23px;
     font-weight: 750;
     letter-spacing: -0.035em;
@@ -3955,7 +3955,7 @@
     box-shadow: 0 24px 70px rgba(0,0,0,0.55);
   }
   .modal h2 {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 28px;
     letter-spacing: -0.04em;
@@ -3963,13 +3963,13 @@
     line-height: 1;
   }
   .modal h2 .accent {
-    font-family: 'Instrument Serif', serif;
-    font-style: italic;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-style: normal;
     font-weight: 400;
     color: var(--ink-dim);
   }
   .modal h2.purchase-modal-title {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 28px;
     font-weight: 700;
@@ -4002,7 +4002,7 @@
     border-radius: 12px;
     padding: 11px 14px;
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 14px;
     outline: none;
     font-weight: 500;
@@ -4016,7 +4016,7 @@
     border-radius: 12px;
     padding: 10px 36px 10px 14px;
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 500;
     outline: none;
@@ -4110,7 +4110,7 @@
   }
   .installment-confirm-main {
     color: var(--ink);
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 17px;
     font-weight: 750;
     line-height: 1.15;
@@ -4173,7 +4173,7 @@
   .help-item-chip {
     padding: 4px 10px;
     border-radius: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -4247,7 +4247,7 @@
     gap: 12px;
   }
   .manual-ranges-title {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     color: var(--ink);
@@ -4273,7 +4273,7 @@
     padding: 12px;
   }
   .rango-block-label {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 13px;
     color: var(--ink);
@@ -4374,7 +4374,7 @@
     color: var(--ink);
     padding: 2px 6px;
     border-radius: 5px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -4384,7 +4384,7 @@
     color: var(--danger);
   }
   .rollover-amount {
-    font-family: 'Bricolage Grotesque', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: -0.02em;
@@ -4618,7 +4618,7 @@
   }
   #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall strong {
     color: var(--ink);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     line-height: 1.2;
     font-weight: 680;
@@ -4854,8 +4854,360 @@
   }
 
 </style>
+<style id="ledger-174-design">
+/* Ledger 174 — the cycle has one scale; every balance has one semantic color. */
+:root {
+  --bg: #FAF7F1; --ink: #292720; --ink-dim: #716D64; --ink-mute: #817B72;
+  --line: #E8E1D7; --line-hi: #D4CABD; --surface: #FFFCF7;
+  --available: #35715A; --available-soft: #EAF0E7;
+  --spent: #B75A30; --spent-soft: #F8EADF;
+  --fund: #8055A4; --fund-soft: #F0EAF6;
+  --debt: #426AAB; --debt-soft: #E9EEF8;
+  --danger: #BA3E32; --gain: #35715A; --arc-track: #E8E3DA;
+}
+body.dark {
+  --bg: #171915; --ink: #F3EEE5; --ink-dim: #BCB6AB; --ink-mute: #ABA69C;
+  --line: #34382F; --line-hi: #4B5144; --surface: #20241D;
+  --available: #A4CEAF; --available-soft: #25392D;
+  --spent: #F0AF7B; --spent-soft: #382D22;
+  --fund: #CCA8EB; --fund-soft: #30283C;
+  --debt: #A7C2F1; --debt-soft: #263244;
+  --danger: #FF988C; --gain: #A4CEAF; --arc-track: #363B31;
+}
+.ledger-arc-ui { background: var(--bg); color: var(--ink); }
+.ledger-arc-ui .app { max-width: 520px; padding: 22px 22px calc(212px + env(safe-area-inset-bottom)); }
+.ledger-arc-ui .header { align-items: center; margin-bottom: 16px; }
+.ledger-wordmark { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 34px; letter-spacing: -.045em; line-height: 1; }
+.ledger-wordmark > span { color: var(--spent); }
+.ledger-arc-ui .greeting { display: flex; align-items: center; gap: 13px; }
+.ledger-arc-ui .sync-badge { font-size: 12px; margin-top: 0; padding: 6px 8px; }
+.ledger-arc-ui .sync-badge.off { color: var(--ink-dim); background: transparent; }
+.ledger-arc-ui .date-badge { font-size: 13px; background: transparent; color: var(--ink-dim); padding: 0; }
+.ledger-arc-ui .view-tabs { background: var(--bg); border-radius: 0; box-shadow: none; border-bottom: 1px solid var(--line); margin-bottom: 18px; padding: 0; gap: 0; top: 0; }
+.ledger-arc-ui .view-tab { border-radius: 0; font-size: 13px; color: var(--ink-dim); position: relative; }
+.ledger-arc-ui .view-tab.active { background: transparent; color: var(--ink); box-shadow: none; }
+.ledger-arc-ui .view-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 18%; right: 18%; height: 2px; background: var(--ink); }
+.ledger-arc-ui .hero-card { background: transparent; padding: 0 0 20px; border: 0; overflow: visible; border-radius: 0; margin-bottom: 10px; }
+.arc-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.arc-heading { font: 400 44px/1.05 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: -.025em; margin: 0 0 6px; }
+.arc-period { font-size: 13px; color: var(--ink-dim); }
+.ledger-arc-ui .hero-actions { position: static; gap: 6px; }
+.ledger-arc-ui .hero-actions button { width: 40px; height: 40px; border: 1px solid var(--line); background: transparent; color: var(--ink-dim); }
+.arc-stage { position: relative; width: 100%; max-width: 420px; margin: 20px auto 0; }
+.budget-arc { display: block; width: 100%; height: auto; overflow: visible; }
+.arc-track, .arc-consumed { fill: none; stroke-width: 9; stroke-linecap: round; }
+.arc-track { stroke: var(--arc-track); }
+.arc-consumed { stroke: url(#budgetArcGradient); transition: stroke-dasharray .5s ease, opacity .2s; }
+.arc-center { position: absolute; left: 9%; right: 9%; top: 40%; text-align: center; }
+.ledger-arc-ui .hero-label { margin: 0 0 9px; font-size: 14px; font-weight: 500; letter-spacing: 0; color: var(--available); }
+.ledger-arc-ui .hero-amount, .ledger-arc-ui .hero-card.meta-active .hero-amount { font-size: clamp(32px, 9vw, 51px); font-weight: 500; letter-spacing: -.065em; line-height: 1.1; color: var(--available); white-space: nowrap; margin: 0; }
+.ledger-arc-ui .hero-amount .currency { color: inherit; font-size: 20px; vertical-align: 9px; margin-right: 5px; }
+.ledger-arc-ui .hero-card.arc-exhausted .hero-amount, .ledger-arc-ui .hero-card.meta-risk .hero-amount { color: var(--danger); }
+.arc-caption { font-size: 12px; color: var(--ink-dim); margin-top: 8px; }
+.arc-ledger { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 10px; align-items: center; padding: 0 5px; }
+.arc-stat { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.arc-stat.base { text-align: right; }
+.arc-stat-label { font-size: 13px; color: var(--ink-dim); display: flex; align-items: center; gap: 5px; }
+.arc-stat.base .arc-stat-label { justify-content: flex-end; }
+.arc-stat strong { font-size: 17px; font-weight: 500; font-variant-numeric: tabular-nums; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.arc-stat.spent strong, .arc-stat.spent .arc-stat-label { color: var(--spent); }
+.arc-percentage { align-self: end; margin-bottom: 1px; padding: 5px 9px; border-radius: 20px; background: var(--spent-soft); color: var(--spent); font-size: 12px; font-weight: 650; }
+.arc-help { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-hi); color: var(--ink-dim); border-radius: 50%; background: transparent; font: 12px inherit; cursor: pointer; }
+.arc-status { font-size: 13px; color: var(--ink-dim); background: var(--surface); padding: 10px; border-radius: 10px; margin-top: 12px; text-align: center; }
+.arc-exhausted .arc-status { color: var(--danger); }
+.ledger-arc-ui .hero-meta-info { flex-wrap: wrap; justify-content: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
+.ledger-arc-ui .hero-meta-dot { background: var(--fund); }
+.ledger-arc-ui .hero-meta-chip strong { color: var(--fund); }
+.ledger-arc-ui .hero-meta-total { color: var(--ink-dim); font-size: 12px; }
+.ledger-arc-ui .hero-progress[hidden] { display: none; }
+.arc-section-heading { font: 400 26px/1.2 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px 0 12px; color: var(--ink); }
+.arc-section-heading > span { display: block; font: 400 13px/1.5 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin-top: 4px; color: var(--ink-dim); }
+.ledger-arc-ui .weeks-strip { background: transparent; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; margin-bottom: 8px; }
+.ledger-arc-ui .weeks-header { gap: 8px; margin-bottom: 12px; }
+.ledger-arc-ui .weeks-header-icon { display: none; }
+.ledger-arc-ui .weeks-header-title { font: 400 26px/1.2 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.ledger-arc-ui .weeks-header-title .aside { display: none; }
+.ledger-arc-ui .section-toggle-btn { color: var(--ink-dim); font-size: 12px; border: 1px solid var(--line); background: transparent; min-height: 36px; }
+.ledger-arc-ui .week-chip { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+.ledger-arc-ui .week-chip.current { color: var(--available); background: var(--available-soft); border-color: transparent; }
+.ledger-arc-ui .week-chip.current .wk-amount, .ledger-arc-ui .week-chip.current .wk-label, .ledger-arc-ui .week-chip.current .wk-daily { color: var(--available); }
+.ledger-arc-ui .week-chip.current .wk-range { color: var(--ink-dim); }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current { padding: 17px; column-gap: 12px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-label { display: block; white-space: normal; font-size: 13px; text-transform: none; letter-spacing: 0; }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-range-inline { display: block; color: var(--ink-dim); font-size: 12px; margin-top: 4px; white-space: normal; }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-amount { font-size: clamp(23px,6.2vw,31px); line-height: 1.1; font-weight: 550; }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily { min-width: 0; width: 100%; padding-left: 12px; border-left-color: var(--line-hi); font-size: 16px; }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily::before { color: var(--ink-dim); font-size: 12px; text-transform: none; letter-spacing: 0; line-height: 1.3; }
+.ledger-arc-ui .week-chip.current.zero, .ledger-arc-ui .week-chip.current.overspent { background: var(--spent-soft); }
+.ledger-arc-ui .week-chip.current.zero .wk-amount, .ledger-arc-ui .week-chip.current.overspent .wk-amount { color: var(--danger); }
+.ledger-arc-ui .week-chip.current.overspent .wk-label, .ledger-arc-ui .week-chip.current.overspent .wk-overrun { color: var(--danger); }
+.ledger-arc-ui .cycle-info { font-size: 12px; border-top: 0; padding-top: 2px; }
+.ledger-arc-ui .cycle-info .cycle-progress-fill { background: var(--ink-dim); }
+.ledger-arc-ui .bento { gap: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 0 16px; }
+.ledger-arc-ui .bento-card { background: transparent; border: 0; border-radius: 0; padding: 17px 0; gap: 8px; min-width: 0; }
+.ledger-arc-ui .bento-card:nth-child(odd) { padding-right: 12px; }
+.ledger-arc-ui .bento-card:nth-child(even) { padding-left: 16px; }
+.ledger-arc-ui .bento-card:nth-child(n+3) { border-top: 1px solid var(--line); }
+.ledger-arc-ui .metric-debt { --metric-color: var(--debt); }
+.ledger-arc-ui .metric-fund { --metric-color: var(--fund); }
+.ledger-arc-ui .metric-spent, .ledger-arc-ui .metric-cash { --metric-color: var(--spent); }
+.ledger-arc-ui .bento-head { min-height: 20px; gap: 6px; }
+.ledger-arc-ui .bento-icon { width: 19px; height: 19px; flex-basis: 19px; border-radius: 0; background: transparent; color: var(--metric-color); }
+.ledger-arc-ui .bento-icon .ui-icon { width: 17px; height: 17px; }
+.ledger-arc-ui .bento-label { color: var(--metric-color); font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; line-height: 1.4; }
+.ledger-arc-ui .bento-value { font-size: clamp(25px,6.5vw,33px); font-weight: 500; line-height: 1.15; color: var(--metric-color); }
+.ledger-arc-ui .bento-value .cur { color: inherit; font-size: 14px; vertical-align: 3px; margin-right: 3px; }
+.ledger-arc-ui .fund-card .bento-head { padding-right: 28px; }
+.ledger-arc-ui .fund-privacy { width: 28px; height: 28px; top: 12px; right: -4px; color: var(--fund); background: transparent; border: 0; }
+.ledger-arc-ui .tc-card { border-radius: 20px; }
+.ledger-arc-ui .tc-calendar-source { font-size: 12px; line-height: 1.4; }
+.ledger-arc-ui .tc-deadline-label, .ledger-arc-ui .tc-deadline-sub, .ledger-arc-ui .tc-date-label { font-size: 14px; }
+.ledger-arc-ui .tc-bank-name { font-size: 14px; }
+.ledger-arc-ui .tc-card .section-toggle-btn { border-color: rgba(255,255,255,.45); color: #FFF; }
+.ledger-arc-ui .tc-simulate-btn { min-height: 44px; font-size: 14px; }
+.arc-close-cycle { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; border: 0; background: transparent; color: var(--ink-dim); font: 13px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; margin-top: 6px; }
+.ledger-arc-ui .log-item { border-radius: 0; background: transparent; border-bottom: 1px solid var(--line); padding-top: 15px; padding-bottom: 15px; }
+
+/* BUILD181 · Swipe de movimientos
+   Las acciones viven detrás de cada fila. En el rediseño la fila quedó
+   transparente y las dejaba visibles permanentemente. */
+.ledger-arc-ui .log-swipe .log-item:not(.fund-movement):not(.fund-card-movement) {
+  background: var(--bg);
+}
+.ledger-arc-ui .log-swipe .swipe-action {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s ease;
+}
+.ledger-arc-ui .log-swipe.dragging.edit-armed .swipe-action.edit,
+.ledger-arc-ui .log-swipe.open-edit .swipe-action.edit,
+.ledger-arc-ui .log-swipe.dragging.undo-armed .swipe-action.undo,
+.ledger-arc-ui .log-swipe.open-undo .swipe-action.undo {
+  opacity: 1;
+}
+.ledger-arc-ui .log-swipe.open-edit .swipe-action.edit,
+.ledger-arc-ui .log-swipe.open-undo .swipe-action.undo {
+  pointer-events: auto;
+}
+.ledger-arc-ui .log-detail { font-size: 16px; font-weight: 500; }
+.ledger-arc-ui .log-meta { font-size: 12px; }
+.ledger-arc-ui .log-amount { font-size: 18px; }
+.ledger-arc-ui .log-dot.S { background: var(--spent-soft); color: var(--spent); }
+.ledger-arc-ui .log-dot.DS { background: var(--debt-soft); color: var(--debt); }
+.ledger-arc-ui .log-dot.F, .ledger-arc-ui .log-dot.FDS { background: var(--fund-soft); color: var(--fund); }
+.ledger-arc-ui .log-item:has(.log-dot.S) .log-amount { color: var(--spent); }
+.ledger-arc-ui .log-item:has(.log-dot.DS) .log-amount { color: var(--debt); }
+.ledger-arc-ui .log-item:has(.log-dot.F) .log-amount, .ledger-arc-ui .log-item:has(.log-dot.FDS) .log-amount { color: var(--fund); }
+.ledger-arc-ui .input-bar { padding: 24px 12px calc(12px + env(safe-area-inset-bottom)); }
+.ledger-arc-ui .input-inner { max-width: 484px; border-radius: 22px; background: #292C24; box-shadow: 0 8px 30px #201C1620; }
+.ledger-arc-ui .sync-row { display: none; } /* Full Drive actions remain in the header sync panel. */
+.ledger-arc-ui .chip { min-height: 36px; display: inline-flex; align-items: center; font-size: 13px; }
+.ledger-arc-ui .chip.type-S.active { background: #F4BE8D; color: #43260F; }
+.ledger-arc-ui .chip.type-DS.active { background: #B7CDF1; color: #233958; }
+.ledger-arc-ui .chip.type-F.active { background: #D6B8EE; color: #492F60; }
+.ledger-arc-ui .btn-send { color: #292720; background: #F5EFE2; }
+.arc-help-copy { font-size: 16px; line-height: 1.55; color: var(--ink-dim); margin: 20px 0; }
+.arc-help-copy p + p { margin-top: 14px; }
+.ledger-arc-ui button:focus-visible, .ledger-arc-ui [role=button]:focus-visible { outline: 2px solid var(--debt); outline-offset: 3px; }
+@media (max-width: 370px) {
+  .ledger-arc-ui .app { padding-left: 15px; padding-right: 15px; }
+  .arc-heading { font-size: 38px; }
+  .arc-center { top: 38%; left: 7%; right: 7%; }
+  .arc-caption { font-size: 12px; margin-top: 5px; }
+  .ledger-arc-ui .hero-amount { font-size: 32px; }
+  .ledger-arc-ui .hero-label { margin-bottom: 6px; }
+  .arc-stat strong { font-size: 15px; }
+  .arc-stat-label { font-size: 12px; }
+  .ledger-arc-ui .sync-badge { max-width: 96px; }
+  .ledger-arc-ui .bento { padding: 0 12px; }
+  .ledger-arc-ui .bento-card:nth-child(even) { padding-left: 10px; }
+  .ledger-arc-ui .bento-label { font-size: 12px; }
+  .ledger-arc-ui .view-tab { font-size: 12px; }
+}
+@media (min-width: 760px) {
+  .ledger-arc-ui .app { max-width: 660px; padding: 32px 40px 200px; }
+  .ledger-arc-ui .input-inner { max-width: 580px; }
+  .arc-stage { max-width: 400px; }
+  .arc-ledger { max-width: 440px; margin: auto; }
+  .ledger-arc-ui .hero-amount { font-size: 51px; }
+}
+@media (prefers-reduced-motion: reduce) { .arc-consumed { transition: none; } }
+
+/* BUILD182 · El rediseño neutral no usa contornos extra exclusivos de dark mode.
+   Sobrescribe los bordes heredados del layout anterior sin eliminar los
+   separadores internos que también existen en light mode. */
+body.dark.ledger-arc-ui .hero-card,
+body.dark.ledger-arc-ui .bento-card,
+body.dark.ledger-arc-ui .weeks-strip,
+body.dark.ledger-arc-ui .tc-card,
+body.dark.ledger-arc-ui .comparison-card {
+  border: 0;
+}
+
+</style>
+<style id="ledger-175-neutral">
+/* BUILD175: neutral surfaces, sans serif typography, color reserved for the arc and banks. */
+:root {
+  --bg: #F6F7F8; --surface: #FFFFFF; --ink: #242629; --ink-dim: #656A70; --ink-mute: #767B82;
+  --line: #E5E7EA; --line-hi: #D1D5DA; --arc-track: #E2E5E8;
+  --available: #303438; --available-soft: #EEF0F2;
+  --spent: #B34413; --spent-soft: #F0F1F3;
+  --fund: #555A61; --fund-soft: #EEF0F2;
+  --debt: #555A61; --debt-soft: #EEF0F2;
+  --cream: #F0F1F3; --cream-deep: #E5E7EA; --mint: #EEF0F2;
+  --sky: #EEF0F2; --lavender: #F0F1F3; --lavender-deep: #747B85;
+  --coral: #F0F1F3; --coral-deep: #C4513E; --sage: #F0F1F3;
+  --input-bg: #222529; --input-ink: #FFFFFF; --gain: #237548;
+}
+body.dark {
+  --bg: #141517; --surface: #1E2023; --ink: #EFF0F2; --ink-dim: #B1B5BC; --ink-mute: #9DA3AC;
+  --line: #30343A; --line-hi: #454B54; --arc-track: #353A42;
+  --available: #EFF0F2; --available-soft: #23262B;
+  --spent: #FF986D; --spent-soft: #272B30;
+  --fund: #C3C7CE; --fund-soft: #272B30; --debt: #C3C7CE; --debt-soft: #272B30;
+  --cream: #24272B; --cream-deep: #30343A; --mint: #24272B;
+  --sky: #24272B; --lavender: #24272B; --lavender-deep: #A5ADB9;
+  --coral: #24272B; --coral-deep: #F39483; --sage: #24272B;
+  --input-bg: #222529; --gain: #88CBA5;
+}
+.ledger-arc-ui { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.ledger-arc-ui button, .ledger-arc-ui input, .ledger-arc-ui select, .ledger-arc-ui textarea { font-family: inherit; }
+.ledger-wordmark { font-size: 28px; font-weight: 550; letter-spacing: -.055em; }
+.ledger-wordmark > span { color: var(--ink); }
+.arc-heading { font-size: 36px; font-weight: 400; line-height: 1.18; letter-spacing: -.055em; }
+.arc-section-heading, .ledger-arc-ui .weeks-header-title { font-size: 21px; font-weight: 450; line-height: 1.3; letter-spacing: -.04em; }
+.ledger-arc-ui .hero-amount { font-weight: 450; letter-spacing: -.06em; }
+.ledger-arc-ui .hero-label { color: var(--ink-dim); font-weight: 450; }
+.ledger-arc-ui .bento { border: 0; padding: 0 18px; border-radius: 20px; }
+.ledger-arc-ui .bento-card { --metric-color: var(--ink); }
+.ledger-arc-ui .bento-label, .ledger-arc-ui .bento-icon, .ledger-arc-ui .fund-privacy { color: var(--ink-dim); }
+.ledger-arc-ui .bento-value { color: var(--ink); font-weight: 450; letter-spacing: -.05em; }
+.ledger-arc-ui .bento-value .cur { color: var(--ink-dim); }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current { background: var(--surface); border-color: transparent; border-radius: 20px; }
+.ledger-arc-ui .week-chip.current .wk-label, .ledger-arc-ui .week-chip.current .wk-daily { color: var(--ink-dim); }
+.ledger-arc-ui .week-chip.current .wk-amount { color: var(--ink); }
+.ledger-arc-ui .week-chip.current.zero .wk-amount, .ledger-arc-ui .week-chip.current.overspent .wk-amount { color: var(--danger); }
+.ledger-arc-ui .hero-meta-info { background: var(--surface); border-color: transparent; }
+.ledger-arc-ui .hero-meta-chip strong, .ledger-arc-ui .hero-meta-dot { color: var(--ink-dim); }
+.ledger-arc-ui .arc-percentage { background: transparent; border: 1px solid var(--line); }
+.ledger-arc-ui .input-inner { background: #222529; box-shadow: 0 8px 30px #15181C20; }
+.ledger-arc-ui .btn-send { background: #FFFFFF; color: #242629; }
+.ledger-arc-ui .chip.type-S.active, .ledger-arc-ui .chip.type-DS.active, .ledger-arc-ui .chip.type-F.active { background: #FFFFFF; color: #242629; }
+.ledger-arc-ui .log-dot.S, .ledger-arc-ui .log-dot.DS, .ledger-arc-ui .log-dot.F, .ledger-arc-ui .log-dot.FDS { background: var(--available-soft); color: var(--ink-dim); }
+.ledger-arc-ui .log-item:has(.log-dot) .log-amount { color: var(--ink); }
+.ledger-arc-ui .serif-italic, .ledger-arc-ui .modal h2 .accent { font-style: normal; }
+@media (max-width: 370px) {
+  .arc-heading { font-size: 32px; }
+  .ledger-wordmark { font-size: 26px; }
+  .ledger-arc-ui .hero-amount { font-size: 30px; }
+  .ledger-arc-ui .bento { padding-left: 12px; padding-right: 12px; }
+}
+</style>
+
+<style id="ledger-176-remaining">
+:root { --spent: #DA2636; }
+body.dark { --spent: #FF6272; }
+.ledger-arc-ui .arc-stat.spent strong { font-weight: 550; }
+.ledger-arc-ui .arc-percentage { color: var(--ink-dim); white-space: nowrap; }
+.ledger-arc-ui .sync-row { display: grid; grid-template-columns: 1fr 1fr auto; }
+.ledger-arc-ui .sync-square.upload { width: auto; gap: 7px; font-size: 13px; }
+.ledger-arc-ui .sync-square.upload:not(.disabled), .ledger-arc-ui .sync-mini.download:not(.disabled) { background: rgba(255,255,255,.09); border-color: rgba(255,255,255,.2); color: #FFFFFF; }
+.ledger-arc-ui .app { padding-bottom: calc(270px + env(safe-area-inset-bottom)); }
+</style>
+<style id="ledger-177-polish">
+.ledger-arc-ui .sync-row { grid-template-columns: 1fr 44px 44px; }
+.ledger-arc-ui .sync-square.upload { width: 44px; height: 44px; padding: 0; font-size: 16px; }
+.ledger-arc-ui .bento-value .fund-mask { top: 0; letter-spacing: .055em; line-height: inherit; }
+.ledger-arc-ui .arc-heading { font-weight: 650; }
+.ledger-arc-ui .arc-section-heading, .ledger-arc-ui .weeks-header-title { font-weight: 650; }
+.ledger-arc-ui .hero-amount, .ledger-arc-ui .hero-card.meta-active .hero-amount { font-weight: 650; }
+.ledger-arc-ui .bento-value { font-weight: 600; }
+.ledger-arc-ui .bento-label { font-weight: 500; }
+.ledger-arc-ui .arc-stat strong { font-weight: 600; }
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-amount { font-weight: 650; }
+.ledger-arc-ui .view-tab.active { font-weight: 700; }
+</style>
+<style id="ledger-178-card-headers">
+.ledger-arc-ui .tc-card .tc-calendar-source { display: none; }
+</style>
+
+<style id="ledger-183-final-tune">
+/* BUILD183 · limpieza visual del rediseño neutral */
+
+/* En dark mode, los íconos de "Este ciclo" no deben llevar chips/containers de color. */
+body.dark.ledger-arc-ui .bento-card .bento-icon {
+  background: transparent !important;
+  color: var(--ink-dim) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* El simulador adopta la misma lógica visual del main page: superficies neutras,
+   sin paneles pastel en light ni en dark. */
+#modalContent:has(#simPurchaseAmount) {
+  --sim-label: #66635F;
+  --sim-support: #6E6B66;
+  --sim-line: #DED9CF;
+}
+
+#modalContent:has(#simPurchaseAmount) .purchase-installment-settings,
+#modalContent:has(#simPurchaseAmount) .purchase-finance-summary,
+#modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card,
+#modalContent:has(#simPurchaseAmount) .purchase-budget-card,
+#modalContent:has(#simPurchaseAmount) .purchase-compare-card,
+#modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait,
+#modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--sim-line) !important;
+  box-shadow: none !important;
+}
+
+#modalContent:has(#simPurchaseAmount) .purchase-plan-period {
+  background: var(--bg) !important;
+  border: 1px solid var(--sim-line) !important;
+}
+
+body.dark #modalContent:has(#simPurchaseAmount) {
+  --sim-label: rgba(255,255,255,.68);
+  --sim-support: rgba(255,255,255,.64);
+  --sim-line: rgba(255,255,255,.11);
+}
+
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-installment-settings,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-finance-summary,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-cycle-window-card,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-budget-card,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-compare-card.wait,
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-recommendation-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--sim-line) !important;
+}
+
+body.dark #modalContent:has(#simPurchaseAmount) .purchase-plan-period {
+  background: rgba(255,255,255,.03) !important;
+  border-color: var(--sim-line) !important;
+}
+</style>
+
+<style id="ledger-185-date-dark-fix">
+/* BUILD185 · fecha dark realmente plana, sin pill ni contenedor */
+body.dark.ledger-arc-ui .date-badge,
+body.dark.ledger-arc-ui #currentDate {
+  display: inline-block !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #F5F5F7 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+</style>
 </head>
-<body>
+<body class="ledger-arc-ui">
 
 <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
   <symbol id="icon-wallet" viewBox="0 0 24 24">
@@ -4901,7 +5253,7 @@
 <div class="app">
   <div class="header">
     <div class="greeting">
-      Hola, <span class="serif-italic">john</span>
+      <span class="ledger-wordmark">ledger<span>.</span></span>
       <div class="sync-badge off" id="syncBadge" onclick="openDriveSync()">
         <span class="sync-dot">○</span>
         <span>Sin sync</span>
@@ -4924,34 +5276,58 @@
     <div class="views-track" id="viewsTrack">
       <section class="app-view active" data-view-index="0" aria-label="Inicio">
   
-  <!-- Hero -->
+  <!-- BUILD174: presentation only; the existing state remains authoritative. -->
   <div class="hero-card" id="heroCard">
-    <div class="hero-badge"><svg class="ui-icon"><use href="#icon-wallet"></use></svg></div>
-    <div class="hero-actions">
-      <button class="hero-privacy" id="heroPrivacyBtn" onclick="toggleBalancePrivacy()" aria-label="Ocultar monto disponible">
-        <svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg>
-      </button>
-      <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
-      <button class="hero-cycle-btn" onclick="confirmarNuevoCiclo()" aria-label="Cerrar ciclo" title="Cerrar ciclo"><svg class="ui-icon"><use href="#icon-check"></use></svg></button>
-    </div>
-    <div class="hero-label" id="heroLabel">Total disponible</div>
-    <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
-    <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
-      <div class="hero-meta-chip">
-        <span class="hero-meta-dot"></span>
-        <span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span>
+    <div class="arc-heading-row">
+      <div><h1 class="arc-heading">Tu ciclo</h1><div class="arc-period" id="arcPeriod">—</div></div>
+      <div class="hero-actions">
+        <button class="hero-privacy" id="heroPrivacyBtn" onclick="toggleBalancePrivacy()" aria-label="Ocultar monto disponible"><svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg></button>
+        <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
       </div>
+    </div>
+    <div class="arc-stage">
+      <svg class="budget-arc" viewBox="0 0 360 205" role="img" id="budgetArc" aria-label="Consumo del presupuesto del ciclo">
+        <defs><linearGradient id="budgetArcGradient" gradientUnits="userSpaceOnUse" x1="24" y1="178" x2="336" y2="178"><stop id="arcColorStart" offset="0%" stop-color="#D6DF63"/><stop id="arcColorEnd" offset="100%" stop-color="#68C84A"/></linearGradient></defs>
+        <path class="arc-track" d="M 24 178 A 156 156 0 0 1 336 178" pathLength="100"/>
+        <path class="arc-consumed" id="arcConsumed" d="M 24 178 A 156 156 0 0 1 336 178" pathLength="100" stroke-dasharray="0 100"/>
+      </svg>
+      <div class="arc-center">
+        <div class="hero-label" id="heroLabel">Total disponible</div>
+        <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
+        <div class="arc-caption">para lo que queda del ciclo</div>
+      </div>
+    </div>
+    <div class="arc-ledger">
+      <div class="arc-stat spent"><span class="arc-stat-label">Utilizado <button class="arc-help" onclick="openBudgetArcHelp()" aria-label="Cómo se calcula el arco">?</button></span><strong id="arcUsedAmount">S/ 0.00</strong></div>
+      <span class="arc-percentage" id="arcPercent">0%</span>
+      <div class="arc-stat base"><span class="arc-stat-label" id="arcBaseLabel">Presupuesto</span><strong id="arcBudgetAmount">S/ 0.00</strong></div>
+    </div>
+    <div class="arc-status" id="arcStatus" hidden></div>
+    <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
+      <div class="hero-meta-chip"><span class="hero-meta-dot"></span><span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span></div>
       <div class="hero-meta-total">de <span id="heroTotalRef">S/ 0</span></div>
     </div>
-    <div class="hero-progress" id="heroProgress">
-      <div class="hero-progress-fill" id="progressFill" style="width: 100%"></div>
-      <div class="hero-progress-meta" id="progressMeta" style="width: 0%"></div>
+    <div class="hero-progress" id="heroProgress" hidden aria-hidden="true"><div id="progressFill"></div><div id="progressMeta"></div></div>
+  </div>
+
+  <!-- Semanas -->
+  <div class="weeks-strip">
+    <div class="weeks-header">
+      <div class="weeks-header-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></div>
+      <div class="weeks-header-title">
+        Tu presupuesto<span class="aside" id="semanasInfo"></span>
+      </div>
+      <button class="section-toggle-btn" id="btnToggleWeeks" onclick="toggleSection('weeks')">Ver todas</button>
     </div>
+    <div class="weeks-grid collapsed" id="weeksContainer"></div>
+    <div class="cycle-info" id="cycleInfo"></div>
   </div>
   
+
+<div class="arc-section-heading">En este ciclo</div>
   <!-- Bento -->
   <div class="bento">
-    <div class="bento-card coral">
+    <div class="bento-card coral metric-debt">
       <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
         <div class="bento-label">Deuda actual</div>
@@ -4961,7 +5337,7 @@
       </div>
     </div>
 
-    <div class="bento-card sky fund-card">
+    <div class="bento-card sky fund-card metric-fund">
       <button class="fund-privacy" id="fundPrivacyBtn" onclick="toggleFundPrivacy()" aria-label="Ocultar fondo">
         <svg class="ui-icon"><use id="fundPrivacyIcon" href="#icon-eye"></use></svg>
       </button>
@@ -4974,17 +5350,17 @@
       </div>
     </div>
 
-    <div class="bento-card mint">
+    <div class="bento-card mint metric-cash">
       <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-cash"></use></svg></div>
-        <div class="bento-label">No adeudado</div>
+        <div class="bento-label">Gasto sin deuda</div>
       </div>
       <div class="bento-body">
         <div class="bento-value"><span class="cur">S/</span><span id="gastoNoAdeudado">0</span></div>
       </div>
     </div>
 
-    <div class="bento-card sage">
+    <div class="bento-card sage metric-spent">
       <div class="bento-head">
         <div class="bento-icon"><svg class="ui-icon"><use href="#icon-chart"></use></svg></div>
         <div class="bento-label">Gasto total</div>
@@ -4995,20 +5371,8 @@
     </div>
   </div>
 
-  <!-- Semanas -->
-  <div class="weeks-strip">
-    <div class="weeks-header">
-      <div class="weeks-header-icon"><svg class="ui-icon"><use href="#icon-calendar"></use></svg></div>
-      <div class="weeks-header-title">
-        Presupuesto por bloques<span class="aside" id="semanasInfo"></span>
-      </div>
-      <button class="section-toggle-btn" id="btnToggleWeeks" onclick="toggleSection('weeks')">Ver todas</button>
-    </div>
-    <div class="weeks-grid collapsed" id="weeksContainer"></div>
-    <div class="cycle-info" id="cycleInfo"></div>
-  </div>
-  
   <!-- Tarjetas -->
+  <div class="arc-section-heading">Tus tarjetas <span>Cuándo pagarías si compras hoy</span></div>
   <div class="tc-carousel-shell">
     <div class="tc-carousel" id="creditCardCarousel" data-page-swipe-lock onscroll="syncCreditCardCarouselDots()">
       <div class="tc-card" data-credit-card="interbank">
@@ -5103,6 +5467,7 @@
     </div>
   </div>
 
+      <button class="arc-close-cycle" onclick="confirmarNuevoCiclo()"><svg class="ui-icon"><use href="#icon-check"></use></svg>Cerrar ciclo y comenzar uno nuevo</button>
       </section>
 
       <!-- Ventana Movimientos -->
@@ -5206,8 +5571,8 @@
         <span class="sync-mini-icon">⬇</span>
         <span>Bajar</span>
       </button>
-      <button class="sync-square upload disabled" id="btnSubir" onclick="subirAhora()" aria-label="Subir a Drive">
-        <span>⬆</span>
+      <button class="sync-square upload disabled" id="btnSubir" title="Subir a Drive" onclick="subirAhora()" aria-label="Subir a Drive">
+        <span aria-hidden="true">⬆</span>
       </button>
       <button class="sync-connect off" id="btnConnect" onclick="handleConnectClick()" aria-label="Conectar Drive">
         <span id="btnConnectIcon">○</span>
@@ -5264,7 +5629,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '173';
+  const LEDGER_BUILD = '185';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5374,6 +5739,94 @@
     catch(e) { return false; }
   })();
 
+
+  // BUILD174: a read-only projection of the pre-existing budget progress.
+  function budgetArcModel(data) {
+    const finite = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+    const initial = Math.max(0, finite(data.presupuestoInicial));
+    const reserve = Math.max(0, finite(data.metaResidual));
+    const available = finite(data.totalDisponible);
+    const budget = Math.max(0, initial - reserve);
+    const remaining = Math.max(0, available - reserve);
+    const used = Math.max(0, initial - available);
+    const percent = budget > 0 ? used / budget * 100 : 0;
+    return { initial, reserve, budget, remaining, used, percent,
+      fill: budget > 0 ? Math.max(0, Math.min(100, percent)) : (used > 0 ? 100 : 0),
+      excess: Math.max(0, used - budget),
+      empty: initial <= 0,
+      exhausted: available - reserve <= 0 && initial > 0 };
+  }
+
+  // Read-only visual scale: length tracks remaining budget; hue tracks consumption.
+  function remainingArcVisual(model) {
+    const spent = Math.max(0, Math.min(1, model.fill / 100));
+    const remainingPercent = model.budget > 0 ? Math.max(0, 100 - model.fill) : 0;
+    const colorAt = (value, colors) => {
+      const t = Math.max(0, Math.min(1, value));
+      const i = t < 0.5 ? 0 : 1;
+      const weight = (t - i * 0.5) * 2;
+      const rgb = colors[i].map((channel, index) => Math.round(channel + (colors[i+1][index] - channel) * weight));
+      return '#' + rgb.map(channel => channel.toString(16).padStart(2, '0')).join('');
+    };
+    return {remainingPercent,
+      start:colorAt(Math.min(1, spent / 0.85), [[214,223,99], [245,208,76], [255,144,26]]),
+      end:colorAt(Math.min(1, spent / 0.85), [[104,200,74], [235,150,33], [229,38,54]])};
+  }
+
+  function renderBudgetArc() {
+    const model = budgetArcModel(state);
+    const money = value => 'S/ ' + fmt(value);
+    const arc = document.getElementById('budgetArc');
+    const progress = document.getElementById('arcConsumed');
+    if (!arc || !progress) return;
+    const visual = remainingArcVisual(model);
+    // El gap se mantiene mayor que el path completo para evitar que el patrón
+    // vuelva a arrancar exactamente en el extremo derecho y dibuje un micro-cap.
+    progress.setAttribute('stroke-dasharray', `${visual.remainingPercent} 100`);
+    progress.style.opacity = visual.remainingPercent > 0 ? '1' : '0';
+
+    // Orienta el gradiente desde el inicio del arco hasta el endpoint visible.
+    // Así, cuando queda poco presupuesto, el degradado acompaña la curvatura
+    // en vez de permanecer estrictamente horizontal.
+    const arcAngle = Math.PI * visual.remainingPercent / 100;
+    const arcEndX = 180 - 156 * Math.cos(arcAngle);
+    const arcEndY = 178 - 156 * Math.sin(arcAngle);
+    const gradient = document.getElementById('budgetArcGradient');
+    gradient.setAttribute('x2', Math.max(24.01, arcEndX));
+    gradient.setAttribute('y2', arcEndY);
+    document.getElementById('arcColorStart').setAttribute('stop-color', visual.start);
+    document.getElementById('arcColorEnd').setAttribute('stop-color', visual.end);
+    arc.setAttribute('aria-label', model.empty
+      ? 'Sin presupuesto base del ciclo'
+      : `Presupuesto restante: ${Math.round(visual.remainingPercent)} por ciento`);
+    document.getElementById('arcUsedAmount').textContent = money(model.used);
+    document.getElementById('arcBudgetAmount').textContent = balanceHidden ? 'S/ ****' : money(model.budget);
+    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Presupuesto gastable' : 'Presupuesto';
+    document.getElementById('arcPercent').textContent = model.budget > 0 ? Math.round(visual.remainingPercent) + '% libre' : '—';
+    const hero = document.getElementById('heroCard');
+    hero.classList.toggle('arc-exhausted', model.exhausted);
+    const status = document.getElementById('arcStatus');
+    const message = model.empty ? 'Define el presupuesto de tu ciclo en Ajustes.'
+      : model.excess > 0 ? `Presupuesto superado en ${money(model.excess)}`
+      : model.budget === 0 ? 'Todo el presupuesto está reservado para tu meta.'
+      : model.remaining > model.budget ? 'El saldo actual supera el presupuesto base.' : '';
+    status.textContent = message;
+    status.hidden = !message;
+    const ranges = calcularRangoSemanas();
+    document.getElementById('arcPeriod').textContent = ranges.length
+      ? `${formatFecha(ranges[0].inicio)} — ${formatFecha(ranges[ranges.length - 1].fin)}` : 'Ciclo de sueldo';
+    const metaValue = document.getElementById('heroMetaValue');
+    if (metaValue) metaValue.textContent = 'S/ ' + fmt(model.reserve);
+  }
+
+  function openBudgetArcHelp() {
+    openModal(`<h2>Tu presupuesto, <span class="accent">de un vistazo</span></h2>
+      <div class="arc-help-copy"><p>El arco representa el presupuesto que queda: comienza completo y se reduce al gastar. Su gradiente empieza en amarillo lima a la izquierda y verde intenso a la derecha. Cambia progresivamente hacia naranja y rojo al gastar; con 15% o menos disponible, muestra naranja a la izquierda y rojo a la derecha. El monto central muestra lo que queda disponible.</p>
+      <p><strong>Utilizado</strong> compara el presupuesto base del ciclo con tu disponible actual. Si tienes una meta de ahorro, el límite del arco excluye esa reserva.</p>
+      <p>El Fondo y la Deuda se consultan por separado. Si corriges manualmente tus saldos, «Utilizado» puede diferir de «Gasto total», que conserva los gastos contabilizados.</p></div>
+      <button class="btn-primary" onclick="closeModal()">Entendido</button>`);
+  }
+
   function toggleBalancePrivacy() {
     balanceHidden = !balanceHidden;
     try { localStorage.setItem('ledger-balance-hidden-v1', balanceHidden ? '1' : '0'); } catch(e) {}
@@ -5390,13 +5843,12 @@
     if (amountEl) amountEl.textContent = balanceHidden
       ? '******'
       : fmt((state.metaResidual || 0) > 0 ? gastable : state.totalDisponible);
-    if (totalRefEl) totalRefEl.textContent = balanceHidden
-      ? 'S/ ******'
-      : 'S/ ' + fmt(state.totalDisponible);
+    if (totalRefEl) totalRefEl.textContent = 'S/ ' + fmt(state.totalDisponible);
     if (amountEl) amountEl.classList.toggle('balance-mask', balanceHidden);
-    if (totalRefEl) totalRefEl.classList.toggle('balance-mask', balanceHidden);
+    if (totalRefEl) totalRefEl.classList.remove('balance-mask');
     if (button) button.setAttribute('aria-label', balanceHidden ? 'Mostrar monto disponible' : 'Ocultar monto disponible');
     if (icon) icon.setAttribute('href', balanceHidden ? '#icon-eye-off' : '#icon-eye');
+    renderBudgetArc();
   }
 
   function toggleFundPrivacy() {
@@ -5410,7 +5862,7 @@
     const button = document.getElementById('fundPrivacyBtn');
     const icon = document.getElementById('fundPrivacyIcon');
     if (amount) {
-      amount.textContent = fundHidden ? '******' : fmtInt(state.montoIntocable);
+      amount.textContent = fundHidden ? '****' : fmtInt(state.montoIntocable);
       amount.classList.toggle('fund-mask', fundHidden);
     }
     if (button) button.setAttribute('aria-label', fundHidden ? 'Mostrar fondo' : 'Ocultar fondo');
@@ -7164,7 +7616,7 @@
     } else if (cicloTerminado()) {
       cycleInfoEl.innerHTML = `
         <div class="cycle-ended-warn" style="width:100%;">
-          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Cerrar ciclo" en el monto total para empezar el siguiente.
+          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Cerrar ciclo" al final de Inicio para empezar el siguiente.
         </div>
       `;
     } else {
@@ -14106,7 +14558,7 @@
   function applyTheme() {
     document.body.classList.toggle('dark', state.darkMode);
     document.querySelector('meta[name="theme-color"]').setAttribute(
-      'content', state.darkMode ? '#0F0E0D' : '#FAF8F3'
+      'content', state.darkMode ? '#141517' : '#F6F7F8'
     );
     const btn = document.getElementById('themeToggle');
     if (btn) btn.textContent = state.darkMode ? '☀' : '◐';
