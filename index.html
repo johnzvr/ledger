@@ -1502,6 +1502,80 @@
     padding: 20px;
     margin-bottom: 12px;
   }
+  .tc-carousel-shell {
+    position: relative;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .tc-carousel {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tc-carousel::-webkit-scrollbar { display: none; }
+  .tc-carousel .tc-card {
+    flex: 0 0 100%;
+    width: 100%;
+    box-sizing: border-box;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    margin-bottom: 0;
+  }
+  .tc-carousel-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0 2px;
+  }
+  .tc-carousel-dot {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ink);
+    opacity: .18;
+    transition: width .18s ease, opacity .18s ease;
+    cursor: pointer;
+  }
+  .tc-carousel-dot.active { width: 18px; opacity: .75; }
+  .tc-bank-name {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    margin-top: 3px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.46);
+    color: var(--ink);
+    font-size: 8px;
+    line-height: 1;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  body.dark .tc-bank-name { background: rgba(255,255,255,.07); }
+  .card-bank-badge {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 6px;
+    font-size: 8px;
+    line-height: 1.25;
+    font-weight: 800;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    background: rgba(255,255,255,.38);
+    vertical-align: middle;
+  }
+  body.dark .card-bank-badge { background: rgba(255,255,255,.035); }
   .tc-header {
     display: flex;
     justify-content: space-between;
@@ -2926,6 +3000,13 @@
     background: rgba(223, 211, 232, 0.58);
     color: var(--ink);
   }
+  /* BUILD 168 · identidad visual por tarjeta en heads-up de movimientos */
+  .card-cycle-divider.card-interbank {
+    background: rgba(207, 228, 197, 0.72);
+  }
+  .card-cycle-divider.card-bcp {
+    background: rgba(207, 224, 242, 0.76);
+  }
   .card-cycle-divider-main {
     display: flex;
     align-items: center;
@@ -2979,6 +3060,8 @@
     font-weight: 700;
   }
   body.dark .card-cycle-divider { background: rgba(180, 140, 220, 0.14); }
+  body.dark .card-cycle-divider.card-interbank { background: rgba(132, 178, 111, 0.18); }
+  body.dark .card-cycle-divider.card-bcp { background: rgba(104, 154, 205, 0.18); }
   body.dark .card-cycle-divider.payment-marked { background: rgba(132, 178, 111, 0.16); }
   @media (max-width: 430px) {
     .card-cycle-divider-main { align-items: flex-start; }
@@ -4799,50 +4882,101 @@
     <div class="cycle-info" id="cycleInfo"></div>
   </div>
   
-  <!-- Tarjeta -->
-  <div class="tc-card">
-    <div class="tc-header">
-      <div class="tc-header-left">
-        <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
-        <div class="tc-title-wrap">
-          <div class="tc-title">Calendario tarjeta</div>
-          <div class="tc-calendar-source">Interbank · pago 20</div>
+  <!-- Tarjetas -->
+  <div class="tc-carousel-shell">
+    <div class="tc-carousel" id="creditCardCarousel" data-page-swipe-lock onscroll="syncCreditCardCarouselDots()">
+      <div class="tc-card" data-credit-card="interbank">
+        <div class="tc-header">
+          <div class="tc-header-left">
+            <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
+            <div class="tc-title-wrap">
+              <div class="tc-title">Calendario tarjeta</div>
+              <div class="tc-bank-name">Interbank</div>
+              <div class="tc-calendar-source" id="ccSourceInterbank">Pago 20</div>
+            </div>
+          </div>
+          <div class="tc-header-actions">
+            <button class="section-toggle-btn" id="btnToggleCardInterbank" onclick="toggleCreditCardDetails('interbank')">Ver detalles</button>
+            <button class="tc-btn" onclick="openCCConfig('', 'interbank')">Editar</button>
+          </div>
+        </div>
+        <div class="tc-deadline">
+          <div class="tc-deadline-label">Si compras hoy</div>
+          <div class="tc-deadline-value" id="ccCompraPagoInterbank">—</div>
+          <div class="tc-deadline-sub" id="ccCompraPagoSubInterbank">—</div>
+          <div class="tc-deadline-income" id="ccCompraSueldosInterbank"></div>
+          <div class="tc-status-track" id="signalTrackInterbank" role="img" aria-label="Momento para usar Interbank">
+            <div class="tc-status-fill" id="signalBarInterbank"></div>
+          </div>
+        </div>
+        <button class="tc-simulate-btn" onclick="openPurchaseSimulator('interbank')">
+          <span>Simular compra</span><span aria-hidden="true">→</span>
+        </button>
+        <div class="tc-body collapsed" id="tcBodyInterbank">
+          <div class="tc-dates">
+            <div class="tc-date-card">
+              <div class="tc-date-label" id="ccCierreLabelInterbank">Cierre de facturación</div>
+              <div class="tc-date-value" id="ccProxCierreInterbank">—</div>
+              <div class="tc-date-sub" id="ccCierreSubInterbank">—</div>
+            </div>
+            <div class="tc-date-card">
+              <div class="tc-date-label" id="ccPagoLabelInterbank">Último día de pago</div>
+              <div class="tc-date-value" id="ccProxPagoInterbank">—</div>
+              <div class="tc-date-sub" id="ccPagoSubInterbank">—</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="tc-header-actions">
-        <button class="section-toggle-btn" id="btnToggleCard" onclick="toggleSection('card')">Ver detalles</button>
-        <button class="tc-btn" onclick="openCCConfig()">Editar</button>
+
+      <div class="tc-card" data-credit-card="bcp">
+        <div class="tc-header">
+          <div class="tc-header-left">
+            <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
+            <div class="tc-title-wrap">
+              <div class="tc-title">Calendario tarjeta</div>
+              <div class="tc-bank-name">BCP</div>
+              <div class="tc-calendar-source" id="ccSourceBcp">Visa Gold Qore</div>
+            </div>
+          </div>
+          <div class="tc-header-actions">
+            <button class="section-toggle-btn" id="btnToggleCardBcp" onclick="toggleCreditCardDetails('bcp')">Ver detalles</button>
+            <button class="tc-btn" onclick="openCCConfig('', 'bcp')">Editar</button>
+          </div>
+        </div>
+        <div class="tc-deadline">
+          <div class="tc-deadline-label">Si compras hoy</div>
+          <div class="tc-deadline-value" id="ccCompraPagoBcp">—</div>
+          <div class="tc-deadline-sub" id="ccCompraPagoSubBcp">—</div>
+          <div class="tc-deadline-income" id="ccCompraSueldosBcp"></div>
+          <div class="tc-status-track" id="signalTrackBcp" role="img" aria-label="Momento para usar BCP">
+            <div class="tc-status-fill" id="signalBarBcp"></div>
+          </div>
+        </div>
+        <button class="tc-simulate-btn" onclick="openPurchaseSimulator('bcp')">
+          <span>Simular compra</span><span aria-hidden="true">→</span>
+        </button>
+        <div class="tc-body collapsed" id="tcBodyBcp">
+          <div class="tc-dates">
+            <div class="tc-date-card">
+              <div class="tc-date-label" id="ccCierreLabelBcp">Cierre de facturación</div>
+              <div class="tc-date-value" id="ccProxCierreBcp">—</div>
+              <div class="tc-date-sub" id="ccCierreSubBcp">—</div>
+            </div>
+            <div class="tc-date-card">
+              <div class="tc-date-label" id="ccPagoLabelBcp">Último día de pago</div>
+              <div class="tc-date-value" id="ccProxPagoBcp">—</div>
+              <div class="tc-date-sub" id="ccPagoSubBcp">—</div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="tc-deadline">
-      <div class="tc-deadline-label">Si compras hoy</div>
-      <div class="tc-deadline-value" id="ccCompraPago">—</div>
-      <div class="tc-deadline-sub" id="ccCompraPagoSub">—</div>
-      <div class="tc-deadline-income" id="ccCompraSueldos"></div>
-      <div class="tc-status-track" id="signalTrack" role="img" aria-label="Momento para usar la tarjeta">
-        <div class="tc-status-fill" id="signalBar"></div>
-      </div>
-    </div>
-    <button class="tc-simulate-btn" onclick="openPurchaseSimulator()">
-      <span>Simular compra</span>
-      <span aria-hidden="true">→</span>
-    </button>
-    <div class="tc-body collapsed" id="tcBody">
-      <div class="tc-dates">
-        <div class="tc-date-card">
-          <div class="tc-date-label" id="ccCierreLabel">Cierre de facturación</div>
-          <div class="tc-date-value" id="ccProxCierre">—</div>
-          <div class="tc-date-sub" id="ccCierreSub">—</div>
-        </div>
-        <div class="tc-date-card">
-          <div class="tc-date-label" id="ccPagoLabel">Último día de pago</div>
-          <div class="tc-date-value" id="ccProxPago">—</div>
-          <div class="tc-date-sub" id="ccPagoSub">—</div>
-        </div>
-      </div>
+    <div class="tc-carousel-dots" aria-label="Tarjetas">
+      <button class="tc-carousel-dot active" id="creditCardDot0" onclick="scrollToCreditCard(0)" aria-label="Ver Interbank"></button>
+      <button class="tc-carousel-dot" id="creditCardDot1" onclick="scrollToCreditCard(1)" aria-label="Ver BCP"></button>
     </div>
   </div>
-  
+
       </section>
 
       <!-- Ventana Movimientos -->
@@ -5004,7 +5138,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '166';
+  const LEDGER_BUILD = '168';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5035,9 +5169,11 @@
       { label: 'Semana +1', presupuesto: 715.24, presupuestoAsignado: 715.24, diasRitmo: 7, ritmoDiarioFijo: 102.18, isCurrent: false, fechaInicioManual: null, fechaFinManual: null },
       { label: 'Semana +2', presupuesto: 715.24, presupuestoAsignado: 715.24, diasRitmo: 7, ritmoDiarioFijo: 102.18, isCurrent: false, fechaInicioManual: null, fechaFinManual: null }
     ],
-    tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 },
-    tarjetaCalendarios: [], // estados de cuenta exactos e independientes del ciclo salarial
+    tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 }, // Interbank legacy/base
+    tarjetaCalendarios: [], // Interbank · estados de cuenta exactos
     tarjetaCalendarioPresetVersion: null,
+    tarjetaBCP: { diaCierre: null, diaPago: null, diaSueldo: 1 },
+    tarjetaBCPCalendarios: [], // BCP · se llena con las fechas exactas del banco
     tarjetaAjusteDeuda: 1756.94,
     tarjetaCiclosPagados: [],
     tarjetaPagosPendientesConciliar: [], // marca visual; no cambia la deuda de Inicio
@@ -5456,14 +5592,30 @@
         });
     }
 
-    // diaCierre/diaPago son un espejo legacy del calendario exacto y también los
-    // puede cambiar una migración automática. diaSueldo sí pertenece al ciclo.
-    if (comparable.tarjeta && typeof comparable.tarjeta === 'object') {
-      const tarjetaLimpia = { ...comparable.tarjeta };
-      delete tarjetaLimpia.diaCierre;
-      delete tarjetaLimpia.diaPago;
-      comparable.tarjeta = tarjetaLimpia;
+    // BCP usa el mismo criterio: las fechas exactas manuales son datos del usuario;
+    // los metadatos técnicos no deben crear conflictos entre dispositivos.
+    if (Array.isArray(comparable.tarjetaBCPCalendarios)) {
+      comparable.tarjetaBCPCalendarios = comparable.tarjetaBCPCalendarios
+        .filter(item => item && item.manual !== false)
+        .map(item => {
+          const limpio = { ...item };
+          delete limpio.actualizadoEn;
+          delete limpio.fuente;
+          delete limpio.preset;
+          return limpio;
+        });
     }
+
+    // diaCierre/diaPago son espejos derivados del último calendario exacto.
+    // diaSueldo sí pertenece al ciclo salarial y se conserva.
+    ['tarjeta', 'tarjetaBCP'].forEach(key => {
+      if (comparable[key] && typeof comparable[key] === 'object') {
+        const tarjetaLimpia = { ...comparable[key] };
+        delete tarjetaLimpia.diaCierre;
+        delete tarjetaLimpia.diaPago;
+        comparable[key] = tarjetaLimpia;
+      }
+    });
 
     return comparable;
   }
@@ -5478,6 +5630,7 @@
     [
       'historialCiclos',
       'tarjetaCalendarios',
+      'tarjetaBCPCalendarios',
       'tarjetaCiclosPagados',
       'tarjetaPagosPendientesConciliar',
       'tarjetaMovimientosArrastrados',
@@ -5492,6 +5645,13 @@
     if (typeof comparable.cicloAnterior === 'undefined') comparable.cicloAnterior = null;
     if (typeof comparable.fechaInicioCiclo === 'undefined') comparable.fechaInicioCiclo = null;
     if (typeof comparable.fechaProximoSueldo === 'undefined') comparable.fechaProximoSueldo = null;
+
+    // BUILD 167 añade la segunda tarjeta. Un dispositivo viejo sin BCP configurada
+    // es equivalente a uno nuevo con la estructura BCP vacía.
+    if (!comparable.tarjetaBCP || typeof comparable.tarjetaBCP !== 'object') {
+      comparable.tarjetaBCP = { diaSueldo: Number(comparable.tarjeta?.diaSueldo) || 1 };
+    }
+    if (!Array.isArray(comparable.tarjetaBCPCalendarios)) comparable.tarjetaBCPCalendarios = [];
 
     if (Array.isArray(comparable.semanas)) {
       comparable.semanas = comparable.semanas.map(sem => {
@@ -5870,7 +6030,7 @@
     state.tarjeta.diaCierre = 26;
     state.tarjeta.diaPago = 20;
     state.tarjetaCalendarioPresetVersion = INTERBANK_PAGO_20_2026_VERSION;
-    const registradoReorganizado = gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios)
+    const registradoReorganizado = gruposPagoTarjetas()
       .reduce((total, grupo) => total + grupo.total, 0);
     state.tarjetaAjusteDeuda = redondearDinero(deudaAntes - registradoReorganizado);
     return true;
@@ -5942,7 +6102,7 @@
         actualizadoEn: new Date().toISOString()
       });
     };
-    movimientosTarjetaCombinados().forEach(({ mov, index, fechaInicioReferencia }) => {
+    movimientosTarjetaCombinados('interbank').forEach(({ mov, index, fechaInicioReferencia }) => {
       const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
       agregarCalendarioLegacy(fechaPagoParaCompra(fechaMovimiento, state.tarjeta));
     });
@@ -6009,21 +6169,143 @@
     );
     return { cierre: cierreCompra, pago: pagoCompra };
   }
-  function fechaPagoCompraHoy() {
-    const exacto = calendarioExactoParaFecha(new Date());
+  function fechaPagoCompraHoy(tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
+    const calendarios = calendariosTarjetaPorId(id);
+    const exacto = calendarioExactoParaFecha(new Date(), calendarios);
     if (exacto) return exacto;
-    const fechasMovimientos = movimientosTarjetaCombinados()
+    const fechasMovimientos = movimientosTarjetaCombinados(id)
       .map(({ mov, index, fechaInicioReferencia }) => fechaDeMovimiento(mov, index, fechaInicioReferencia))
       .filter(fecha => !Number.isNaN(fecha.getTime()))
       .sort((a, b) => a - b);
     return {
-      id: 'tarjeta-sin-fechas',
-      key: 'pendiente-sin-fechas',
+      id: `${id}-sin-fechas`,
+      key: `${id}-pendiente-sin-fechas`,
       inicio: fechasMovimientos[0] || new Date(),
       cierre: null,
       pago: null,
       pendiente: true
     };
+  }
+
+  function patronTarjetaConfigurado(tarjetaId = 'interbank') {
+    const config = tarjetaConfigPorId(tarjetaId);
+    const diaCierre = Number(config?.diaCierre);
+    const diaPago = Number(config?.diaPago);
+    return Number.isInteger(diaCierre) && diaCierre >= 1 && diaCierre <= 31
+      && Number.isInteger(diaPago) && diaPago >= 1 && diaPago <= 31;
+  }
+
+  function fechaPagoParaCompraTarjeta(fechaCompra = new Date(), tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
+    const exacto = calendarioExactoParaFecha(fechaCompra, calendariosTarjetaPorId(id));
+    if (exacto && !exacto.pendiente) return { ...exacto, estimado: false };
+    if (!patronTarjetaConfigurado(id)) return null;
+    return { ...fechaPagoParaCompra(fechaCompra, tarjetaConfigPorId(id)), estimado: true };
+  }
+
+  function renderCalendarioTarjeta(tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
+    const suffix = sufijoTarjeta(id);
+    const compraHoy = fechaPagoCompraHoy(id);
+    const exactos = calendariosTarjetaExactos(calendariosTarjetaPorId(id));
+    const signalBar = document.getElementById('signalBar' + suffix);
+    const signalTrack = document.getElementById('signalTrack' + suffix);
+    const cierreLabel = document.getElementById('ccCierreLabel' + suffix);
+    const pagoLabel = document.getElementById('ccPagoLabel' + suffix);
+    const compraSueldos = document.getElementById('ccCompraSueldos' + suffix);
+    const source = document.getElementById('ccSource' + suffix);
+    if (!signalBar || !signalTrack) return;
+
+    const ultimoConocido = exactos.length > 0 ? exactos[exactos.length - 1] : null;
+    if (source) {
+      source.textContent = id === 'interbank'
+        ? 'Pago 20'
+        : (ultimoConocido
+            ? `Cierre ${ultimoConocido.cierre.getDate()} · pago ${ultimoConocido.pago.getDate()}`
+            : 'Visa Gold Qore · configura fechas');
+    }
+
+    if (compraHoy.pendiente) {
+      if (cierreLabel) cierreLabel.textContent = ultimoConocido ? 'Último cierre conocido' : 'Cierre de facturación';
+      if (pagoLabel) pagoLabel.textContent = 'Último día de pago';
+      document.getElementById('ccProxCierre' + suffix).textContent = ultimoConocido ? formatFecha(ultimoConocido.cierre) : 'Sin informar';
+      document.getElementById('ccProxPago' + suffix).textContent = ultimoConocido ? formatFecha(ultimoConocido.pago) : 'Sin informar';
+      document.getElementById('ccCierreSub' + suffix).textContent = ultimoConocido ? 'estado de cuenta guardado' : 'aún no registrado';
+      if (ultimoConocido) {
+        const diasPagoConocido = diasHasta(ultimoConocido.pago);
+        document.getElementById('ccPagoSub' + suffix).textContent = diasPagoConocido === 0
+          ? 'vence hoy'
+          : (diasPagoConocido > 0 ? `vence en ${diasPagoConocido} días` : 'fecha vencida');
+      } else {
+        document.getElementById('ccPagoSub' + suffix).textContent = 'aún no registrado';
+      }
+      document.getElementById('ccCompraPago' + suffix).textContent = 'Ciclo en curso · fechas por confirmar';
+      document.getElementById('ccCompraPagoSub' + suffix).textContent = id === 'bcp' && !ultimoConocido
+        ? 'Ingresa el cierre y pago exactos de BCP para activar este calendario'
+        : `Compras desde el ${formatFecha(compraHoy.inicio)} · el banco aún no informa el próximo cierre y pago`;
+      if (compraSueldos) {
+        compraSueldos.textContent = '';
+        compraSueldos.classList.remove('visible');
+      }
+      signalBar.className = 'tc-status-fill pending';
+      signalBar.style.width = '100%';
+      signalTrack.setAttribute('aria-label', `${nombreTarjeta(id)}: ciclo con fechas por confirmar.`);
+      signalTrack.title = 'Fechas por confirmar';
+      return;
+    }
+
+    const cierre = compraHoy.cierre;
+    const pago = compraHoy.pago;
+    const diasCierre = diasHasta(cierre);
+    const diasPago = diasHasta(pago);
+    if (cierreLabel) cierreLabel.textContent = 'Cierre de facturación';
+    if (pagoLabel) pagoLabel.textContent = 'Último día de pago';
+    document.getElementById('ccProxCierre' + suffix).textContent = formatFecha(cierre);
+    document.getElementById('ccProxPago' + suffix).textContent = formatFecha(pago);
+    document.getElementById('ccCierreSub' + suffix).textContent = diasCierre === 0 ? 'hoy' : (diasCierre > 0 ? 'en ' + diasCierre + ' días' : 'cerró');
+    document.getElementById('ccPagoSub' + suffix).textContent = diasPago === 0 ? 'hoy' : (diasPago > 0 ? 'en ' + diasPago + ' días' : 'venció');
+    document.getElementById('ccCompraPago' + suffix).textContent = 'Paga hasta el ' + formatFechaCompleta(pago);
+    const sueldosAntesPago = fechasSueldoEntre(new Date(), pago);
+    const cierreCompacto = `Cierra ${formatFecha(cierre)}`;
+    const diasCompacto = diasPago === 0 ? 'vence hoy' : `${diasPago} días`;
+    const sueldosCompacto = sueldosAntesPago.length > 0
+      ? `${sueldosAntesPago.length} sueldo${sueldosAntesPago.length === 1 ? '' : 's'}: ${unirFechasCortas(sueldosAntesPago)}`
+      : 'sin otro sueldo';
+    document.getElementById('ccCompraPagoSub' + suffix).textContent = `${cierreCompacto} · ${diasCompacto} · ${sueldosCompacto}`;
+    if (compraSueldos) {
+      compraSueldos.textContent = '';
+      compraSueldos.classList.remove('visible');
+    }
+
+    const config = tarjetaConfigPorId(id);
+    const inicioTarjeta = compraHoy.inicio || (() => {
+      const diaCierre = Number(config?.diaCierre);
+      if (!Number.isInteger(diaCierre) || diaCierre < 1 || diaCierre > 31) return new Date(cierre);
+      const anterior = fechaConDiaSeguro(cierre.getFullYear(), cierre.getMonth() - 1, diaCierre);
+      anterior.setDate(anterior.getDate() + 1);
+      return anterior;
+    })();
+    const hoyTarjeta = new Date();
+    hoyTarjeta.setHours(12, 0, 0, 0);
+    const duracionCicloTarjeta = Math.max(1, Math.round((cierre - inicioTarjeta) / MS_DIA) + 1);
+    const diasTranscurridosTarjeta = Math.max(0, Math.round((hoyTarjeta - inicioTarjeta) / MS_DIA));
+    const progresoTarjeta = Math.min(100, Math.max(0, (diasTranscurridosTarjeta / duracionCicloTarjeta) * 100));
+    let signalClass, signalTitle;
+    if (diasCierre <= 4) {
+      signalClass = 'bad';
+      signalTitle = 'Mal día para tarjeta';
+    } else if (diasCierre <= 10) {
+      signalClass = 'mid';
+      signalTitle = 'Día regular';
+    } else {
+      signalClass = 'good';
+      signalTitle = 'Buen día para tarjeta';
+    }
+    signalBar.className = 'tc-status-fill ' + signalClass;
+    signalBar.style.width = progresoTarjeta + '%';
+    signalTrack.setAttribute('aria-label', `${nombreTarjeta(id)}: ${signalTitle}. Faltan ${Math.max(0, diasCierre)} día${diasCierre === 1 ? '' : 's'} para el cierre.`);
+    signalTrack.title = signalTitle;
   }
 
   function diaSueldoConfigurado() {
@@ -6549,6 +6831,7 @@
   }
   
   function render({ markModified = true, sync = true } = {}) {
+    asegurarModeloMultiTarjeta();
     asegurarRitmoDiarioBloques(state);
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
     if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
@@ -6564,7 +6847,7 @@
     // pero no debe aparentar que el usuario editó montos en este dispositivo.
     aplicarCalendarioInterbankPago20_2026();
     if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
-      const registrado = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
+      const registrado = gruposPagoTarjetas().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
     }
     // Primero fijar el bloque real por fecha; después procesar cualquier transición.
@@ -6711,89 +6994,15 @@
       `;
     }
     
-    const compraHoy = fechaPagoCompraHoy();
-    const signalBar = document.getElementById('signalBar');
-    const signalTrack = document.getElementById('signalTrack');
-    const cierreLabel = document.getElementById('ccCierreLabel');
-    const pagoLabel = document.getElementById('ccPagoLabel');
-    const compraSueldos = document.getElementById('ccCompraSueldos');
-    if (compraHoy.pendiente) {
-      const exactos = calendariosTarjetaExactos();
-      const ultimoConocido = exactos.length > 0 ? exactos[exactos.length - 1] : null;
-      if (cierreLabel) cierreLabel.textContent = ultimoConocido ? 'Último cierre conocido' : 'Cierre de facturación';
-      if (pagoLabel) pagoLabel.textContent = 'Último día de pago';
-      document.getElementById('ccProxCierre').textContent = ultimoConocido ? formatFecha(ultimoConocido.cierre) : 'Sin informar';
-      document.getElementById('ccProxPago').textContent = ultimoConocido ? formatFecha(ultimoConocido.pago) : 'Sin informar';
-      document.getElementById('ccCierreSub').textContent = ultimoConocido ? 'estado de cuenta guardado' : 'aún no registrado';
-      if (ultimoConocido) {
-        const diasPagoConocido = diasHasta(ultimoConocido.pago);
-        document.getElementById('ccPagoSub').textContent = diasPagoConocido === 0
-          ? 'vence hoy'
-          : (diasPagoConocido > 0 ? `vence en ${diasPagoConocido} días` : 'fecha vencida');
-      } else {
-        document.getElementById('ccPagoSub').textContent = 'aún no registrado';
+    renderCalendarioTarjeta('interbank');
+    renderCalendarioTarjeta('bcp');
+    requestAnimationFrame(() => {
+      const carousel = document.getElementById('creditCardCarousel');
+      if (carousel?.children?.[activeCreditCardIndex]) {
+        carousel.scrollLeft = carousel.children[activeCreditCardIndex].offsetLeft;
       }
-      document.getElementById('ccCompraPago').textContent = 'Ciclo en curso · fechas por confirmar';
-      document.getElementById('ccCompraPagoSub').textContent = `Compras desde el ${formatFecha(compraHoy.inicio)} · el banco aún no informa el próximo cierre y pago`;
-      if (compraSueldos) {
-        compraSueldos.textContent = '';
-        compraSueldos.classList.remove('visible');
-      }
-      signalBar.className = 'tc-status-fill pending';
-      signalBar.style.width = '100%';
-      signalTrack.setAttribute('aria-label', 'Ciclo de tarjeta en curso; el banco aún no informó las próximas fechas.');
-      signalTrack.title = 'Fechas por confirmar';
-    } else {
-      const cierre = compraHoy.cierre;
-      const pago = compraHoy.pago;
-      const diasCierre = diasHasta(cierre);
-      const diasPago = diasHasta(pago);
-      if (cierreLabel) cierreLabel.textContent = 'Cierre de facturación';
-      if (pagoLabel) pagoLabel.textContent = 'Último día de pago';
-      document.getElementById('ccProxCierre').textContent = formatFecha(cierre);
-      document.getElementById('ccProxPago').textContent = formatFecha(pago);
-      document.getElementById('ccCierreSub').textContent = diasCierre === 0 ? 'hoy' : (diasCierre > 0 ? 'en ' + diasCierre + ' días' : 'cerró');
-      document.getElementById('ccPagoSub').textContent = diasPago === 0 ? 'hoy' : (diasPago > 0 ? 'en ' + diasPago + ' días' : 'venció');
-      document.getElementById('ccCompraPago').textContent = 'Paga hasta el ' + formatFechaCompleta(pago);
-      const sueldosAntesPago = fechasSueldoEntre(new Date(), pago);
-      const cierreCompacto = `Cierra ${formatFecha(cierre)}`;
-      const diasCompacto = diasPago === 0 ? 'vence hoy' : `${diasPago} días`;
-      const sueldosCompacto = sueldosAntesPago.length > 0
-        ? `${sueldosAntesPago.length} sueldo${sueldosAntesPago.length === 1 ? '' : 's'}: ${unirFechasCortas(sueldosAntesPago)}`
-        : 'sin otro sueldo';
-      document.getElementById('ccCompraPagoSub').textContent = `${cierreCompacto} · ${diasCompacto} · ${sueldosCompacto}`;
-      if (compraSueldos) {
-        compraSueldos.textContent = '';
-        compraSueldos.classList.remove('visible');
-      }
-
-      // Barra estratégica: usa el inicio y cierre exactos guardados para este ciclo.
-      const inicioTarjeta = compraHoy.inicio || (() => {
-        const anterior = fechaConDiaSeguro(cierre.getFullYear(), cierre.getMonth() - 1, state.tarjeta.diaCierre);
-        anterior.setDate(anterior.getDate() + 1);
-        return anterior;
-      })();
-      const hoyTarjeta = new Date();
-      hoyTarjeta.setHours(12, 0, 0, 0);
-      const duracionCicloTarjeta = Math.max(1, Math.round((cierre - inicioTarjeta) / MS_DIA) + 1);
-      const diasTranscurridosTarjeta = Math.max(0, Math.round((hoyTarjeta - inicioTarjeta) / MS_DIA));
-      const progresoTarjeta = Math.min(100, Math.max(0, (diasTranscurridosTarjeta / duracionCicloTarjeta) * 100));
-      let signalClass, signalTitle;
-      if (diasCierre <= 4) {
-        signalClass = 'bad';
-        signalTitle = 'Mal día para tarjeta';
-      } else if (diasCierre <= 10) {
-        signalClass = 'mid';
-        signalTitle = 'Día regular';
-      } else {
-        signalClass = 'good';
-        signalTitle = 'Buen día para tarjeta';
-      }
-      signalBar.className = 'tc-status-fill ' + signalClass;
-      signalBar.style.width = progresoTarjeta + '%';
-      signalTrack.setAttribute('aria-label', `${signalTitle}. Faltan ${Math.max(0, diasCierre)} día${diasCierre === 1 ? '' : 's'} para el cierre.`);
-      signalTrack.title = signalTitle;
-    }
+      syncCreditCardCarouselDots();
+    });
 
     applyBalancePrivacy();
     applyFundPrivacy();
@@ -6892,6 +7101,101 @@
     return tipo === 'DS' || tipo === 'FDS';
   }
 
+  const CREDIT_CARD_IDS = Object.freeze(['interbank', 'bcp']);
+
+  function normalizarTarjetaId(value) {
+    return String(value || '').toLowerCase() === 'bcp' ? 'bcp' : 'interbank';
+  }
+
+  function nombreTarjeta(tarjetaId) {
+    return normalizarTarjetaId(tarjetaId) === 'bcp' ? 'BCP' : 'Interbank';
+  }
+
+  function sufijoTarjeta(tarjetaId) {
+    return normalizarTarjetaId(tarjetaId) === 'bcp' ? 'Bcp' : 'Interbank';
+  }
+
+  function tarjetaIdMovimiento(mov) {
+    return esMovimientoTarjeta(mov) ? normalizarTarjetaId(mov?.tarjetaId) : '';
+  }
+
+  function tarjetaConfigPorId(tarjetaId = 'interbank') {
+    return normalizarTarjetaId(tarjetaId) === 'bcp'
+      ? (state.tarjetaBCP || {})
+      : (state.tarjeta || {});
+  }
+
+  function calendariosTarjetaPorId(tarjetaId = 'interbank') {
+    return normalizarTarjetaId(tarjetaId) === 'bcp'
+      ? (Array.isArray(state.tarjetaBCPCalendarios) ? state.tarjetaBCPCalendarios : [])
+      : (Array.isArray(state.tarjetaCalendarios) ? state.tarjetaCalendarios : []);
+  }
+
+  function guardarCalendariosTarjetaPorId(tarjetaId, calendarios) {
+    if (normalizarTarjetaId(tarjetaId) === 'bcp') state.tarjetaBCPCalendarios = calendarios;
+    else state.tarjetaCalendarios = calendarios;
+  }
+
+  function asegurarModeloMultiTarjeta() {
+    let cambio = false;
+    if (!state.tarjeta || typeof state.tarjeta !== 'object') {
+      state.tarjeta = { diaCierre: 26, diaPago: 20, diaSueldo: 1 };
+      cambio = true;
+    }
+    if (!state.tarjetaBCP || typeof state.tarjetaBCP !== 'object') {
+      state.tarjetaBCP = { diaCierre: null, diaPago: null, diaSueldo: state.tarjeta.diaSueldo || 1 };
+      cambio = true;
+    }
+    if (!Array.isArray(state.tarjetaBCPCalendarios)) {
+      state.tarjetaBCPCalendarios = [];
+      cambio = true;
+    }
+    if (!Number.isFinite(Number(state.tarjetaBCP.diaSueldo))) {
+      state.tarjetaBCP.diaSueldo = state.tarjeta.diaSueldo || 1;
+      cambio = true;
+    }
+    return cambio;
+  }
+
+  function badgeBancoMovimiento(mov) {
+    if (!esMovimientoTarjeta(mov)) return '';
+    return `<span class="card-bank-badge">${escapeHtml(nombreTarjeta(tarjetaIdMovimiento(mov)))}</span>`;
+  }
+
+  let activeCreditCardIndex = 0;
+
+  function scrollToCreditCard(index) {
+    const carousel = document.getElementById('creditCardCarousel');
+    if (!carousel) return;
+    const max = Math.max(0, carousel.children.length - 1);
+    activeCreditCardIndex = Math.max(0, Math.min(max, Number(index) || 0));
+    const target = carousel.children[activeCreditCardIndex];
+    if (target) carousel.scrollTo({ left: target.offsetLeft, behavior: 'smooth' });
+    syncCreditCardCarouselDots();
+  }
+
+  function syncCreditCardCarouselDots() {
+    const carousel = document.getElementById('creditCardCarousel');
+    if (!carousel || !carousel.children.length) return;
+    const width = carousel.clientWidth || 1;
+    activeCreditCardIndex = Math.max(0, Math.min(
+      carousel.children.length - 1,
+      Math.round(carousel.scrollLeft / width)
+    ));
+    document.getElementById('creditCardDot0')?.classList.toggle('active', activeCreditCardIndex === 0);
+    document.getElementById('creditCardDot1')?.classList.toggle('active', activeCreditCardIndex === 1);
+  }
+
+  function toggleCreditCardDetails(tarjetaId) {
+    const suffix = sufijoTarjeta(tarjetaId);
+    const body = document.getElementById('tcBody' + suffix);
+    const btn = document.getElementById('btnToggleCard' + suffix);
+    if (!body || !btn) return;
+    const abrir = body.classList.contains('collapsed');
+    body.classList.toggle('collapsed', !abrir);
+    btn.textContent = abrir ? 'Ocultar' : 'Ver detalles';
+  }
+
   function esMovimientoFondo(movOTipo) {
     const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
     return tipo === 'F' || tipo === 'FDS';
@@ -6963,11 +7267,13 @@
     return [origen, Number(mov?.timestamp) || '', mov?.fecha || '', normalizarTipoMovimiento(mov?.tipo), Number(mov?.monto) || 0, mov?.detalle || ''].join('|');
   }
 
-  function movimientosTarjetaCombinados() {
+  function movimientosTarjetaCombinados(tarjetaId = null) {
+    const filtroTarjeta = tarjetaId ? normalizarTarjetaId(tarjetaId) : null;
     const combinados = [];
     const vistos = new Set();
     const agregar = (mov, origen, index, fechaInicioReferencia) => {
       if (!mov || mov.etiqueta === 'recalcula' || !esMovimientoTarjeta(mov)) return;
+      if (filtroTarjeta && tarjetaIdMovimiento(mov) !== filtroTarjeta) return;
       const clave = claveMovimientoTarjeta(mov, origen);
       if (vistos.has(clave)) return;
       vistos.add(clave);
@@ -6999,11 +7305,13 @@
 
   function pagoPendienteParaGrupo(grupo) {
     if (!grupo) return null;
+    const tarjetaId = normalizarTarjetaId(grupo.tarjetaId);
     const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
     const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
     return pagosTarjetaPendientesConciliar().find(item =>
-      item?.key === grupo.key
-      || (inicio && cierre && item?.inicio === inicio && item?.cierre === cierre)
+      normalizarTarjetaId(item?.tarjetaId) === tarjetaId
+      && (item?.key === grupo.key
+        || (inicio && cierre && item?.inicio === inicio && item?.cierre === cierre))
     ) || null;
   }
 
@@ -7011,6 +7319,7 @@
     if (!grupo || grupo.pendiente || !grupo.cerrado) return false;
     const registro = {
       key: grupo.key,
+      tarjetaId: normalizarTarjetaId(grupo.tarjetaId),
       inicio: fechaParaInput(grupo.inicio),
       cierre: fechaParaInput(grupo.cierre),
       pago: fechaParaInput(grupo.pago),
@@ -7020,63 +7329,76 @@
     state.tarjetaPagosPendientesConciliar = [
       registro,
       ...pagosTarjetaPendientesConciliar().filter(item =>
-        item?.key !== registro.key
-        && !(item?.inicio === registro.inicio && item?.cierre === registro.cierre)
+        normalizarTarjetaId(item?.tarjetaId) !== registro.tarjetaId
+        || (item?.key !== registro.key
+          && !(item?.inicio === registro.inicio && item?.cierre === registro.cierre))
       )
-    ].slice(0, 12);
+    ].slice(0, 24);
     return true;
   }
 
   function quitarPagoPendienteConciliar(grupo) {
     if (!grupo) return;
+    const tarjetaId = normalizarTarjetaId(grupo.tarjetaId);
     const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
     const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
     state.tarjetaPagosPendientesConciliar = pagosTarjetaPendientesConciliar().filter(item =>
-      item?.key !== grupo.key
-      && !(inicio && cierre && item?.inicio === inicio && item?.cierre === cierre)
+      normalizarTarjetaId(item?.tarjetaId) !== tarjetaId
+      || (item?.key !== grupo.key
+        && !(inicio && cierre && item?.inicio === inicio && item?.cierre === cierre))
     );
   }
 
-  function fechaPerteneceACicloPagado(fecha) {
+  function fechaPerteneceACicloPagado(fecha, tarjetaId = 'interbank') {
     const tiempo = new Date(fecha).getTime();
     if (!Number.isFinite(tiempo)) return false;
+    const id = normalizarTarjetaId(tarjetaId);
     return ciclosTarjetaPagados().some(ciclo => {
+      if (normalizarTarjetaId(ciclo?.tarjetaId) !== id) return false;
       const inicio = new Date(ciclo.inicio).getTime();
       const cierre = new Date(ciclo.cierre).getTime();
       return Number.isFinite(inicio) && Number.isFinite(cierre) && tiempo >= inicio && tiempo <= cierre;
     });
   }
 
-  function gruposPagoTarjeta(tarjetaConfig = state.tarjeta, calendarios = state.tarjetaCalendarios) {
+  function gruposPagoTarjeta(
+    tarjetaConfig = state.tarjeta,
+    calendarios = state.tarjetaCalendarios,
+    tarjetaId = 'interbank'
+  ) {
+    const id = normalizarTarjetaId(tarjetaId);
     const porFecha = new Map();
     const exactos = calendariosTarjetaExactos(calendarios);
-    movimientosTarjetaCombinados().forEach(entrada => {
+    movimientosTarjetaCombinados(id).forEach(entrada => {
       const { mov, origen, index, fechaInicioReferencia } = entrada;
       const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
-      if (fechaPerteneceACicloPagado(fechaMovimiento)) return;
+      if (fechaPerteneceACicloPagado(fechaMovimiento, id)) return;
       const calendario = exactos.length > 0
         ? calendarioExactoParaFecha(fechaMovimiento, exactos)
         : {
-            id: 'tarjeta-sin-fechas',
-            key: 'pendiente-sin-fechas',
+            id: `${id}-sin-fechas`,
+            key: `${id}-pendiente-sin-fechas`,
             inicio: new Date(fechaMovimiento),
             cierre: null,
             pago: null,
             pendiente: true
           };
       if (!calendario) return;
-      const key = calendario.pendiente
-        ? calendario.key
+      const baseKey = calendario.pendiente
+        ? (calendario.key || `pendiente-${fechaParaInput(calendario.inicio)}`)
         : `exacto-${calendario.id || fechaParaInput(calendario.pago)}`;
+      const key = `${id}:${baseKey}`;
       if (!porFecha.has(key)) {
         let inicio = calendario.inicio ? new Date(calendario.inicio) : null;
         if (!inicio && calendario.cierre) {
-          const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || 24));
+          const diaCierre = Math.max(1, Math.min(31, parseInt(tarjetaConfig?.diaCierre) || calendario.cierre.getDate()));
           inicio = fechaConDiaSeguro(calendario.cierre.getFullYear(), calendario.cierre.getMonth() - 1, diaCierre);
           inicio.setDate(inicio.getDate() + 1);
         }
         porFecha.set(key, {
           key,
+          tarjetaId: id,
+          tarjetaNombre: nombreTarjeta(id),
           inicio,
           pago: calendario.pago,
           cierre: calendario.cierre,
@@ -7109,7 +7431,14 @@
       .sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
   }
 
-  function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjeta()) {
+  function gruposPagoTarjetas() {
+    return [
+      ...gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios, 'interbank'),
+      ...gruposPagoTarjeta(state.tarjetaBCP, state.tarjetaBCPCalendarios, 'bcp')
+    ].sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
+  }
+
+  function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjetas()) {
     if (Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       return redondearDinero(state.tarjetaAjusteDeuda);
     }
@@ -7118,7 +7447,8 @@
   }
 
   function resumenDeudaTarjeta(tarjetaConfig = state.tarjeta, calendarios = state.tarjetaCalendarios) {
-    const grupos = gruposPagoTarjeta(tarjetaConfig, calendarios);
+    // Compatibilidad de nombre: el resumen ahora integra Interbank + BCP.
+    const grupos = gruposPagoTarjetas();
     const registrado = redondearDinero(grupos.reduce((total, grupo) => total + grupo.total, 0));
     const cubiertoPorFondo = redondearDinero(grupos.reduce((total, grupo) => total + grupo.totalFondo, 0));
     const ajuste = ajusteDeudaTarjetaActual(grupos);
@@ -7132,39 +7462,38 @@
   }
 
   function contextoPagosTarjeta() {
-    const grupos = gruposPagoTarjeta();
+    const grupos = gruposPagoTarjetas();
     const porIndice = new Map();
     grupos.forEach(grupo => {
       grupo.esAnterior = grupo.cerrado;
       grupo.etiqueta = grupo.pendiente
-        ? 'Ciclo en curso · fechas aún no informadas'
-        : (grupo.cerrado ? 'Próximo pago de tarjeta' : 'Ciclo abierto de tarjeta');
+        ? `${grupo.tarjetaNombre} · ciclo en curso · fechas aún no informadas`
+        : (grupo.cerrado ? `${grupo.tarjetaNombre} · próximo pago` : `${grupo.tarjetaNombre} · ciclo abierto`);
       grupo.indices.forEach(index => porIndice.set(index, grupo));
     });
     return { grupos, porIndice };
   }
 
-  function grupoPagoParaFecha(fechaMovimiento, grupos = gruposPagoTarjeta()) {
+  function grupoPagoParaFecha(fechaMovimiento, grupos = gruposPagoTarjetas(), tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
     const fecha = new Date(fechaMovimiento);
     if (Number.isNaN(fecha.getTime())) return null;
-    if (fechaPerteneceACicloPagado(fecha)) return null;
-
-    const calendario = calendarioExactoParaFecha(fecha);
-    if (!calendario && calendariosTarjetaExactos().length === 0) {
-      return grupos.find(grupo => grupo.pendiente) || null;
+    if (fechaPerteneceACicloPagado(fecha, id)) return null;
+    const calendarios = calendariosTarjetaPorId(id);
+    const calendario = calendarioExactoParaFecha(fecha, calendarios);
+    if (!calendario && calendariosTarjetaExactos(calendarios).length === 0) {
+      return grupos.find(grupo => grupo.tarjetaId === id && grupo.pendiente) || null;
     }
-
-    const key = calendario
-      ? (calendario.pendiente ? calendario.key : `exacto-${calendario.id}`)
-      : `exacto-${fechaParaInput(fechaPagoParaCompra(fecha).pago)}`;
-
+    if (!calendario) return null;
+    const baseKey = calendario.pendiente ? calendario.key : `exacto-${calendario.id}`;
+    const key = `${id}:${baseKey}`;
     return grupos.find(grupo => grupo.key === key) || null;
   }
 
-  function grupoPagoParaMovimiento(mov, index, fechaInicioReferencia, grupos = gruposPagoTarjeta()) {
+  function grupoPagoParaMovimiento(mov, index, fechaInicioReferencia, grupos = gruposPagoTarjetas()) {
     if (!esMovimientoTarjeta(mov)) return null;
     const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
-    return grupoPagoParaFecha(fechaMovimiento, grupos);
+    return grupoPagoParaFecha(fechaMovimiento, grupos, tarjetaIdMovimiento(mov));
   }
 
   function movimientosRecientesCicloAnterior() {
@@ -7193,12 +7522,13 @@
   function divisorCicloTarjeta(grupo) {
     const div = document.createElement('div');
     const pagoPendiente = pagoPendienteParaGrupo(grupo);
-    div.className = 'card-cycle-divider' + (pagoPendiente ? ' payment-marked' : '');
+    const tarjetaClase = normalizarTarjetaId(grupo?.tarjetaId) === 'bcp' ? ' card-bcp' : ' card-interbank';
+    div.className = 'card-cycle-divider' + tarjetaClase + (pagoPendiente ? ' payment-marked' : '');
     if (grupo.pendiente) {
       div.innerHTML = `
         <div class="card-cycle-divider-main">
           <span class="card-cycle-divider-text">
-            <span class="card-cycle-divider-label">Ciclo en curso · fechas aún no informadas</span>
+            <span class="card-cycle-divider-label">${escapeHtml(grupo.tarjetaNombre || nombreTarjeta(grupo.tarjetaId))} · ciclo en curso · fechas aún no informadas</span>
             <span class="card-cycle-divider-date">Compras desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
           </span>
         </div>
@@ -7212,7 +7542,7 @@
     div.innerHTML = `
       <div class="card-cycle-divider-main">
         <span class="card-cycle-divider-text">
-          <span class="card-cycle-divider-label">Ciclo de tarjeta · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
+          <span class="card-cycle-divider-label">${escapeHtml(grupo.tarjetaNombre || nombreTarjeta(grupo.tarjetaId))} · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
           <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
           ${pagoPendiente ? '<span class="card-cycle-divider-status">Pagado · pendiente de conciliar con Inicio</span>' : ''}
         </span>
@@ -7225,7 +7555,7 @@
   function grupoTarjetaPorKeyCodificada(keyCodificada) {
     let key = '';
     try { key = decodeURIComponent(keyCodificada || ''); } catch(e) { key = keyCodificada || ''; }
-    return gruposPagoTarjeta().find(grupo => grupo.key === key) || null;
+    return gruposPagoTarjetas().find(grupo => grupo.key === key) || null;
   }
 
   function abrirEstadoPagoTarjeta(keyCodificada) {
@@ -7322,11 +7652,14 @@
     if (Number.isNaN(compra.getTime())) return new Date();
     compra.setHours(12, 0, 0, 0);
     if (numeroCuota <= 1) return compra;
-    const primerCalendario = fechaPagoParaCompra(compra, state.tarjeta);
+    const tarjetaId = normalizarTarjetaId(plan?.tarjetaId);
+    const config = tarjetaConfigPorId(tarjetaId);
+    const primerCalendario = fechaPagoParaCompraTarjeta(compra, tarjetaId);
+    if (!primerCalendario) return compra;
     const cierrePrevio = fechaConDiaSeguro(
       primerCalendario.cierre.getFullYear(),
       primerCalendario.cierre.getMonth() + Math.max(0, numeroCuota - 2),
-      state.tarjeta.diaCierre
+      Number(config?.diaCierre) || state.tarjeta.diaCierre
     );
     cierrePrevio.setDate(cierrePrevio.getDate() + 1);
     cierrePrevio.setHours(12, 0, 0, 0);
@@ -7382,7 +7715,8 @@
               cuotaMoneda: plan.moneda || 'PEN',
               cuotaOriginal: Number(plan.cuotaOriginal) || 0,
               cuotaAutomatica: true,
-              categoria: normalizarCategoriaMovimiento(plan.categoria) || null
+              categoria: normalizarCategoriaMovimiento(plan.categoria) || null,
+              tarjetaId: normalizarTarjetaId(plan.tarjetaId)
             }
           }
         );
@@ -7411,7 +7745,9 @@
       const pendienteOriginal = pendientes * (Number(plan.cuotaOriginal) || 0);
       const siguienteNumero = registradas + 1;
       const siguienteActivacion = fechaActivacionCuota(plan, siguienteNumero);
-      const siguientePago = fechaPagoParaCompra(siguienteActivacion, state.tarjeta).pago;
+      const tarjetaId = normalizarTarjetaId(plan.tarjetaId);
+      const siguienteCalendario = fechaPagoParaCompraTarjeta(siguienteActivacion, tarjetaId);
+      const siguientePago = siguienteCalendario?.pago || null;
       const estadoFondo = plan.estado === 'sin_fondo' ? ' · fondo insuficiente' : '';
       return `
         <div class="installment-plan-row">
@@ -7420,8 +7756,8 @@
             <span class="installment-plan-progress">${registradas}/${total}</span>
           </div>
           <div class="installment-plan-meta">
-            <span>${pendientes} pendiente${pendientes === 1 ? '' : 's'} · ${montoPlanTexto(pendienteOriginal, plan.moneda)}</span>
-            <span>Próxima: paga ${etiquetaPagoCorta(siguientePago)}${estadoFondo}</span>
+            <span>${escapeHtml(nombreTarjeta(tarjetaId))} · ${pendientes} pendiente${pendientes === 1 ? '' : 's'} · ${montoPlanTexto(pendienteOriginal, plan.moneda)}</span>
+            <span>${siguientePago ? `Próxima: paga ${etiquetaPagoCorta(siguientePago)}` : 'Próxima fecha: configura calendario'}${estadoFondo}</span>
           </div>
         </div>
       `;
@@ -7468,10 +7804,10 @@
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
       const fechaMovimiento = fechaDeMovimiento(mov, idx, state.fechaInicioCiclo);
-      const grupoPosicion = grupoPagoParaFecha(fechaMovimiento, pagosTarjeta.grupos);
       const grupoPago = esMovimientoTarjeta(mov)
-        ? (pagosTarjeta.porIndice.get(idx) || grupoPosicion)
+        ? (pagosTarjeta.porIndice.get(idx) || grupoPagoParaMovimiento(mov, idx, state.fechaInicioCiclo, pagosTarjeta.grupos))
         : null;
+      const grupoPosicion = grupoPago;
 
       // El heads-up pertenece al tramo cronológico del ciclo de tarjeta,
       // no al primer gasto DS/FDS. Por eso también puede aparecer antes
@@ -7506,7 +7842,7 @@
           <div class="log-dot ${dotType}">${dotLabel}</div>
           <div class="log-info">
             <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-            <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
+            <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha)}</span></div>
           </div>
         </div>
         <div class="log-right">
@@ -7526,10 +7862,10 @@
 
       recientesAnteriores.forEach(({ mov, index, ciclo, fecha }) => {
         const fechaMovimiento = fecha || fechaDeMovimiento(mov, index, ciclo.fechaInicio);
-        const grupoPosicion = grupoPagoParaFecha(fechaMovimiento, pagosTarjeta.grupos);
         const grupoPago = esMovimientoTarjeta(mov)
           ? grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos)
           : null;
+        const grupoPosicion = grupoPago;
 
         if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
           logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
@@ -7547,7 +7883,7 @@
             <div class="log-dot ${dotType}">${dotLabel}</div>
             <div class="log-info">
               <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-              <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha || '')}</span></div>
+              <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha || '')}</span></div>
             </div>
           </div>
           <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
@@ -7994,19 +8330,29 @@
     }
 
     // Fuera de los últimos 10 no se toca ningún dato financiero.
-    // La categoría sigue siendo editable porque es metadata y no requiere recálculo.
+    // Categoría y tarjeta son metadata y pueden corregirse durante todo el ciclo.
     if (!getEditableMovementIndices().includes(idx)) {
+      const tarjetaActual = tarjetaIdMovimiento(mov) || 'interbank';
       openModal(`
-        <h2>Editar <span class="accent">categoría</span></h2>
+        <h2>Editar <span class="accent">datos</span></h2>
         <p class="modal-sub">${escapeHtml(mov.detalle || 'Sin detalle')} · ${escapeHtml(mov.fecha || '')}</p>
         <div class="modal-field">
           <label>Categoría</label>
           <select id="editMovementCategoryOnly">${opcionesCategoriaMovimiento(mov.categoria)}</select>
         </div>
+        ${esMovimientoTarjeta(mov) ? `
+          <div class="modal-field">
+            <label>Tarjeta</label>
+            <select id="editMovementCardOnly">
+              <option value="interbank" ${tarjetaActual === 'interbank' ? 'selected' : ''}>Interbank</option>
+              <option value="bcp" ${tarjetaActual === 'bcp' ? 'selected' : ''}>BCP</option>
+            </select>
+          </div>
+        ` : ''}
         <p class="modal-sub" style="font-size:11px;">Monto y tipo solo pueden modificarse en los últimos 10 movimientos.</p>
         <div class="modal-buttons">
           <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-          <button class="btn-primary" onclick="saveMovementCategoryOnly(${idx})">Guardar categoría</button>
+          <button class="btn-primary" onclick="saveMovementCategoryOnly(${idx})">Guardar</button>
         </div>
       `);
       requestAnimationFrame(() => document.getElementById('editMovementCategoryOnly')?.focus());
@@ -8053,6 +8399,13 @@
         <label>Categoría</label>
         <select id="editMovementCategory">${opcionesCategoriaMovimiento(mov.categoria)}</select>
       </div>
+      <div class="modal-field" id="editMovementCardRow">
+        <label>Tarjeta</label>
+        <select id="editMovementCard">
+          <option value="interbank" ${tarjetaIdMovimiento(mov) !== 'bcp' ? 'selected' : ''}>Interbank</option>
+          <option value="bcp" ${tarjetaIdMovimiento(mov) === 'bcp' ? 'selected' : ''}>BCP</option>
+        </select>
+      </div>
       <label class="edit-sem-row" id="editMovementSemRow">
         <span>Repartir entre los bloques restantes</span>
         <input type="checkbox" id="editMovementSem" ${mov.etiqueta === 'sem' ? 'checked' : ''}>
@@ -8082,11 +8435,20 @@
     if (categoria) mov.categoria = categoria;
     else delete mov.categoria;
 
+    if (esMovimientoTarjeta(mov)) {
+      mov.tarjetaId = normalizarTarjetaId(
+        document.getElementById('editMovementCardOnly')?.value || tarjetaIdMovimiento(mov)
+      );
+    } else {
+      delete mov.tarjetaId;
+    }
+
     if (mov.planCuotasId && Array.isArray(state.planesCuotas)) {
       const plan = state.planesCuotas.find(item => item?.id === mov.planCuotasId);
       if (plan) {
         if (categoria) plan.categoria = categoria;
         else delete plan.categoria;
+        if (esMovimientoTarjeta(mov)) plan.tarjetaId = tarjetaIdMovimiento(mov);
       }
     }
 
@@ -8100,11 +8462,16 @@
   function toggleEditFundType(tipo) {
     const sem = document.getElementById('editMovementSem');
     const row = document.getElementById('editMovementSemRow');
-    if (!sem || !row) return;
-    const esFondo = tipo === 'F' || tipo === 'FDS';
-    if (esFondo) sem.checked = false;
-    sem.disabled = esFondo;
-    row.style.opacity = esFondo ? '0.42' : '1';
+    const cardRow = document.getElementById('editMovementCardRow');
+    const tipoNormalizado = normalizarTipoMovimiento(tipo);
+    const esFondo = tipoNormalizado === 'F' || tipoNormalizado === 'FDS';
+    const esTarjeta = tipoNormalizado === 'DS' || tipoNormalizado === 'FDS';
+    if (sem && row) {
+      if (esFondo) sem.checked = false;
+      sem.disabled = esFondo;
+      row.style.opacity = esFondo ? '0.42' : '1';
+    }
+    if (cardRow) cardRow.style.display = esTarjeta ? '' : 'none';
   }
 
   function saveMovementEdit(idx) {
@@ -8117,6 +8484,9 @@
     const tipo = document.querySelector('input[name="editMovementType"]:checked')?.value;
     const detalle = document.getElementById('editMovementDetail')?.value.trim() || '';
     const categoria = normalizarCategoriaMovimiento(document.getElementById('editMovementCategory')?.value);
+    const tarjetaId = esMovimientoTarjeta(tipo)
+      ? normalizarTarjetaId(document.getElementById('editMovementCard')?.value)
+      : '';
     const etiqueta = afectaPresupuestoSalarial(tipo) && document.getElementById('editMovementSem')?.checked ? 'sem' : null;
     if (!Number.isFinite(monto) || monto <= 0 || !['S', 'DS', 'F', 'FDS'].includes(tipo)) {
       toast('Revisa el monto y el tipo', true);
@@ -8134,6 +8504,17 @@
       currentMov.detalle = detalle;
       if (categoria) currentMov.categoria = categoria;
       else delete currentMov.categoria;
+      if (esMovimientoTarjeta(tipo)) currentMov.tarjetaId = tarjetaId;
+      else delete currentMov.tarjetaId;
+
+      if (currentMov.planCuotasId && Array.isArray(state.planesCuotas)) {
+        const plan = state.planesCuotas.find(item => item?.id === currentMov.planCuotasId);
+        if (plan) {
+          if (categoria) plan.categoria = categoria;
+          else delete plan.categoria;
+          if (esMovimientoTarjeta(tipo)) plan.tarjetaId = tarjetaId;
+        }
+      }
 
       state.redoMovement = null;
       saveState({ markModified: true, sync: true });
@@ -8163,6 +8544,8 @@
       };
       if (categoria) editedMov.categoria = categoria;
       else delete editedMov.categoria;
+      if (esMovimientoTarjeta(tipo)) editedMov.tarjetaId = tarjetaId;
+      else delete editedMov.tarjetaId;
 
       const expectedOriginalAfter = applyMovementToSnapshot(targetBefore, originalMov);
       let rebuiltState = applyMovementToSnapshot(targetBefore, editedMov);
@@ -8300,7 +8683,8 @@
     const filtrados = q 
       ? state.log.filter(m =>
           (m.detalle || '').toLowerCase().includes(q) ||
-          (m.categoria || '').toLowerCase().includes(q)
+          (m.categoria || '').toLowerCase().includes(q) ||
+          (esMovimientoTarjeta(m) && nombreTarjeta(tarjetaIdMovimiento(m)).toLowerCase().includes(q))
         )
       : state.log;
     const pagosTarjeta = contextoPagosTarjeta();
@@ -8335,6 +8719,7 @@
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
+        if (esMovimientoTarjeta(mov)) badge += badgeBancoMovimiento(mov);
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
@@ -8344,7 +8729,7 @@
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span>${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
@@ -8741,10 +9126,11 @@
       toast('Este ciclo no tiene movimientos para exportar', true);
       return;
     }
-    const headers = ['Fecha', 'Tipo', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
+    const headers = ['Fecha', 'Tipo', 'Tarjeta', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = movimientos.map(m => [
       m.fecha || '',
       etiquetaTipoMovimiento(m.tipo) || '',
+      esMovimientoTarjeta(m) ? nombreTarjeta(tarjetaIdMovimiento(m)) : '',
       categoriaMovimiento(m) || 'Sin categoría',
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
@@ -9323,6 +9709,7 @@
     if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
     const registro = {
       key: grupo.key,
+      tarjetaId: normalizarTarjetaId(grupo.tarjetaId),
       inicio: grupo.inicio.toISOString(),
       cierre: grupo.cierre.toISOString(),
       pago: grupo.pago.toISOString(),
@@ -9343,6 +9730,7 @@
       etiqueta: mov.etiqueta || null,
       detalle: mov.detalle || '',
       categoria: normalizarCategoriaMovimiento(mov.categoria) || null,
+      tarjetaId: esMovimientoTarjeta(mov) ? tarjetaIdMovimiento(mov) : null,
       fecha: mov.fecha || '',
       fechaISO: mov.fechaISO || null,
       timestamp: Number(mov.timestamp) || null,
@@ -9369,7 +9757,7 @@
     state.tarjetaMovimientosArrastrados = acumulados.filter((mov, index) => {
       if (!esMovimientoTarjeta(mov)) return false;
       const fecha = fechaDeMovimiento(mov, index, mov.fechaInicioCiclo || state.fechaInicioCiclo);
-      if (fechaPerteneceACicloPagado(fecha)) return false;
+      if (fechaPerteneceACicloPagado(fecha, tarjetaIdMovimiento(mov))) return false;
       const clave = claveMovimientoTarjeta(mov, 'arrastrado');
       if (vistos.has(clave)) return false;
       vistos.add(clave);
@@ -9438,6 +9826,7 @@
         etiqueta: m.etiqueta || null,
         detalle: m.detalle || '',
         categoria: normalizarCategoriaMovimiento(m.categoria) || null,
+        tarjetaId: esMovimientoTarjeta(m) ? tarjetaIdMovimiento(m) : null,
         fecha: m.fecha || '',
         fechaISO: m.fechaISO || null,
         timestamp: Number(m.timestamp) || null,
@@ -9485,6 +9874,8 @@
     state.fechaInicioCiclo = nuevaFechaInicio.toISOString();
     state.fechaProximoSueldo = (nuevoProximoSueldo || fechaSueldoEstimadaDesde(nuevaFechaInicio)).toISOString();
     state.tarjeta.diaSueldo = (nuevoProximoSueldo || fechaSueldoEstimadaDesde(nuevaFechaInicio)).getDate();
+    if (!state.tarjetaBCP || typeof state.tarjetaBCP !== 'object') state.tarjetaBCP = {};
+    state.tarjetaBCP.diaSueldo = state.tarjeta.diaSueldo;
     state.bloquesAdaptables = true;
     state.modoManualSemanas = modoManual;
     state.ultimaSemanaVista = null;
@@ -9821,30 +10212,30 @@
         formula: `IFERROR(F${row}/SUM($F$${categoryFirstRow}:$F$${categoryLastRow}),0)`
       };
       summary.getCell(`C${row}`).value = {
-        formula: `COUNTIF(Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row})`
+        formula: `COUNTIF(Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row})`
       };
       summary.getCell(`D${row}`).value = {
         formula:
-          `SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
-          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"S")` +
-          `+SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
-          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `+SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"DS")`
       };
       summary.getCell(`E${row}`).value = {
         formula:
-          `SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
-          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F")` +
-          `+SUMIFS(Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow},` +
-          `Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},A${row},` +
+          `+SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F+DS")`
       };
       summary.getCell(`F${row}`).value = {
         formula:
-          `SUMIF(Movimientos!$D$${excelDataStartRow}:$D$${excelDataEndRow},` +
-          `A${row},Movimientos!$G$${excelDataStartRow}:$G$${excelDataEndRow})`
+          `SUMIF(Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},` +
+          `A${row},Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow})`
       };
 
       summary.getCell(`B${row}`).numFmt = '0.0%';
@@ -9902,29 +10293,29 @@
       pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
     });
     sheet.columns = [
-      { key: 'fecha', width: 22 }, { key: 'tipo', width: 12 }, { key: 'detalle', width: 34 },
-      { key: 'categoria', width: 24 }, { key: 'etiqueta', width: 16 }, { key: 'impacto', width: 24 },
-      { key: 'monto', width: 18 }, { key: 'cuota', width: 18 }
+      { key: 'fecha', width: 22 }, { key: 'tipo', width: 12 }, { key: 'tarjeta', width: 14 },
+      { key: 'detalle', width: 34 }, { key: 'categoria', width: 24 }, { key: 'etiqueta', width: 16 },
+      { key: 'impacto', width: 24 }, { key: 'monto', width: 18 }, { key: 'cuota', width: 18 }
     ];
-    sheet.mergeCells('A1:H1');
+    sheet.mergeCells('A1:I1');
     sheet.getCell('A1').value = 'LEDGER · MOVIMIENTOS';
     sheet.getCell('A1').font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white } };
     sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(sheet, 1, 1, 1, 8, { fill: excelFill(EXCEL_PALETTE.ink) });
+    styleExcelRange(sheet, 1, 1, 1, 9, { fill: excelFill(EXCEL_PALETTE.ink) });
     sheet.getRow(1).height = 32;
-    sheet.mergeCells('A2:H2');
+    sheet.mergeCells('A2:I2');
     sheet.getCell('A2').value = `${periodo} · ${resumen.movimientos} movimientos reales`;
     sheet.getCell('A2').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
     sheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'left' };
-    styleExcelRange(sheet, 2, 1, 2, 8, { fill: excelFill(EXCEL_PALETTE.cream) });
+    styleExcelRange(sheet, 2, 1, 2, 9, { fill: excelFill(EXCEL_PALETTE.cream) });
 
-    const headers = ['Fecha', 'Tipo', 'Detalle', 'Categoría', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'];
+    const headers = ['Fecha', 'Tipo', 'Tarjeta', 'Detalle', 'Categoría', 'Etiqueta', 'Impacto', 'Monto', 'Cuota'];
     headers.forEach((header, index) => {
       const cell = sheet.getCell(4, index + 1);
       cell.value = header;
       cell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } };
       cell.fill = excelFill(EXCEL_PALETTE.ink);
-      cell.alignment = { vertical: 'middle', horizontal: index >= 6 ? 'center' : 'left' };
+      cell.alignment = { vertical: 'middle', horizontal: (index === 1 || index === 2 || index >= 7) ? 'center' : 'left' };
       cell.border = excelBorder(EXCEL_PALETTE.bg);
     });
     sheet.getRow(4).height = 25;
@@ -9947,6 +10338,7 @@
       row.values = [
         fecha,
         tipo,
+        ajuste ? '—' : (esMovimientoTarjeta(mov) ? nombreTarjeta(tarjetaIdMovimiento(mov)) : '—'),
         mov?.detalle || (ajuste ? 'Redistribución' : 'Sin detalle'),
         ajuste ? '—' : (categoriaMovimiento(mov) || 'Sin categoría'),
         ajuste ? 'Redistribución' : (mov?.etiqueta || ''),
@@ -9964,8 +10356,12 @@
       row.getCell(2).fill = excelFill(typeFills[tipo] || EXCEL_PALETTE.gray);
       row.getCell(2).font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.ink } };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(7).numFmt = '"S/" #,##0.00';
-      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
+      if (esMovimientoTarjeta(mov)) {
+        row.getCell(3).font = { name: 'Aptos', size: 9, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+      }
+      row.getCell(8).numFmt = '"S/" #,##0.00';
+      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'right' };
 
       if (fecha instanceof Date) row.getCell(1).numFmt = 'dd-mmm-yyyy hh:mm';
     });
@@ -9987,7 +10383,7 @@
       for (let rowNumber = 5; rowNumber <= movimientos.length + 4; rowNumber++) {
         const movement = movimientos[rowNumber - 5];
         const tipo = tipoReporteMovimiento(movement);
-        const categoryCell = sheet.getCell(rowNumber, 4);
+        const categoryCell = sheet.getCell(rowNumber, 5);
 
         if (tipo !== 'AJUSTE') {
           // Aplicar al final, de forma explícita, a CADA gasto real.
@@ -10004,7 +10400,7 @@
       }
     }
 
-    sheet.autoFilter = { from: 'A4', to: `H${lastRow}` };
+    sheet.autoFilter = { from: 'A4', to: `I${lastRow}` };
 
     // ================================================================
     // DESGLOSE POR CATEGORÍA · BLOQUES
@@ -10424,10 +10820,11 @@
       toast('Nada que exportar', true);
       return;
     }
-    const headers = ['Fecha', 'Tipo', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
+    const headers = ['Fecha', 'Tipo', 'Tarjeta', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = state.log.map(m => [
       m.fecha,
       etiquetaTipoMovimiento(m.tipo),
+      esMovimientoTarjeta(m) ? nombreTarjeta(tarjetaIdMovimiento(m)) : '',
       m.etiqueta === 'recalcula' ? '' : (categoriaMovimiento(m) || 'Sin categoría'),
       m.etiqueta || '',
       (m.detalle || '').replace(/"/g, '""'),
@@ -10705,10 +11102,60 @@
       document.getElementById('quickRegisterMovementCategory')?.value
     );
     const datos = { ...pendingQuickMovement, categoria };
+
+    if (esMovimientoTarjeta(datos.tipo)) {
+      openQuickMovementCard(datos);
+      return;
+    }
+
     pendingQuickMovement = null;
     closeModal();
+    finalizarQuickMovement(datos);
+  }
 
-    const { monto, tipo, etiqueta, detalle } = datos;
+  function openQuickMovementCard(datos) {
+    pendingQuickMovement = datos ? { ...datos } : pendingQuickMovement;
+    if (!pendingQuickMovement) return;
+    openModal(`
+      <h2>Tarjeta</h2>
+      <p class="modal-sub">${escapeHtml(pendingQuickMovement.detalle || 'Sin detalle')}</p>
+      <div class="modal-field">
+        <label>¿Con qué tarjeta pagaste?</label>
+        <div class="edit-type-grid">
+          <label class="edit-type-option">
+            <input type="radio" name="quickMovementCard" value="interbank" checked>
+            <span>Interbank</span>
+          </label>
+          <label class="edit-type-option">
+            <input type="radio" name="quickMovementCard" value="bcp">
+            <span>BCP · Visa Gold Qore</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="cancelQuickMovementCategory()">Cancelar</button>
+        <button class="btn-primary" onclick="saveQuickMovementCard()">Guardar</button>
+      </div>
+    `);
+  }
+
+  function saveQuickMovementCard() {
+    if (!pendingQuickMovement) {
+      closeModal();
+      return;
+    }
+    const tarjetaId = normalizarTarjetaId(
+      document.querySelector('input[name="quickMovementCard"]:checked')?.value
+    );
+    const datos = { ...pendingQuickMovement, tarjetaId };
+    pendingQuickMovement = null;
+    closeModal();
+    finalizarQuickMovement(datos);
+  }
+
+  function finalizarQuickMovement(datos) {
+    if (!datos) return;
+    const { monto, tipo, etiqueta, detalle, categoria, tarjetaId } = datos;
 
     if (afectaPresupuestoSalarial(tipo) && etiqueta !== 'sem') {
       const currentIdx = calcularSemanaActualIdx();
@@ -10716,13 +11163,16 @@
         ? state.semanas[currentIdx]
         : null;
       if (semActual && monto > (Number(semActual.presupuesto) || 0)) {
-        confirmarRollover(monto, tipo, etiqueta, detalle, categoria);
+        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId);
         return;
       }
     }
 
     const ok = aplicarMovimiento(monto, tipo, etiqueta, detalle, {
-      metadata: { categoria }
+      metadata: {
+        categoria,
+        ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(tarjetaId) } : {})
+      }
     });
     if (ok) resetInputs();
   }
@@ -10777,7 +11227,7 @@
     document.getElementById('inputAmount').focus();
   }
   
-  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '') {
+  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank') {
     const ahora = new Date();
     const semActualIdx = calcularSemanaIdxParaFecha(ahora);
     const semActual = semActualIdx >= 0 && semActualIdx < state.semanas.length ? state.semanas[semActualIdx] : null;
@@ -10838,19 +11288,24 @@
       
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)})'>Confirmar gasto</button>
+        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))})'>Confirmar gasto</button>
       </div>
     `);
   }
   
-  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '') {
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank') {
     closeModal();
     const ok = aplicarMovimiento(
       monto,
       tipo,
       etiqueta === 'null' ? null : etiqueta,
       detalle,
-      { metadata: { categoria: normalizarCategoriaMovimiento(categoria) } }
+      {
+        metadata: {
+          categoria: normalizarCategoriaMovimiento(categoria),
+          ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(tarjetaId) } : {})
+        }
+      }
     );
     if (ok) resetInputs();
   }
@@ -10879,6 +11334,9 @@
       } : {}),
       ...(normalizarCategoriaMovimiento(metadata.categoria)
         ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) }
+        : {}),
+      ...(esMovimientoTarjeta(tipo)
+        ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) }
         : {}),
       ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       ...(opciones.soloBloqueActual ? { soloBloqueActualSimulador: true } : {}),
@@ -11354,7 +11812,7 @@
       state.deudaActual = deuda;
       if (Math.abs(deuda - deudaAnterior) > 0.005) {
         state.deudaBaseCiclo = redondearDinero(deuda - totalesDesdeMovimientos().totalTarjeta);
-        const registradoTarjeta = gruposPagoTarjeta().reduce((total, grupo) => total + grupo.total, 0);
+        const registradoTarjeta = gruposPagoTarjetas().reduce((total, grupo) => total + grupo.total, 0);
         state.tarjetaAjusteDeuda = redondearDinero(deuda - registradoTarjeta);
       }
     }
@@ -11530,23 +11988,27 @@
     render();
   }
   
-  function openCCConfig(editarId = '') {
-    const exactos = calendariosTarjetaExactos();
-    const calendarioHoy = calendarioExactoParaFecha(new Date());
+  function openCCConfig(editarId = '', tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
+    const nombre = nombreTarjeta(id);
+    const calendarios = calendariosTarjetaPorId(id);
+    const exactos = calendariosTarjetaExactos(calendarios);
+    const calendarioHoy = calendarioExactoParaFecha(new Date(), calendarios);
     const ultimoGuardado = exactos.length > 0 ? exactos[exactos.length - 1] : null;
     const calendarioActual = exactos.find(item => item.id === editarId)
       || (!calendarioHoy?.pendiente ? calendarioHoy : ultimoGuardado);
     const agregando = !calendarioActual;
     const tituloModal = agregando
-      ? 'Fechas del ciclo de tarjeta'
-      : 'Editar estado de cuenta';
+      ? `Fechas · ${nombre}`
+      : `Editar · ${nombre}`;
     const descripcionModal = agregando
-      ? 'Ingresa las fechas exactas que ya aparecen en tu banco. La deuda total no cambiará.'
-      : 'Corrige las fechas de este estado de cuenta. La deuda total no cambiará.';
+      ? `Ingresa las fechas exactas que aparecen en ${nombre}. La deuda total no cambiará.`
+      : `Corrige las fechas de este estado de cuenta de ${nombre}. La deuda total no cambiará.`;
     openModal(`
       <h2>${tituloModal}</h2>
       <p class="modal-sub">${descripcionModal}</p>
       <input type="hidden" id="setCalendarId" value="${calendarioActual?.id || ''}">
+      <input type="hidden" id="setCalendarCardId" value="${id}">
       <div class="modal-field">
         <label for="setCierre">Cierre de facturación</label>
         <input class="calendar-date-input" type="date" id="setCierre" value="${calendarioActual ? fechaParaInput(calendarioActual.cierre) : ''}">
@@ -11555,9 +12017,9 @@
       <div class="modal-field">
         <label for="setPago">Último día de pago</label>
         <input class="calendar-date-input" type="date" id="setPago" value="${calendarioActual ? fechaParaInput(calendarioActual.pago) : ''}">
-        <div class="modal-field-help">Fecha límite para pagar este estado de cuenta. Copia la fecha exacta mostrada por el banco.</div>
+        <div class="modal-field-help">Copia la fecha exacta mostrada por ${nombre}.</div>
       </div>
-      ${!agregando ? `<button class="tc-btn" style="width:100%;padding:10px;margin-bottom:4px;" onclick="openNextCardCyclePopup()">Ingresar fechas del siguiente ciclo</button>` : ''}
+      ${!agregando ? `<button class="tc-btn" style="width:100%;padding:10px;margin-bottom:4px;" onclick="openNextCardCyclePopup('${id}')">Ingresar fechas del siguiente ciclo</button>` : ''}
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveCCConfig()">${agregando ? 'Guardar fechas' : 'Guardar cambios'}</button>
@@ -11565,11 +12027,13 @@
     `);
   }
 
-  function openNextCardCyclePopup() {
+  function openNextCardCyclePopup(tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
     openNestedModal(`
-      <div class="nested-modal-kicker">Nuevo registro</div>
+      <div class="nested-modal-kicker">${escapeHtml(nombreTarjeta(id))}</div>
       <h3>Nuevo ciclo de tarjeta</h3>
       <p class="modal-sub">Las fechas actuales se conservarán. Ingresa únicamente las nuevas fechas que ya aparecen en tu banco.</p>
+      <input type="hidden" id="setNextCalendarCardId" value="${id}">
       <div class="modal-field">
         <label for="setNextCierre">Cierre de facturación</label>
         <input class="calendar-date-input" type="date" id="setNextCierre" value="">
@@ -11584,13 +12048,15 @@
       </div>
     `);
   }
-  
-  function guardarCalendarioTarjeta(cierre, pago, editarId = '') {
+
+  function guardarCalendarioTarjeta(cierre, pago, editarId = '', tarjetaId = 'interbank') {
+    const id = normalizarTarjetaId(tarjetaId);
     if (!cierre || !pago || pago <= cierre) {
       toast('El pago debe ser posterior al cierre', true);
       return false;
     }
-    const nuevosCalendarios = calendarioTarjetaConRegistro(cierre, pago, state.tarjetaCalendarios, editarId);
+    const calendariosActuales = calendariosTarjetaPorId(id);
+    const nuevosCalendarios = calendarioTarjetaConRegistro(cierre, pago, calendariosActuales, editarId);
     const exactosNuevos = calendariosTarjetaExactos(nuevosCalendarios);
     const registroActual = exactosNuevos.find(item => item.id === editarId)
       || exactosNuevos.find(item => fechaParaInput(item.cierre) === fechaParaInput(cierre));
@@ -11598,17 +12064,21 @@
       toast('El cierre debe ser posterior al inicio de este ciclo de tarjeta', true);
       return false;
     }
-    state.tarjetaCalendarios = nuevosCalendarios;
+
+    guardarCalendariosTarjetaPorId(id, nuevosCalendarios);
     const ultimoCalendario = exactosNuevos[exactosNuevos.length - 1];
     if (ultimoCalendario) {
-      state.tarjeta.diaCierre = ultimoCalendario.cierre.getDate();
-      state.tarjeta.diaPago = ultimoCalendario.pago.getDate();
+      const config = tarjetaConfigPorId(id);
+      config.diaCierre = ultimoCalendario.cierre.getDate();
+      config.diaPago = ultimoCalendario.pago.getDate();
     }
-    const registradoReorganizado = gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios)
+
+    const registradoReorganizado = gruposPagoTarjetas()
       .reduce((total, grupo) => total + grupo.total, 0);
     state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registradoReorganizado);
+    activeCreditCardIndex = id === 'bcp' ? 1 : 0;
     closeModal();
-    toast(`${editarId ? 'Fechas actualizadas' : 'Fechas guardadas'} · deuda total conservada`);
+    toast(`${editarId ? 'Fechas actualizadas' : 'Fechas guardadas'} · ${nombreTarjeta(id)}`);
     render();
     return true;
   }
@@ -11617,13 +12087,15 @@
     const cierre = fechaDesdeInput(document.getElementById('setCierre')?.value);
     const pago = fechaDesdeInput(document.getElementById('setPago')?.value);
     const editarId = document.getElementById('setCalendarId')?.value || '';
-    guardarCalendarioTarjeta(cierre, pago, editarId);
+    const tarjetaId = document.getElementById('setCalendarCardId')?.value || 'interbank';
+    guardarCalendarioTarjeta(cierre, pago, editarId, tarjetaId);
   }
 
   function saveNextCCConfig() {
     const cierre = fechaDesdeInput(document.getElementById('setNextCierre')?.value);
     const pago = fechaDesdeInput(document.getElementById('setNextPago')?.value);
-    guardarCalendarioTarjeta(cierre, pago);
+    const tarjetaId = document.getElementById('setNextCalendarCardId')?.value || 'interbank';
+    guardarCalendarioTarjeta(cierre, pago, '', tarjetaId);
   }
 
   const PURCHASE_INSTALLMENT_TEA = Object.freeze({ PEN: 83.32, USD: 65.92 });
@@ -11634,6 +12106,7 @@
   let purchaseSimulationInstallments = 1;
   let lastPurchaseSimulationInstallments = 12;
   let purchaseBudgetStrategy = 'redistribute'; // 'redistribute' | 'current'
+  let purchaseSimulationCardId = 'interbank';
   let pendingPurchaseSimulation = null;
 
   function setPurchaseBudgetStrategy(strategy) {
@@ -11684,7 +12157,7 @@
       register.textContent = purchaseSimulationMode === 'single' ? 'Registrar compra' : 'Registrar en cuotas';
     } else {
       secondary.textContent = 'Editar fechas';
-      secondary.setAttribute('onclick', 'openCCConfig()');
+      secondary.setAttribute('onclick', `openCCConfig('', '${normalizarTarjetaId(purchaseSimulationCardId)}')`);
       close.hidden = false;
       register.hidden = true;
     }
@@ -11855,7 +12328,8 @@
     });
   });
 
-  function openPurchaseSimulator() {
+  function openPurchaseSimulator(tarjetaId = 'interbank') {
+    purchaseSimulationCardId = normalizarTarjetaId(tarjetaId);
     purchaseSimulationCurrency = 'PEN';
     purchaseSimulationMode = 'single';
     purchaseSimulationInstallments = 1;
@@ -11863,8 +12337,8 @@
     purchaseBudgetStrategy = 'redistribute';
     pendingPurchaseSimulation = null;
     openModal(`
-      <h2 class="purchase-modal-title">Simular compra</h2>
-      <p class="modal-sub" style="font-size:10px;margin-bottom:12px;">Sueldo: día ${diaSueldoConfigurado()}</p>
+      <h2 class="purchase-modal-title">Simular compra · ${escapeHtml(nombreTarjeta(purchaseSimulationCardId))}</h2>
+      <p class="modal-sub" style="font-size:10px;margin-bottom:12px;">Sueldo: día ${diaSueldoConfigurado()} · calendario ${escapeHtml(nombreTarjeta(purchaseSimulationCardId))}</p>
       <div class="purchase-sim-field-head">
         <label for="simPurchaseAmount">Monto</label>
         <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
@@ -12173,11 +12647,10 @@
     return `S/ ${fmtSim(montoPen)}`;
   }
 
-  function escenarioCompra(fechaCompra, monto, fechaPlan, currencyInfo = null) {
-    const calendarioExacto = calendarioExactoParaFecha(fechaCompra);
-    const calendario = calendarioExacto && !calendarioExacto.pendiente
-      ? { ...calendarioExacto, estimado: false }
-      : { ...fechaPagoParaCompra(fechaCompra), estimado: true, pendiente: true };
+  function escenarioCompra(fechaCompra, monto, fechaPlan, currencyInfo = null, tarjetaId = purchaseSimulationCardId) {
+    const id = normalizarTarjetaId(tarjetaId);
+    const calendario = fechaPagoParaCompraTarjeta(fechaCompra, id);
+    if (!calendario || !calendario.cierre || !calendario.pago) return null;
     const sueldos = fechasSueldoEntre(fechaPlan, calendario.pago);
     let nivel = 'bad';
     let margen = 'Poco margen';
@@ -12426,10 +12899,26 @@
 
     const hoy = new Date();
     hoy.setHours(12, 0, 0, 0);
-    const compraHoy = escenarioCompra(hoy, montoImpacto, hoy, currencyInfo);
+    const compraHoy = escenarioCompra(hoy, montoImpacto, hoy, currencyInfo, purchaseSimulationCardId);
+    if (!compraHoy) {
+      resultado.innerHTML = `
+        <div class="purchase-impact warning">
+          <span class="purchase-impact-label">${escapeHtml(nombreTarjeta(purchaseSimulationCardId))}</span>
+          <strong>Faltan fechas de facturación.</strong>
+          <span class="purchase-impact-weekly">Ingresa el cierre y pago exactos de esta tarjeta para poder simularla.</span>
+        </div>
+      `;
+      updatePurchaseSimulatorFooter(false);
+      toast(`Configura las fechas de ${nombreTarjeta(purchaseSimulationCardId)}`, true);
+      return;
+    }
     const esperarHasta = new Date(compraHoy.calendario.cierre);
     esperarHasta.setDate(esperarHasta.getDate() + 1);
-    const compraEsperando = escenarioCompra(esperarHasta, montoImpacto, hoy, currencyInfo);
+    const compraEsperando = escenarioCompra(esperarHasta, montoImpacto, hoy, currencyInfo, purchaseSimulationCardId);
+    if (!compraEsperando) {
+      toast(`Faltan fechas para proyectar ${nombreTarjeta(purchaseSimulationCardId)}`, true);
+      return;
+    }
 
     if (planCuotas) {
       compraHoy.plan = planCuotasParaEscenario(planCuotas, compraHoy, currencyInfo);
@@ -12463,6 +12952,7 @@
         rate,
         plan: { ...planCuotas },
         estrategiaBloques: purchaseBudgetStrategy,
+        tarjetaId: purchaseSimulationCardId,
         fechaCompra: hoy.toISOString(),
         primerCierre: compraHoy.calendario.cierre.toISOString(),
         primerPago: compraHoy.calendario.pago.toISOString()
@@ -12510,7 +13000,7 @@
       openPurchaseSimulator();
       return;
     }
-    openPurchaseSimulator();
+    openPurchaseSimulator(sim.tarjetaId || 'interbank');
     const meses = Number(sim.plan?.meses) || 1;
     if (meses > 1) {
       lastPurchaseSimulationInstallments = meses;
@@ -12543,7 +13033,7 @@
       <h2>Confirmar <span class="accent">${esPagoUnico ? 'compra' : 'compra en cuotas'}</span></h2>
       <p class="modal-sub">Este segundo paso sí modificará tus montos. Revisa ${esPagoUnico ? 'el monto real' : 'la cuota real'} que te muestra el banco antes de confirmar.</p>
       <div class="installment-confirm-summary">
-        <div class="installment-confirm-main">${esPagoUnico ? `Un solo pago · vence el ${formatFechaCompleta(primera)}` : `${sim.plan.meses} cuotas · primera el ${formatFechaCompleta(primera)}`}</div>
+        <div class="installment-confirm-main">${escapeHtml(nombreTarjeta(sim.tarjetaId || 'interbank'))} · ${esPagoUnico ? `un solo pago · vence el ${formatFechaCompleta(primera)}` : `${sim.plan.meses} cuotas · primera el ${formatFechaCompleta(primera)}`}</div>
         <div class="installment-confirm-meta">
           Compra: ${montoPlanTexto(sim.montoOriginal, moneda)}${esPagoUnico ? '.' : ` · Última cuota estimada: ${formatFechaCompleta(ultima)}.<br>
           Solo la primera cuota se registrará ahora; las siguientes se activarán en sus ciclos.`}
@@ -12629,7 +13119,8 @@
         renderizar: false,
         notificar: false,
         redistribuirRestantes: tipo === 'DS' && sim.estrategiaBloques !== 'current',
-        soloBloqueActual: tipo === 'DS' && sim.estrategiaBloques === 'current'
+        soloBloqueActual: tipo === 'DS' && sim.estrategiaBloques === 'current',
+        metadata: { tarjetaId: normalizarTarjetaId(sim.tarjetaId) }
       });
       if (!ok) {
         toast('No se pudo registrar la compra', true);
@@ -12647,6 +13138,7 @@
       id: 'plan-cuotas-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
       detalle,
       tipo,
+      tarjetaId: normalizarTarjetaId(sim.tarjetaId),
       moneda: sim.moneda,
       tipoCambio: sim.moneda === 'USD' ? factorCambio : null,
       montoCompraOriginal: redondearDinero(sim.montoOriginal),
@@ -12677,7 +13169,8 @@
         cuotasTotal: plan.cuotas,
         cuotaMoneda: plan.moneda,
         cuotaOriginal: plan.cuotaOriginal,
-        cuotaAutomatica: false
+        cuotaAutomatica: false,
+        tarjetaId: plan.tarjetaId
       }
     });
     if (!ok) {
