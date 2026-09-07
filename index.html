@@ -3000,12 +3000,34 @@
     background: rgba(223, 211, 232, 0.58);
     color: var(--ink);
   }
-  /* BUILD 168 · identidad visual por tarjeta en heads-up de movimientos */
+  /* BUILD 170 · identidad visual sólida por tarjeta */
   .card-cycle-divider.card-interbank {
-    background: rgba(207, 228, 197, 0.72);
+    background: #05BE50;
+    color: #ffffff;
   }
+  .card-cycle-divider.card-interbank .card-cycle-divider-label,
+  .card-cycle-divider.card-interbank .card-cycle-divider-status {
+    color: rgba(255, 255, 255, 0.78);
+  }
+  .card-cycle-divider.card-interbank .card-cycle-divider-date {
+    color: #ffffff;
+  }
+
   .card-cycle-divider.card-bcp {
-    background: rgba(207, 224, 242, 0.76);
+    background: #0030B3;
+    color: #ffffff;
+  }
+  .card-cycle-divider.card-bcp .card-cycle-divider-label,
+  .card-cycle-divider.card-bcp .card-cycle-divider-status {
+    color: rgba(255, 255, 255, 0.74);
+  }
+  .card-cycle-divider.card-bcp .card-cycle-divider-date {
+    color: #ffffff;
+  }
+  .card-cycle-divider.card-interbank .card-cycle-divider-action,
+  .card-cycle-divider.card-bcp .card-cycle-divider-action {
+    background: rgba(255, 255, 255, 0.94);
+    color: #171716;
   }
   .card-cycle-divider-main {
     display: flex;
@@ -3047,6 +3069,8 @@
   .card-cycle-divider.payment-marked {
     background: rgba(207, 228, 197, 0.72);
   }
+  .card-cycle-divider.card-interbank.payment-marked { background: #05BE50; }
+  .card-cycle-divider.card-bcp.payment-marked { background: #0030B3; }
   .card-cycle-divider.payment-marked .card-cycle-divider-action {
     background: rgba(255,255,255,0.66);
     color: var(--ink);
@@ -3060,9 +3084,13 @@
     font-weight: 700;
   }
   body.dark .card-cycle-divider { background: rgba(180, 140, 220, 0.14); }
-  body.dark .card-cycle-divider.card-interbank { background: rgba(132, 178, 111, 0.18); }
-  body.dark .card-cycle-divider.card-bcp { background: rgba(104, 154, 205, 0.18); }
-  body.dark .card-cycle-divider.payment-marked { background: rgba(132, 178, 111, 0.16); }
+  body.dark .card-cycle-divider.card-interbank,
+  body.dark .card-cycle-divider.card-interbank.payment-marked { background: #05BE50; }
+  body.dark .card-cycle-divider.card-bcp,
+  body.dark .card-cycle-divider.card-bcp.payment-marked { background: #0030B3; }
+  body.dark .card-cycle-divider.payment-marked:not(.card-interbank):not(.card-bcp) {
+    background: rgba(132, 178, 111, 0.16);
+  }
   @media (max-width: 430px) {
     .card-cycle-divider-main { align-items: flex-start; }
     .card-cycle-divider-action { padding: 7px 8px; }
@@ -4935,7 +4963,7 @@
             <div class="tc-title-wrap">
               <div class="tc-title">Calendario tarjeta</div>
               <div class="tc-bank-name">BCP</div>
-              <div class="tc-calendar-source" id="ccSourceBcp">Visa Gold Qore</div>
+              <div class="tc-calendar-source" id="ccSourceBcp">Visa Gold Qore · cronograma oficial 2026</div>
             </div>
           </div>
           <div class="tc-header-actions">
@@ -5138,7 +5166,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '168';
+  const LEDGER_BUILD = '171';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5172,8 +5200,9 @@
     tarjeta: { diaCierre: 24, diaPago: 20, diaSueldo: 1 }, // Interbank legacy/base
     tarjetaCalendarios: [], // Interbank · estados de cuenta exactos
     tarjetaCalendarioPresetVersion: null,
-    tarjetaBCP: { diaCierre: null, diaPago: null, diaSueldo: 1 },
-    tarjetaBCPCalendarios: [], // BCP · se llena con las fechas exactas del banco
+    tarjetaBCP: { diaCierre: 25, diaPago: null, diaSueldo: 1 },
+    tarjetaBCPCalendarios: [], // BCP · estados de cuenta exactos
+    tarjetaBCPCalendarioPresetVersion: null,
     tarjetaAjusteDeuda: 1756.94,
     tarjetaCiclosPagados: [],
     tarjetaPagosPendientesConciliar: [], // marca visual; no cambia la deuda de Inicio
@@ -5203,6 +5232,25 @@
     { id: 'interbank-p20-2027-01', inicio: '2026-12-24', cierre: '2027-01-26', pago: '2027-02-22' }
   ]);
   
+
+  // BCP Visa Gold Qore · cronograma oficial 2026 para cierre de facturación 25.
+  // Las fechas reflejan los ajustes de día hábil publicados por BCP.
+  const BCP_CIERRE_25_2026_VERSION = 'bcp-cierre25-2026-v1';
+  const BCP_CIERRE_25_2026 = Object.freeze([
+    { id: 'bcp-c25-2026-01', inicio: '2025-12-25', cierre: '2026-01-23', pago: '2026-02-23' },
+    { id: 'bcp-c25-2026-02', inicio: '2026-01-24', cierre: '2026-02-25', pago: '2026-03-23' },
+    { id: 'bcp-c25-2026-03', inicio: '2026-02-26', cierre: '2026-03-25', pago: '2026-04-21' },
+    { id: 'bcp-c25-2026-04', inicio: '2026-03-26', cierre: '2026-04-24', pago: '2026-05-20' },
+    { id: 'bcp-c25-2026-05', inicio: '2026-04-25', cierre: '2026-05-25', pago: '2026-06-22' },
+    { id: 'bcp-c25-2026-06', inicio: '2026-05-26', cierre: '2026-06-25', pago: '2026-07-21' },
+    { id: 'bcp-c25-2026-07', inicio: '2026-06-26', cierre: '2026-07-24', pago: '2026-08-20' },
+    { id: 'bcp-c25-2026-08', inicio: '2026-07-25', cierre: '2026-08-25', pago: '2026-09-22' },
+    { id: 'bcp-c25-2026-09', inicio: '2026-08-26', cierre: '2026-09-25', pago: '2026-10-20' },
+    { id: 'bcp-c25-2026-10', inicio: '2026-09-26', cierre: '2026-10-23', pago: '2026-11-23' },
+    { id: 'bcp-c25-2026-11', inicio: '2026-10-24', cierre: '2026-11-25', pago: '2026-12-22' },
+    { id: 'bcp-c25-2026-12', inicio: '2026-11-26', cierre: '2026-12-24', pago: '2027-01-20' }
+  ]);
+
   // Constante base de fechas: debe existir antes de cualquier migración/render de estado.
   const MS_DIA = 1000 * 60 * 60 * 24;
 
@@ -5556,6 +5604,7 @@
       'ultimaSemanaVista',
       'ultimoBloqueProcesado',
       'tarjetaCalendarioPresetVersion',
+      'tarjetaBCPCalendarioPresetVersion',
       'tarjetaAjusteDeuda',
       // BUILD 94 lo reconstruye localmente en estados legacy. No debe crear un
       // conflicto por sí solo; los ciclos nuevos ya quedan identificados por su
@@ -6030,6 +6079,39 @@
     state.tarjeta.diaCierre = 26;
     state.tarjeta.diaPago = 20;
     state.tarjetaCalendarioPresetVersion = INTERBANK_PAGO_20_2026_VERSION;
+    const registradoReorganizado = gruposPagoTarjetas()
+      .reduce((total, grupo) => total + grupo.total, 0);
+    state.tarjetaAjusteDeuda = redondearDinero(deudaAntes - registradoReorganizado);
+    return true;
+  }
+
+  function aplicarCalendarioBCPCierre25_2026() {
+    if (state.tarjetaBCPCalendarioPresetVersion === BCP_CIERRE_25_2026_VERSION) return false;
+
+    const deudaAntes = redondearDinero(Number(state.deudaActual) || 0);
+    const inicioCobertura = fechaDesdeInput('2025-12-25');
+    const finCobertura = fechaDesdeInput('2026-12-24');
+
+    // Dentro de la cobertura 2026 manda el cronograma oficial.
+    // Registros manuales fuera de ese rango se conservan.
+    const externos = calendariosTarjetaExactos(state.tarjetaBCPCalendarios).filter(item =>
+      item.cierre < inicioCobertura || item.cierre > finCobertura
+    );
+
+    const oficiales = BCP_CIERRE_25_2026.map(item => ({
+      ...item,
+      manual: false,
+      fuente: 'BCP · cronograma oficial 2026 · cierre 25',
+      preset: BCP_CIERRE_25_2026_VERSION,
+      actualizadoEn: '2026-09-07T12:00:00-05:00'
+    }));
+
+    state.tarjetaBCPCalendarios = serializarCalendariosTarjeta([...oficiales, ...externos]);
+    state.tarjetaBCP.diaCierre = 25;
+    state.tarjetaBCP.diaPago = null;
+    state.tarjetaBCPCalendarioPresetVersion = BCP_CIERRE_25_2026_VERSION;
+
+    // Reagrupar los DS/F+DS por fechas BCP sin cambiar la deuda total.
     const registradoReorganizado = gruposPagoTarjetas()
       .reduce((total, grupo) => total + grupo.total, 0);
     state.tarjetaAjusteDeuda = redondearDinero(deudaAntes - registradoReorganizado);
@@ -6846,6 +6928,7 @@
     // La precarga oficial es una migración técnica: se conserva localmente,
     // pero no debe aparentar que el usuario editó montos en este dispositivo.
     aplicarCalendarioInterbankPago20_2026();
+    aplicarCalendarioBCPCierre25_2026();
     if (!Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       const registrado = gruposPagoTarjetas().reduce((total, grupo) => total + grupo.total, 0);
       state.tarjetaAjusteDeuda = redondearDinero((Number(state.deudaActual) || 0) - registrado);
@@ -7143,7 +7226,7 @@
       cambio = true;
     }
     if (!state.tarjetaBCP || typeof state.tarjetaBCP !== 'object') {
-      state.tarjetaBCP = { diaCierre: null, diaPago: null, diaSueldo: state.tarjeta.diaSueldo || 1 };
+      state.tarjetaBCP = { diaCierre: 25, diaPago: null, diaSueldo: state.tarjeta.diaSueldo || 1 };
       cambio = true;
     }
     if (!Array.isArray(state.tarjetaBCPCalendarios)) {
@@ -7152,6 +7235,14 @@
     }
     if (!Number.isFinite(Number(state.tarjetaBCP.diaSueldo))) {
       state.tarjetaBCP.diaSueldo = state.tarjeta.diaSueldo || 1;
+      cambio = true;
+    }
+    if (Number(state.tarjetaBCP.diaCierre) !== 25) {
+      state.tarjetaBCP.diaCierre = 25;
+      cambio = true;
+    }
+    if (typeof state.tarjetaBCPCalendarioPresetVersion === 'undefined') {
+      state.tarjetaBCPCalendarioPresetVersion = null;
       cambio = true;
     }
     return cambio;
