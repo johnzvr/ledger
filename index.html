@@ -150,6 +150,19 @@
   body.dark .tc-date-card {
     background: rgba(255,255,255,0.04);
   }
+  body.dark .tc-card[data-credit-card="interbank"] {
+    background: #05BE50;
+  }
+  body.dark .tc-card[data-credit-card="bcp"] {
+    background: #0030B3;
+  }
+  body.dark .tc-card[data-credit-card="interbank"] .tc-deadline,
+  body.dark .tc-card[data-credit-card="interbank"] .tc-date-card,
+  body.dark .tc-card[data-credit-card="bcp"] .tc-deadline,
+  body.dark .tc-card[data-credit-card="bcp"] .tc-date-card {
+    background: rgba(255,255,255,.14);
+    border-color: transparent;
+  }
   body.dark .tc-simulate-btn,
   body.dark .purchase-impact,
   body.dark .purchase-sim-card {
@@ -1501,6 +1514,91 @@
     border-radius: 22px;
     padding: 20px;
     margin-bottom: 12px;
+  }
+
+  /* BUILD 172 · Calendario con identidad por tarjeta */
+  .tc-card[data-credit-card="interbank"] {
+    background: #05BE50;
+    color: #ffffff;
+  }
+  .tc-card[data-credit-card="bcp"] {
+    background: #0030B3;
+    color: #ffffff;
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-title,
+  .tc-card[data-credit-card="interbank"] .tc-calendar-source,
+  .tc-card[data-credit-card="interbank"] .tc-deadline-label,
+  .tc-card[data-credit-card="interbank"] .tc-deadline-value,
+  .tc-card[data-credit-card="interbank"] .tc-deadline-sub,
+  .tc-card[data-credit-card="interbank"] .tc-date-label,
+  .tc-card[data-credit-card="interbank"] .tc-date-value,
+  .tc-card[data-credit-card="interbank"] .tc-date-sub,
+  .tc-card[data-credit-card="bcp"] .tc-title,
+  .tc-card[data-credit-card="bcp"] .tc-calendar-source,
+  .tc-card[data-credit-card="bcp"] .tc-deadline-label,
+  .tc-card[data-credit-card="bcp"] .tc-deadline-value,
+  .tc-card[data-credit-card="bcp"] .tc-deadline-sub,
+  .tc-card[data-credit-card="bcp"] .tc-date-label,
+  .tc-card[data-credit-card="bcp"] .tc-date-value,
+  .tc-card[data-credit-card="bcp"] .tc-date-sub {
+    color: #ffffff;
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-calendar-source,
+  .tc-card[data-credit-card="interbank"] .tc-deadline-label,
+  .tc-card[data-credit-card="interbank"] .tc-deadline-sub,
+  .tc-card[data-credit-card="interbank"] .tc-date-label,
+  .tc-card[data-credit-card="interbank"] .tc-date-sub,
+  .tc-card[data-credit-card="bcp"] .tc-calendar-source,
+  .tc-card[data-credit-card="bcp"] .tc-deadline-label,
+  .tc-card[data-credit-card="bcp"] .tc-deadline-sub,
+  .tc-card[data-credit-card="bcp"] .tc-date-label,
+  .tc-card[data-credit-card="bcp"] .tc-date-sub {
+    opacity: .78;
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-deadline,
+  .tc-card[data-credit-card="interbank"] .tc-date-card,
+  .tc-card[data-credit-card="bcp"] .tc-deadline,
+  .tc-card[data-credit-card="bcp"] .tc-date-card {
+    background: rgba(255,255,255,.14);
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-btn,
+  .tc-card[data-credit-card="interbank"] .tc-simulate-btn,
+  .tc-card[data-credit-card="bcp"] .tc-btn,
+  .tc-card[data-credit-card="bcp"] .tc-simulate-btn {
+    background: rgba(255,255,255,.94);
+    color: #171716;
+    border-color: rgba(255,255,255,.35);
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-icon,
+  .tc-card[data-credit-card="bcp"] .tc-icon {
+    background: rgba(255,255,255,.94);
+    color: #171716;
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-bank-name,
+  .tc-card[data-credit-card="bcp"] .tc-bank-name {
+    background: rgba(255,255,255,.18);
+    color: #ffffff;
+  }
+
+  .tc-card[data-credit-card="interbank"] .tc-status-track,
+  .tc-card[data-credit-card="bcp"] .tc-status-track {
+    background: rgba(255,255,255,.18);
+  }
+
+  /* BUILD 173 · color exacto de la línea de progreso por banco */
+  .tc-card[data-credit-card="interbank"] .tc-status-fill,
+  body.dark .tc-card[data-credit-card="interbank"] .tc-status-fill {
+    background: #0039A6 !important;
+  }
+  .tc-card[data-credit-card="bcp"] .tc-status-fill,
+  body.dark .tc-card[data-credit-card="bcp"] .tc-status-fill {
+    background: #FF7800 !important;
   }
   .tc-carousel-shell {
     position: relative;
@@ -5166,7 +5264,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '171';
+  const LEDGER_BUILD = '173';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
