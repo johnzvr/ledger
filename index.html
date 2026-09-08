@@ -1675,6 +1675,20 @@
     vertical-align: middle;
   }
   body.dark .card-bank-badge { background: rgba(255,255,255,.035); }
+  .card-bank-badge.bank-interbank {
+    background: #05BE50;
+    border-color: #05BE50;
+    color: #fff;
+  }
+  .card-bank-badge.bank-bcp {
+    background: #0030B3;
+    border-color: #0030B3;
+    color: #fff;
+  }
+  body.dark .card-bank-badge.bank-interbank,
+  body.dark .card-bank-badge.bank-bcp {
+    color: #fff;
+  }
   .tc-header {
     display: flex;
     justify-content: space-between;
@@ -5309,6 +5323,69 @@ body.dark.ledger-arc-ui .weeks-strip {
 }
 </style>
 
+
+<style id="ledger-194-paid-headsup">
+/* BUILD194 · estado pagado = verde resuelto, mucho menos intenso */
+.card-cycle-divider.card-interbank.payment-marked {
+  background: #B8E6C7 !important;
+  color: #245332 !important;
+}
+
+.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-label,
+.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-status {
+  color: rgba(36, 83, 50, .72) !important;
+}
+
+.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-date {
+  color: #245332 !important;
+}
+
+.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-action {
+  background: rgba(255,255,255,.72) !important;
+  color: #245332 !important;
+  box-shadow: none !important;
+}
+
+/* En dark también se diferencia del verde activo, sin convertirse en un bloque brillante. */
+body.dark .card-cycle-divider.card-interbank.payment-marked {
+  background: #23432F !important;
+  color: #E7F3EA !important;
+}
+
+body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-label,
+body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-status {
+  color: rgba(231,243,234,.68) !important;
+}
+
+body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-date {
+  color: #E7F3EA !important;
+}
+
+body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-action {
+  background: rgba(255,255,255,.10) !important;
+  color: #E7F3EA !important;
+}
+</style>
+
+
+<style id="ledger-195-dark-budget-text">
+/* BUILD195 · Tu presupuesto en dark mode: texto claro, nunca negro */
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-label,
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-amount,
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
+  color: #F5F5F7 !important;
+}
+
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-range-inline,
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily::before {
+  color: rgba(245,245,247,.68) !important;
+}
+
+body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
+  border-left-color: rgba(245,245,247,.16) !important;
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -5732,7 +5809,7 @@ body.dark.ledger-arc-ui .weeks-strip {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '192';
+  const LEDGER_BUILD = '195';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7934,7 +8011,13 @@ body.dark.ledger-arc-ui .weeks-strip {
 
   function badgeBancoMovimiento(mov) {
     if (!esMovimientoTarjeta(mov)) return '';
-    return `<span class="card-bank-badge">${escapeHtml(nombreTarjeta(tarjetaIdMovimiento(mov)))}</span>`;
+    const tarjetaId = normalizarTarjetaId(tarjetaIdMovimiento(mov));
+    const bankClass = tarjetaId === 'interbank'
+      ? ' bank-interbank'
+      : tarjetaId === 'bcp'
+        ? ' bank-bcp'
+        : '';
+    return `<span class="card-bank-badge${bankClass}">${escapeHtml(nombreTarjeta(tarjetaId))}</span>`;
   }
 
   let activeCreditCardIndex = 0;
