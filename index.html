@@ -5289,6 +5289,26 @@ body.dark.ledger-arc-ui .weeks-strip {
 }
 </style>
 
+
+<style id="ledger-192-current-block-inline-date">
+/* BUILD192 · fecha del bloque actual en la misma línea del título */
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-range-inline {
+  display: inline;
+  margin-top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -5712,7 +5732,7 @@ body.dark.ledger-arc-ui .weeks-strip {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '191';
+  const LEDGER_BUILD = '192';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
