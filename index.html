@@ -5497,6 +5497,209 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
 }
 </style>
 
+
+<style id="luki-198-all-movements-fix">
+/* Luki198 · limpieza del modal "Todos los movimientos" */
+#modalContent:has(.all-list) {
+  width: min(560px, calc(100vw - 24px));
+  max-width: 560px;
+  max-height: min(92dvh, 900px);
+  padding: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#modalContent:has(.all-list) > h2,
+#modalContent:has(.all-list) > .modal-sub,
+#modalContent:has(.all-list) > .search-box,
+#modalContent:has(.all-list) > .all-summary,
+#modalContent:has(.all-list) > .modal-buttons {
+  flex: 0 0 auto;
+}
+
+#modalContent:has(.all-list) .all-summary {
+  margin-bottom: 14px;
+}
+
+#modalContent:has(.all-list) .all-sum-item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+#modalContent:has(.all-list) .all-list {
+  flex: 1 1 auto;
+  min-height: 210px;
+  max-height: none;
+  margin: 0;
+  padding: 0 8px 0 0;
+  border-top: 1px solid var(--line);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-hi) transparent;
+}
+
+#modalContent:has(.all-list) .all-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+#modalContent:has(.all-list) .all-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#modalContent:has(.all-list) .all-list::-webkit-scrollbar-thumb {
+  background: var(--line-hi);
+  border-radius: 999px;
+}
+
+#modalContent:has(.all-list) .card-cycle-divider {
+  margin: 14px 0 2px;
+}
+
+#modalContent:has(.all-list) .log-swipe {
+  overflow: hidden;
+}
+
+#modalContent:has(.all-list) .log-item {
+  min-width: 0;
+  padding: 16px 6px;
+  align-items: flex-start;
+}
+
+#modalContent:has(.all-list) .log-left {
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+#modalContent:has(.all-list) .log-info {
+  min-width: 0;
+  padding-top: 1px;
+}
+
+#modalContent:has(.all-list) .log-detail {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#modalContent:has(.all-list) .log-meta {
+  min-width: 0;
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 5px;
+  line-height: 1.2;
+}
+
+#modalContent:has(.all-list) .log-meta .card-bank-badge,
+#modalContent:has(.all-list) .log-meta .payment-badge,
+#modalContent:has(.all-list) .log-meta .installment-badge,
+#modalContent:has(.all-list) .log-meta .badge,
+#modalContent:has(.all-list) .movement-category-chip {
+  flex: 0 0 auto;
+}
+
+#modalContent:has(.all-list) .movement-category-chip {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#modalContent:has(.all-list) .log-date {
+  flex: 1 0 100%;
+  width: 100%;
+  color: var(--ink-mute);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+#modalContent:has(.all-list) .log-right {
+  flex: 0 0 auto;
+  min-width: 94px;
+  max-width: 112px;
+  margin-left: 10px;
+  padding-top: 1px;
+  text-align: right;
+}
+
+#modalContent:has(.all-list) .log-amount {
+  font-size: 18px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+#modalContent:has(.all-list) .swipe-hint {
+  max-width: 100px;
+  text-align: right;
+  line-height: 1.25;
+}
+
+#modalContent:has(.all-list) .modal-buttons {
+  margin-top: 16px;
+  padding-top: 0;
+}
+
+body.dark #modalContent:has(.all-list) .all-sum-item {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+@media (max-width: 520px) {
+  .modal-overlay:has(#modalContent .all-list) {
+    padding: 10px;
+  }
+
+  #modalContent:has(.all-list) {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    padding: 20px 16px 16px;
+    border-radius: 24px;
+  }
+
+  #modalContent:has(.all-list) h2 {
+    font-size: 27px;
+  }
+
+  #modalContent:has(.all-list) .all-list {
+    padding-right: 4px;
+  }
+
+  #modalContent:has(.all-list) .log-item {
+    padding: 15px 2px;
+  }
+
+  #modalContent:has(.all-list) .log-left {
+    gap: 10px;
+  }
+
+  #modalContent:has(.all-list) .log-right {
+    min-width: 82px;
+    max-width: 94px;
+    margin-left: 8px;
+  }
+
+  #modalContent:has(.all-list) .log-amount {
+    font-size: 17px;
+  }
+
+  #modalContent:has(.all-list) .movement-category-chip {
+    max-width: 116px;
+  }
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -5919,7 +6122,7 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '197';
+  const LEDGER_BUILD = '198';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9686,7 +9889,6 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
-        if (esMovimientoTarjeta(mov)) badge += badgeBancoMovimiento(mov);
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
@@ -9696,7 +9898,7 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span>${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
