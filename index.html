@@ -874,7 +874,8 @@
     letter-spacing: -0.02em;
   }
   .balance-mask {
-    letter-spacing: 0.12em !important;
+    /* Solo afecta al estado oculto; el número real conserva su tracking original. */
+    letter-spacing: 0.015em !important;
     font-kerning: none;
   }
   .hero-amount .balance-mask {
@@ -5206,6 +5207,88 @@ body.dark.ledger-arc-ui #currentDate {
   outline: 0 !important;
 }
 </style>
+
+<style id="ledger-188-card-selector">
+/* BUILD188 · selector de banco:
+   seleccionada = color del banco; no seleccionada = gris neutro. */
+.edit-type-option.quick-card-option span {
+  justify-content: center;
+  text-align: center;
+  background: #E8EBEE !important;
+  color: #656A70 !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  font-weight: 750;
+}
+
+.edit-type-option.quick-card-interbank input:checked + span {
+  background: #05BE50 !important;
+  color: #FFFFFF !important;
+}
+
+.edit-type-option.quick-card-bcp input:checked + span {
+  background: #0030B3 !important;
+  color: #FFFFFF !important;
+}
+
+body.dark .edit-type-option.quick-card-option span {
+  background: #2A2D31 !important;
+  color: #B1B5BC !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+body.dark .edit-type-option.quick-card-interbank input:checked + span {
+  background: #05BE50 !important;
+  color: #FFFFFF !important;
+}
+
+body.dark .edit-type-option.quick-card-bcp input:checked + span {
+  background: #0030B3 !important;
+  color: #FFFFFF !important;
+}
+</style>
+
+
+<style id="ledger-189-bento-polish">
+/* BUILD189 · alineación visual del Fondo */
+.ledger-arc-ui .bento-value .fund-mask {
+  position: relative;
+  top: .14em;
+  letter-spacing: .055em;
+  line-height: inherit;
+}
+
+/* Recupera únicamente el separador horizontal central en dark mode. */
+body.dark.ledger-arc-ui .bento-card:nth-child(n+3) {
+  border-top: 1px solid var(--line) !important;
+}
+</style>
+
+
+<style id="ledger-190-dark-tabs-clean">
+/* BUILD190 · dark mode: tabs sin contenedor, igual que light */
+body.dark.ledger-arc-ui .view-tab,
+body.dark.ledger-arc-ui .view-tab.active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.dark.ledger-arc-ui .view-tab.active::after {
+  height: 3px;
+  background: var(--ink);
+}
+</style>
+
+
+<style id="ledger-191-budget-separator">
+/* BUILD191 · elimina la línea entre el resumen del ciclo y Tu presupuesto */
+.ledger-arc-ui .weeks-strip,
+body.dark.ledger-arc-ui .weeks-strip {
+  border-top: 0 !important;
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -5287,7 +5370,7 @@ body.dark.ledger-arc-ui #currentDate {
     </div>
     <div class="arc-stage">
       <svg class="budget-arc" viewBox="0 0 360 205" role="img" id="budgetArc" aria-label="Consumo del presupuesto del ciclo">
-        <defs><linearGradient id="budgetArcGradient" gradientUnits="userSpaceOnUse" x1="24" y1="178" x2="336" y2="178"><stop id="arcColorStart" offset="0%" stop-color="#D6DF63"/><stop id="arcColorEnd" offset="100%" stop-color="#68C84A"/></linearGradient></defs>
+        <defs><linearGradient id="budgetArcGradient" gradientUnits="userSpaceOnUse" x1="24" y1="178" x2="336" y2="178"><stop id="arcColorStart" offset="0%" stop-color="#AFCF68"/><stop id="arcColorEnd" offset="100%" stop-color="#55C873"/></linearGradient></defs>
         <path class="arc-track" d="M 24 178 A 156 156 0 0 1 336 178" pathLength="100"/>
         <path class="arc-consumed" id="arcConsumed" d="M 24 178 A 156 156 0 0 1 336 178" pathLength="100" stroke-dasharray="0 100"/>
       </svg>
@@ -5298,7 +5381,7 @@ body.dark.ledger-arc-ui #currentDate {
       </div>
     </div>
     <div class="arc-ledger">
-      <div class="arc-stat spent"><span class="arc-stat-label">Utilizado <button class="arc-help" onclick="openBudgetArcHelp()" aria-label="Cómo se calcula el arco">?</button></span><strong id="arcUsedAmount">S/ 0.00</strong></div>
+      <div class="arc-stat spent"><span class="arc-stat-label">Utilizado</span><strong id="arcUsedAmount">S/ 0.00</strong></div>
       <span class="arc-percentage" id="arcPercent">0%</span>
       <div class="arc-stat base"><span class="arc-stat-label" id="arcBaseLabel">Presupuesto</span><strong id="arcBudgetAmount">S/ 0.00</strong></div>
     </div>
@@ -5629,7 +5712,7 @@ body.dark.ledger-arc-ui #currentDate {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '185';
+  const LEDGER_BUILD = '191';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -5757,20 +5840,55 @@ body.dark.ledger-arc-ui #currentDate {
       exhausted: available - reserve <= 0 && initial > 0 };
   }
 
-  // Read-only visual scale: length tracks remaining budget; hue tracks consumption.
+  // Read-only visual scale: length tracks remaining budget.
+  // El color permanece verde mientras el ciclo conserva un margen cómodo.
+  // La advertencia cromática entra tarde: amarillo <55%, naranja <35%, rojo <=20%.
   function remainingArcVisual(model) {
-    const spent = Math.max(0, Math.min(1, model.fill / 100));
-    const remainingPercent = model.budget > 0 ? Math.max(0, 100 - model.fill) : 0;
-    const colorAt = (value, colors) => {
-      const t = Math.max(0, Math.min(1, value));
-      const i = t < 0.5 ? 0 : 1;
-      const weight = (t - i * 0.5) * 2;
-      const rgb = colors[i].map((channel, index) => Math.round(channel + (colors[i+1][index] - channel) * weight));
-      return '#' + rgb.map(channel => channel.toString(16).padStart(2, '0')).join('');
+    const remainingPercent = model.budget > 0 ? Math.max(0, Math.min(100, 100 - model.fill)) : 0;
+
+    const hexToRgb = hex => {
+      const clean = hex.replace('#', '');
+      return [
+        parseInt(clean.slice(0, 2), 16),
+        parseInt(clean.slice(2, 4), 16),
+        parseInt(clean.slice(4, 6), 16)
+      ];
     };
-    return {remainingPercent,
-      start:colorAt(Math.min(1, spent / 0.85), [[214,223,99], [245,208,76], [255,144,26]]),
-      end:colorAt(Math.min(1, spent / 0.85), [[104,200,74], [235,150,33], [229,38,54]])};
+    const mix = (a, b, t) => {
+      const aa = hexToRgb(a);
+      const bb = hexToRgb(b);
+      const k = Math.max(0, Math.min(1, t));
+      const rgb = aa.map((v, i) => Math.round(v + (bb[i] - v) * k));
+      return '#' + rgb.map(v => v.toString(16).padStart(2, '0')).join('');
+    };
+
+    // Paleta deliberadamente limpia: verdes frescos, amarillo dorado,
+    // naranja cálido y rojo solo en zona crítica.
+    const GREEN_START = '#AFCF68';
+    const GREEN_END   = '#55C873';
+    const YELLOW      = '#F0C94C';
+    const ORANGE      = '#F28A3A';
+    const RED_START   = '#F15A42';
+    const RED_END     = '#E52636';
+
+    let start = GREEN_START;
+    let end = GREEN_END;
+
+    if (remainingPercent < 55 && remainingPercent >= 35) {
+      const t = (55 - remainingPercent) / 20;
+      start = mix(GREEN_START, YELLOW, t);
+      end = mix(GREEN_END, ORANGE, t);
+    } else if (remainingPercent < 35 && remainingPercent > 20) {
+      const t = (35 - remainingPercent) / 15;
+      start = mix(YELLOW, ORANGE, t);
+      end = mix(ORANGE, RED_START, t);
+    } else if (remainingPercent <= 20) {
+      const t = (20 - remainingPercent) / 20;
+      start = mix(ORANGE, RED_START, t);
+      end = mix(RED_START, RED_END, t);
+    }
+
+    return { remainingPercent, start, end };
   }
 
   function renderBudgetArc() {
@@ -5801,7 +5919,7 @@ body.dark.ledger-arc-ui #currentDate {
       : `Presupuesto restante: ${Math.round(visual.remainingPercent)} por ciento`);
     document.getElementById('arcUsedAmount').textContent = money(model.used);
     document.getElementById('arcBudgetAmount').textContent = balanceHidden ? 'S/ ****' : money(model.budget);
-    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Presupuesto gastable' : 'Presupuesto';
+    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Gastable' : 'Presupuesto';
     document.getElementById('arcPercent').textContent = model.budget > 0 ? Math.round(visual.remainingPercent) + '% libre' : '—';
     const hero = document.getElementById('heroCard');
     hero.classList.toggle('arc-exhausted', model.exhausted);
@@ -5841,7 +5959,7 @@ body.dark.ledger-arc-ui #currentDate {
     const gastable = Math.max(0, state.totalDisponible - (state.metaResidual || 0));
 
     if (amountEl) amountEl.textContent = balanceHidden
-      ? '******'
+      ? '****'
       : fmt((state.metaResidual || 0) > 0 ? gastable : state.totalDisponible);
     if (totalRefEl) totalRefEl.textContent = 'S/ ' + fmt(state.totalDisponible);
     if (amountEl) amountEl.classList.toggle('balance-mask', balanceHidden);
@@ -7551,7 +7669,7 @@ body.dark.ledger-arc-ui #currentDate {
       document.getElementById('progressMeta').style.width = '0%';
     }
     
-    document.getElementById('deudaActual').textContent = fmtInt(state.deudaActual);
+    document.getElementById('deudaActual').textContent = fmtInt(Math.max(0, Number(state.deudaActual) || 0));
     document.getElementById('montoIntocable').textContent = fmtInt(state.montoIntocable);
     document.getElementById('gastoNoAdeudado').textContent = fmtInt(state.gastoNoAdeudado);
     document.getElementById('gastoTotal').textContent = fmtInt(state.gastoTotal);
@@ -7614,11 +7732,7 @@ body.dark.ledger-arc-ui #currentDate {
         </div>
       `;
     } else if (cicloTerminado()) {
-      cycleInfoEl.innerHTML = `
-        <div class="cycle-ended-warn" style="width:100%;">
-          ⚠️ El ciclo terminó (día ${diaActual} de ${totalDias}). Toca "Cerrar ciclo" al final de Inicio para empezar el siguiente.
-        </div>
-      `;
+      cycleInfoEl.innerHTML = '';
     } else {
       cycleInfoEl.innerHTML = `
         <span>Día ${diaActual}</span>
@@ -11763,11 +11877,11 @@ body.dark.ledger-arc-ui #currentDate {
       <div class="modal-field">
         <label>¿Con qué tarjeta pagaste?</label>
         <div class="edit-type-grid">
-          <label class="edit-type-option">
+          <label class="edit-type-option quick-card-option quick-card-interbank">
             <input type="radio" name="quickMovementCard" value="interbank" checked>
             <span>Interbank</span>
           </label>
-          <label class="edit-type-option">
+          <label class="edit-type-option quick-card-option quick-card-bcp">
             <input type="radio" name="quickMovementCard" value="bcp">
             <span>BCP · Visa Gold Qore</span>
           </label>
