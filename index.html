@@ -5485,7 +5485,6 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
     <div class="arc-status" id="arcStatus" hidden></div>
     <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
       <div class="hero-meta-chip"><span class="hero-meta-dot"></span><span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span></div>
-      <div class="hero-meta-total">de <span id="heroTotalRef">S/ 0</span></div>
     </div>
     <div class="hero-progress" id="heroProgress" hidden aria-hidden="true"><div id="progressFill"></div><div id="progressMeta"></div></div>
   </div>
@@ -5809,7 +5808,7 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '195';
+  const LEDGER_BUILD = '196';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7735,7 +7734,6 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
       document.getElementById('totalDisponible').textContent = fmt(gastable);
       heroMetaInfo.style.display = 'flex';
       document.getElementById('heroMetaValue').textContent = 'S/ ' + fmt(state.metaResidual);
-      document.getElementById('heroTotalRef').textContent = 'S/ ' + fmt(state.totalDisponible);
       
       // Riesgo: gastable = 0 significa que ya te comiste la meta
       if (state.totalDisponible < state.metaResidual) {
