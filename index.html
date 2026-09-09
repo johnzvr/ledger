@@ -9,10 +9,10 @@
 <meta name="theme-color" content="#F6F7F8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Luki</title>
+<title>Ledger</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" defer></script>
 <style>
@@ -44,9 +44,6 @@
     --input-border: rgba(255,255,255,0.12);
     --input-ink: #FAF8F3;
     --input-placeholder: rgba(250,248,243,0.35);
-
-    --font-ui: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-num: 'Space Mono', ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas, monospace;
   }
   
   body.dark {
@@ -236,7 +233,7 @@
   html, body {
     background: var(--bg);
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     min-height: 100vh;
     min-height: 100dvh;
     overflow-x: hidden;
@@ -245,9 +242,8 @@
   }
   body { touch-action: pan-y pinch-zoom; }
   
-  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.045em; }
-  input, textarea, select, button { font-family: inherit; }
-  .serif-italic { font-family: var(--font-ui); font-style: normal; }
+  .num { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .serif-italic { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-style: normal; }
   
   .app {
     max-width: 460px;
@@ -408,7 +404,7 @@
   }
   .note-date {
     color: var(--ink-dim);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 650;
   }
@@ -476,7 +472,7 @@
     border: 1.5px dashed var(--line-hi);
     border-radius: 18px;
     color: var(--ink-mute);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 16px;
   }
@@ -592,7 +588,7 @@
     color: rgba(250,248,243,0.85);
     padding: 10px 14px;
     border-radius: 12px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 13px;
     cursor: pointer;
@@ -630,7 +626,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
     color: rgba(250,248,243,0.7);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     cursor: pointer;
@@ -661,7 +657,7 @@
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.06);
     color: rgba(250,248,243,0.7);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 16px;
     font-weight: 700;
     cursor: pointer;
@@ -767,7 +763,7 @@
     min-width: 0;
   }
   .sync-action-title {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 15px;
     letter-spacing: -0.02em;
@@ -860,7 +856,7 @@
     font-weight: 500;
   }
   .hero-amount {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 52px;
     letter-spacing: -0.05em;
@@ -951,7 +947,7 @@
   .hero-meta-chip strong {
     color: var(--ink);
     font-weight: 600;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
     font-size: 12px;
   }
@@ -968,7 +964,7 @@
     font-weight: 500;
   }
   .hero-meta-total span {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
   }
   .hero-card.meta-active .hero-amount {
@@ -1036,7 +1032,7 @@
     min-width: 0;
   }
   .bento-value {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 760;
     font-size: clamp(29px, 5vw, 34px);
     letter-spacing: -0.045em;
@@ -1202,7 +1198,7 @@
     margin-bottom: 3px;
   }
   .cycle-history-stat strong {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     color: var(--ink);
   }
@@ -1229,7 +1225,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-variant-numeric: tabular-nums;
   }
   .comp-prev {
@@ -1439,7 +1435,7 @@
   }
   .week-chip.current .wk-label { color: rgba(250,248,243,0.65); }
   .week-chip .wk-amount {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 15px;
     letter-spacing: -0.02em;
@@ -1448,7 +1444,7 @@
   }
   .week-chip.current .wk-amount { color: var(--bg); }
   .wk-closed-status {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: -0.01em;
@@ -1486,7 +1482,7 @@
     font-size: 9px;
     color: var(--ink-mute);
     margin-top: 4px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 500;
     letter-spacing: 0.02em;
     line-height: 1;
@@ -1679,20 +1675,6 @@
     vertical-align: middle;
   }
   body.dark .card-bank-badge { background: rgba(255,255,255,.035); }
-  .card-bank-badge.bank-interbank {
-    background: #05BE50;
-    border-color: #05BE50;
-    color: #fff;
-  }
-  .card-bank-badge.bank-bcp {
-    background: #0030B3;
-    border-color: #0030B3;
-    color: #fff;
-  }
-  body.dark .card-bank-badge.bank-interbank,
-  body.dark .card-bank-badge.bank-bcp {
-    color: #fff;
-  }
   .tc-header {
     display: flex;
     justify-content: space-between;
@@ -1708,17 +1690,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-  .tc-header-actions .section-toggle-btn,
-  .tc-header-actions .tc-btn {
-    min-height: 44px;
-    padding: 7px 12px;
-    min-width: 104px;
-    box-sizing: border-box;
-    justify-content: center;
-  }
-  .tc-header-actions .section-toggle-btn {
-    margin-left: 0;
   }
   .tc-body { display: block; }
   .tc-body.collapsed { display: none; }
@@ -1840,7 +1811,7 @@
     margin-bottom: 4px;
   }
   .tc-date-value {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 17px;
     color: var(--ink);
@@ -1925,7 +1896,7 @@
     border-radius: 8px;
     background: transparent;
     color: var(--ink-dim);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 700;
     cursor: pointer;
@@ -1947,7 +1918,7 @@
     border-radius: 11px;
     background: rgba(207,222,232,0.28);
     color: var(--ink-dim);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     line-height: 1.35;
   }
@@ -1985,7 +1956,7 @@
   }
   .purchase-installment-head strong {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
   }
   .purchase-installment-stepper {
@@ -2022,7 +1993,7 @@
     border-radius: 11px;
     background: var(--ink);
     color: var(--bg);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 750;
     text-align: center;
@@ -2136,7 +2107,7 @@
     border-radius: 11px;
     background: var(--line);
     color: var(--ink-dim);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 600;
     line-height: 1.4;
@@ -2167,7 +2138,7 @@
   }
   .purchase-finance-payment {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 22px;
     font-weight: 750;
     letter-spacing: -0.03em;
@@ -2187,7 +2158,7 @@
     align-items: center;
     min-height: 36px;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 22px;
     font-weight: 750;
     letter-spacing: -0.03em;
@@ -2233,7 +2204,7 @@
   .purchase-finance-metric strong {
     display: block;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     line-height: 1.25;
   }
@@ -2281,7 +2252,7 @@
     margin-top: 0;
     padding-right: 0;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 20px;
     font-weight: 750;
     letter-spacing: -0.025em;
@@ -2319,7 +2290,7 @@
   }
   .purchase-budget-title {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 750;
     letter-spacing: -0.02em;
@@ -2448,7 +2419,7 @@
   }
   .purchase-impact-heading {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 750;
     letter-spacing: -0.02em;
@@ -2568,7 +2539,7 @@
   .purchase-plan-amount {
     display: block;
     margin-top: 3px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 750;
     letter-spacing: -0.015em;
@@ -2747,7 +2718,7 @@
   }
   .purchase-section-label {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 22px;
     font-weight: 700;
@@ -2758,7 +2729,7 @@
   }
   .purchase-result-heading {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 20px;
     font-weight: 700;
@@ -2814,7 +2785,7 @@
   }
   .purchase-option-title {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 18px;
     font-weight: 700;
@@ -2961,7 +2932,7 @@
     justify-content: flex-start;
   }
   .section-head h2 {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 26px;
     font-weight: 700;
     letter-spacing: -0.04em;
@@ -3035,7 +3006,7 @@
     margin-bottom: 4px;
   }
   .all-sum-value {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 18px;
     color: var(--ink);
@@ -3060,7 +3031,7 @@
     text-align: center;
     padding: 32px;
     color: var(--ink-mute);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 16px;
   }
@@ -3305,7 +3276,7 @@
   .installment-plan-progress {
     flex: 0 0 auto;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 700;
   }
@@ -3463,7 +3434,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
@@ -3540,7 +3511,7 @@
     margin-left: 12px;
   }
   .log-amount {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -3564,7 +3535,7 @@
     text-align: center;
     padding: 40px 20px;
     color: var(--ink-mute);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 18px;
   }
@@ -3602,7 +3573,7 @@
     border-radius: 14px;
     padding: 12px 10px;
     color: var(--input-ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 17px;
     font-weight: 700;
     text-align: center;
@@ -3632,7 +3603,7 @@
     border: none;
     border-radius: 10px;
     color: rgba(250,248,243,0.85);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -3656,7 +3627,7 @@
     border-radius: 10px;
     padding: 8px 12px;
     color: rgba(250,248,243,0.75);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.02em;
@@ -3713,7 +3684,7 @@
     color: rgba(250,248,243,0.7);
     padding: 0;
     border-radius: 12px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -3860,7 +3831,7 @@
   }
   .sync-notice-title {
     margin: 0;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: clamp(22px, 6vw, 28px);
     line-height: 1.02;
     letter-spacing: -0.04em;
@@ -3877,7 +3848,7 @@
     border-radius: 50%;
     background: transparent;
     color: var(--ink-mute);
-    font: 500 25px/1 var(--font-ui);
+    font: 500 25px/1 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     cursor: pointer;
   }
   .sync-notice-close:hover,
@@ -3928,7 +3899,7 @@
     border-radius: 16px;
     appearance: none;
     -webkit-appearance: none;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     font-weight: 700;
     line-height: 1;
@@ -3974,7 +3945,7 @@
   .nested-modal h3 {
     margin: 0 0 8px;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 23px;
     font-weight: 750;
     letter-spacing: -0.035em;
@@ -3985,7 +3956,7 @@
     box-shadow: 0 24px 70px rgba(0,0,0,0.55);
   }
   .modal h2 {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 28px;
     letter-spacing: -0.04em;
@@ -3993,13 +3964,13 @@
     line-height: 1;
   }
   .modal h2 .accent {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-weight: 400;
     color: var(--ink-dim);
   }
   .modal h2.purchase-modal-title {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-style: normal;
     font-size: 28px;
     font-weight: 700;
@@ -4032,7 +4003,7 @@
     border-radius: 12px;
     padding: 11px 14px;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 14px;
     outline: none;
     font-weight: 500;
@@ -4046,7 +4017,7 @@
     border-radius: 12px;
     padding: 10px 36px 10px 14px;
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 500;
     outline: none;
@@ -4140,7 +4111,7 @@
   }
   .installment-confirm-main {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 17px;
     font-weight: 750;
     line-height: 1.15;
@@ -4203,7 +4174,7 @@
   .help-item-chip {
     padding: 4px 10px;
     border-radius: 8px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -4277,7 +4248,7 @@
     gap: 12px;
   }
   .manual-ranges-title {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     color: var(--ink);
@@ -4303,7 +4274,7 @@
     padding: 12px;
   }
   .rango-block-label {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 13px;
     color: var(--ink);
@@ -4404,7 +4375,7 @@
     color: var(--ink);
     padding: 2px 6px;
     border-radius: 5px;
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.05em;
@@ -4414,7 +4385,7 @@
     color: var(--danger);
   }
   .rollover-amount {
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 700;
     font-size: 14px;
     letter-spacing: -0.02em;
@@ -4648,7 +4619,7 @@
   }
   #modalContent:has(#simPurchaseAmount) .purchase-budget-waterfall strong {
     color: var(--ink);
-    font-family: var(--font-ui);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 11px;
     line-height: 1.2;
     font-weight: 680;
@@ -4883,105 +4854,9 @@
     border-color: transparent;
   }
 
-
-
-  /* === Tipografía Luki: editorial para UI, mono para cifras === */
-  .hero-amount,
-  .hero-meta-chip strong,
-  .hero-meta-total span,
-  .bento-value,
-  .week-chip .wk-amount,
-  .tc-deadline-value,
-  .tc-date-value,
-  .all-sum-value,
-  .log-amount,
-  .purchase-plan-amount,
-  .purchase-finance-metric strong,
-  .purchase-budget-values strong,
-  .purchase-budget-flow-item strong,
-  .purchase-capacity-card strong,
-  .purchase-compare-card strong,
-  .rollover-amount,
-  .amount-wrap,
-  #totalDisponible,
-  #heroMetaValue,
-  #arcBudgetAmount,
-  #arcUsedAmount,
-  #deudaActual,
-  #gastoNoAdeudado,
-  #gastoTotal,
-  #montoIntocable,
-  #purchaseConversionPreview,
-  #conversionPreview,
-  #inputAmount,
-  #simPurchaseAmount,
-  #editMovementAmount,
-  #newFondo,
-  #newMeta,
-  #newDisponiblePreview,
-  #newPresupuestoPreview,
-  #newDeudaTotalPreview,
-  #newUsdPenPreview,
-  #newDeudaUsdPenPreview,
-  #newTotalGeneralPreview,
-  #compNowS,
-  #compNowDS,
-  #compNowMov,
-  #compNowTotal,
-  #compPrevS,
-  #compPrevDS,
-  #compPrevMov,
-  #compPrevTotal,
-  #compDeltaTotal,
-  .balance-mask,
-  .fund-mask {
-    font-family: var(--font-num) !important;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1;
-    letter-spacing: -0.045em;
-  }
-
-  .hero-amount .currency,
-  .bento-value .cur {
-    font-family: var(--font-num) !important;
-  }
-
-  .header-brand,
-  .brand-mark,
-  .view-tab,
-  .view-title,
-  .section-title,
-  h1, h2, h3, h4,
-  .btn,
-  .btn-primary,
-  .btn-secondary,
-  .action-btn,
-  .card-bank-badge,
-  .hero-label,
-  .bento-label,
-  .notes-compose-label,
-  .cycle-label,
-  .purchase-budget-title,
-  .purchase-finance-metric span,
-  .purchase-budget-flow-item small,
-  .log-meta,
-  .log-detail,
-  .tc-label,
-  .tc-sub,
-  .tc-title,
-  .tc-deadline-label,
-  .tc-date-label,
-  .arc-stage,
-  .arc-base-label,
-  .arc-percentage,
-  #currentDate,
-  #syncBadge {
-    font-family: var(--font-ui);
-  }
-
 </style>
 <style id="ledger-174-design">
-/* Luki 174 — the cycle has one scale; every balance has one semantic color. */
+/* Ledger 174 — the cycle has one scale; every balance has one semantic color. */
 :root {
   --bg: #FAF7F1; --ink: #292720; --ink-dim: #716D64; --ink-mute: #817B72;
   --line: #E8E1D7; --line-hi: #D4CABD; --surface: #FFFCF7;
@@ -5003,7 +4878,7 @@ body.dark {
 .ledger-arc-ui { background: var(--bg); color: var(--ink); }
 .ledger-arc-ui .app { max-width: 520px; padding: 22px 22px calc(212px + env(safe-area-inset-bottom)); }
 .ledger-arc-ui .header { align-items: center; margin-bottom: 16px; }
-.ledger-wordmark { font-family: var(--font-ui); font-size: 34px; letter-spacing: -.045em; line-height: 1; }
+.ledger-wordmark { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 34px; letter-spacing: -.045em; line-height: 1; }
 .ledger-wordmark > span { color: var(--spent); }
 .ledger-arc-ui .greeting { display: flex; align-items: center; gap: 13px; }
 .ledger-arc-ui .sync-badge { font-size: 12px; margin-top: 0; padding: 6px 8px; }
@@ -5015,7 +4890,7 @@ body.dark {
 .ledger-arc-ui .view-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 18%; right: 18%; height: 2px; background: var(--ink); }
 .ledger-arc-ui .hero-card { background: transparent; padding: 0 0 20px; border: 0; overflow: visible; border-radius: 0; margin-bottom: 10px; }
 .arc-heading-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.arc-heading { font: 400 44px/1.05 var(--font-ui); letter-spacing: -.025em; margin: 0 0 6px; }
+.arc-heading { font: 400 44px/1.05 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; letter-spacing: -.025em; margin: 0 0 6px; }
 .arc-period { font-size: 13px; color: var(--ink-dim); }
 .ledger-arc-ui .hero-actions { position: static; gap: 6px; }
 .ledger-arc-ui .hero-actions button { width: 40px; height: 40px; border: 1px solid var(--line); background: transparent; color: var(--ink-dim); }
@@ -5046,12 +4921,12 @@ body.dark {
 .ledger-arc-ui .hero-meta-chip strong { color: var(--fund); }
 .ledger-arc-ui .hero-meta-total { color: var(--ink-dim); font-size: 12px; }
 .ledger-arc-ui .hero-progress[hidden] { display: none; }
-.arc-section-heading { font: 400 26px/1.2 var(--font-ui); margin: 24px 0 12px; color: var(--ink); }
-.arc-section-heading > span { display: block; font: 400 13px/1.5 var(--font-ui); margin-top: 4px; color: var(--ink-dim); }
+.arc-section-heading { font: 400 26px/1.2 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px 0 12px; color: var(--ink); }
+.arc-section-heading > span { display: block; font: 400 13px/1.5 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin-top: 4px; color: var(--ink-dim); }
 .ledger-arc-ui .weeks-strip { background: transparent; padding: 16px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; margin-bottom: 8px; }
 .ledger-arc-ui .weeks-header { gap: 8px; margin-bottom: 12px; }
 .ledger-arc-ui .weeks-header-icon { display: none; }
-.ledger-arc-ui .weeks-header-title { font: 400 26px/1.2 var(--font-ui); }
+.ledger-arc-ui .weeks-header-title { font: 400 26px/1.2 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .ledger-arc-ui .weeks-header-title .aside { display: none; }
 .ledger-arc-ui .section-toggle-btn { color: var(--ink-dim); font-size: 12px; border: 1px solid var(--line); background: transparent; min-height: 36px; }
 .ledger-arc-ui .week-chip { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
@@ -5091,7 +4966,7 @@ body.dark {
 .ledger-arc-ui .tc-bank-name { font-size: 14px; }
 .ledger-arc-ui .tc-card .section-toggle-btn { border-color: rgba(255,255,255,.45); color: #FFF; }
 .ledger-arc-ui .tc-simulate-btn { min-height: 44px; font-size: 14px; }
-.arc-close-cycle { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; border: 0; background: transparent; color: var(--ink-dim); font: 13px var(--font-ui); cursor: pointer; margin-top: 6px; }
+.arc-close-cycle { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 8px; border: 0; background: transparent; color: var(--ink-dim); font: 13px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; margin-top: 6px; }
 .ledger-arc-ui .log-item { border-radius: 0; background: transparent; border-bottom: 1px solid var(--line); padding-top: 15px; padding-bottom: 15px; }
 
 /* BUILD181 · Swipe de movimientos
@@ -5196,7 +5071,7 @@ body.dark {
   --coral: #24272B; --coral-deep: #F39483; --sage: #24272B;
   --input-bg: #222529; --gain: #88CBA5;
 }
-.ledger-arc-ui { font-family: var(--font-ui); }
+.ledger-arc-ui { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .ledger-arc-ui button, .ledger-arc-ui input, .ledger-arc-ui select, .ledger-arc-ui textarea { font-family: inherit; }
 .ledger-wordmark { font-size: 28px; font-weight: 550; letter-spacing: -.055em; }
 .ledger-wordmark > span { color: var(--ink); }
@@ -5435,268 +5310,32 @@ body.dark.ledger-arc-ui .weeks-strip {
 </style>
 
 
-<style id="ledger-194-paid-headsup">
-/* BUILD194 · estado pagado = verde resuelto, mucho menos intenso */
-.card-cycle-divider.card-interbank.payment-marked {
-  background: #B8E6C7 !important;
-  color: #245332 !important;
+<style id="ledger-193-movement-bank-chips">
+/* BUILD193 · identidad bancaria en los chips de Movimientos */
+.ledger-arc-ui .card-bank-badge.bank-interbank,
+body.dark.ledger-arc-ui .card-bank-badge.bank-interbank {
+  background: #05BE50 !important;
+  border-color: #05BE50 !important;
+  color: #FFFFFF !important;
 }
 
-.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-label,
-.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-status {
-  color: rgba(36, 83, 50, .72) !important;
-}
-
-.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-date {
-  color: #245332 !important;
-}
-
-.card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-action {
-  background: rgba(255,255,255,.72) !important;
-  color: #245332 !important;
-  box-shadow: none !important;
-}
-
-/* En dark también se diferencia del verde activo, sin convertirse en un bloque brillante. */
-body.dark .card-cycle-divider.card-interbank.payment-marked {
-  background: #23432F !important;
-  color: #E7F3EA !important;
-}
-
-body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-label,
-body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-status {
-  color: rgba(231,243,234,.68) !important;
-}
-
-body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-date {
-  color: #E7F3EA !important;
-}
-
-body.dark .card-cycle-divider.card-interbank.payment-marked .card-cycle-divider-action {
-  background: rgba(255,255,255,.10) !important;
-  color: #E7F3EA !important;
+.ledger-arc-ui .card-bank-badge.bank-bcp,
+body.dark.ledger-arc-ui .card-bank-badge.bank-bcp {
+  background: #0030B3 !important;
+  border-color: #0030B3 !important;
+  color: #FFFFFF !important;
 }
 </style>
 
 
-<style id="ledger-195-dark-budget-text">
-/* BUILD195 · Tu presupuesto en dark mode: texto claro, nunca negro */
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-label,
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-amount,
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
-  color: #F5F5F7 !important;
+<style id="ledger-194-dsc">
+/* BUILD194 · DS+C vive detrás del long press de DS */
+.ledger-arc-ui .chip.type-DS.covered {
+  letter-spacing: -0.01em;
+  font-size: 12px;
 }
-
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-range-inline,
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily::before {
-  color: rgba(245,245,247,.68) !important;
-}
-
-body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
-  border-left-color: rgba(245,245,247,.16) !important;
-}
-</style>
-
-
-<style id="luki-198-all-movements-fix">
-/* Luki198 · limpieza del modal "Todos los movimientos" */
-#modalContent:has(.all-list) {
-  width: min(560px, calc(100vw - 24px));
-  max-width: 560px;
-  max-height: min(92dvh, 900px);
-  padding: 24px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-#modalContent:has(.all-list) > h2,
-#modalContent:has(.all-list) > .modal-sub,
-#modalContent:has(.all-list) > .search-box,
-#modalContent:has(.all-list) > .all-summary,
-#modalContent:has(.all-list) > .modal-buttons {
-  flex: 0 0 auto;
-}
-
-#modalContent:has(.all-list) .all-summary {
-  margin-bottom: 14px;
-}
-
-#modalContent:has(.all-list) .all-sum-item {
-  background: var(--surface);
-  border: 1px solid var(--line);
-}
-
-#modalContent:has(.all-list) .all-list {
-  flex: 1 1 auto;
-  min-height: 210px;
-  max-height: none;
-  margin: 0;
-  padding: 0 8px 0 0;
-  border-top: 1px solid var(--line);
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-hi) transparent;
-}
-
-#modalContent:has(.all-list) .all-list::-webkit-scrollbar {
-  width: 5px;
-}
-
-#modalContent:has(.all-list) .all-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-#modalContent:has(.all-list) .all-list::-webkit-scrollbar-thumb {
-  background: var(--line-hi);
-  border-radius: 999px;
-}
-
-#modalContent:has(.all-list) .card-cycle-divider {
-  margin: 14px 0 2px;
-}
-
-#modalContent:has(.all-list) .log-swipe {
-  overflow: hidden;
-}
-
-#modalContent:has(.all-list) .log-item {
-  min-width: 0;
-  padding: 16px 6px;
-  align-items: flex-start;
-}
-
-#modalContent:has(.all-list) .log-left {
-  min-width: 0;
-  flex: 1 1 auto;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-#modalContent:has(.all-list) .log-info {
-  min-width: 0;
-  padding-top: 1px;
-}
-
-#modalContent:has(.all-list) .log-detail {
-  min-width: 0;
-  max-width: 100%;
-  font-size: 16px;
-  line-height: 1.2;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.ledger-arc-ui .log-dot.DS {
   white-space: nowrap;
-}
-
-#modalContent:has(.all-list) .log-meta {
-  min-width: 0;
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 6px;
-  row-gap: 5px;
-  line-height: 1.2;
-}
-
-#modalContent:has(.all-list) .log-meta .card-bank-badge,
-#modalContent:has(.all-list) .log-meta .payment-badge,
-#modalContent:has(.all-list) .log-meta .installment-badge,
-#modalContent:has(.all-list) .log-meta .badge,
-#modalContent:has(.all-list) .movement-category-chip {
-  flex: 0 0 auto;
-}
-
-#modalContent:has(.all-list) .movement-category-chip {
-  max-width: 150px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#modalContent:has(.all-list) .log-date {
-  flex: 1 0 100%;
-  width: 100%;
-  color: var(--ink-mute);
-  font-size: 11px;
-  line-height: 1.35;
-  white-space: normal;
-}
-
-#modalContent:has(.all-list) .log-right {
-  flex: 0 0 auto;
-  min-width: 94px;
-  max-width: 112px;
-  margin-left: 10px;
-  padding-top: 1px;
-  text-align: right;
-}
-
-#modalContent:has(.all-list) .log-amount {
-  font-size: 18px;
-  line-height: 1.15;
-  white-space: nowrap;
-}
-
-#modalContent:has(.all-list) .swipe-hint {
-  max-width: 100px;
-  text-align: right;
-  line-height: 1.25;
-}
-
-#modalContent:has(.all-list) .modal-buttons {
-  margin-top: 16px;
-  padding-top: 0;
-}
-
-body.dark #modalContent:has(.all-list) .all-sum-item {
-  background: var(--surface);
-  border-color: var(--line);
-}
-
-@media (max-width: 520px) {
-  .modal-overlay:has(#modalContent .all-list) {
-    padding: 10px;
-  }
-
-  #modalContent:has(.all-list) {
-    width: 100%;
-    max-height: calc(100dvh - 20px);
-    padding: 20px 16px 16px;
-    border-radius: 24px;
-  }
-
-  #modalContent:has(.all-list) h2 {
-    font-size: 27px;
-  }
-
-  #modalContent:has(.all-list) .all-list {
-    padding-right: 4px;
-  }
-
-  #modalContent:has(.all-list) .log-item {
-    padding: 15px 2px;
-  }
-
-  #modalContent:has(.all-list) .log-left {
-    gap: 10px;
-  }
-
-  #modalContent:has(.all-list) .log-right {
-    min-width: 82px;
-    max-width: 94px;
-    margin-left: 8px;
-  }
-
-  #modalContent:has(.all-list) .log-amount {
-    font-size: 17px;
-  }
-
-  #modalContent:has(.all-list) .movement-category-chip {
-    max-width: 116px;
-  }
 }
 </style>
 
@@ -5747,7 +5386,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 <div class="app">
   <div class="header">
     <div class="greeting">
-      <span class="ledger-wordmark">luki<span>.</span></span>
+      <span class="ledger-wordmark">ledger<span>.</span></span>
       <div class="sync-badge off" id="syncBadge" onclick="openDriveSync()">
         <span class="sync-dot">○</span>
         <span>Sin sync</span>
@@ -5759,7 +5398,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     </div>
   </div>
 
-  <div class="view-tabs" role="tablist" aria-label="Secciones de Luki">
+  <div class="view-tabs" role="tablist" aria-label="Secciones de Ledger">
     <button class="view-tab active" data-view="0" onclick="goToView(0)" role="tab" aria-selected="true">Inicio</button>
     <button class="view-tab" data-view="1" onclick="goToView(1)" role="tab" aria-selected="false">Movimientos</button>
     <button class="view-tab" data-view="2" onclick="goToView(2)" role="tab" aria-selected="false">Ciclos</button>
@@ -5799,6 +5438,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     <div class="arc-status" id="arcStatus" hidden></div>
     <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
       <div class="hero-meta-chip"><span class="hero-meta-dot"></span><span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span></div>
+      <div class="hero-meta-total">de <span id="heroTotalRef">S/ 0</span></div>
     </div>
     <div class="hero-progress" id="heroProgress" hidden aria-hidden="true"><div id="progressFill"></div><div id="progressMeta"></div></div>
   </div>
@@ -6084,7 +5724,19 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     <div class="conversion-preview" id="conversionPreview" style="display:none;"></div>
     <div class="chips-row">
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
-      <div class="chip type-DS" data-type="DS" onclick="setType('DS')">DS</div>
+      <div
+        class="chip type-DS"
+        id="dsChip"
+        data-type="DS"
+        role="button"
+        aria-label="DS. Mantén presionado para DS+C, deuda cubierta."
+        onclick="handleDSClick(event)"
+        onpointerdown="startDSLongPress(event)"
+        onpointerup="cancelDSLongPress()"
+        onpointercancel="cancelDSLongPress()"
+        onpointerleave="cancelDSLongPress()"
+        oncontextmenu="return false"
+      >DS</div>
       <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Fondo; combínalo con DS para pagar con tarjeta">F</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
       <div class="redistrib-control" id="redistribControl">
@@ -6122,7 +5774,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '198';
+  const LEDGER_BUILD = '194';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6584,8 +6236,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const gastoDesdeLog = movimientos
       .filter(mov => mov?.etiqueta !== 'recalcula')
       .reduce((total, mov) => {
-        const tipo = normalizarTipoMovimiento(mov?.tipo);
-        return total + (tipo === 'S' || tipo === 'DS' ? (Number(mov?.monto) || 0) : 0);
+        return total + (afectaPresupuestoSalarial(mov) ? (Number(mov?.monto) || 0) : 0);
       }, 0);
 
     if (gastoDesdeLog > 0.005) {
@@ -8048,6 +7699,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       document.getElementById('totalDisponible').textContent = fmt(gastable);
       heroMetaInfo.style.display = 'flex';
       document.getElementById('heroMetaValue').textContent = 'S/ ' + fmt(state.metaResidual);
+      document.getElementById('heroTotalRef').textContent = 'S/ ' + fmt(state.totalDisponible);
       
       // Riesgo: gastable = 0 significa que ya te comiste la meta
       if (state.totalDisponible < state.metaResidual) {
@@ -8185,7 +7837,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const nowS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
-    const nowDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const nowDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const nowTotal = nowS + nowDS;
     const nowMov = soloGastos.length;
     
@@ -8249,7 +7901,14 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   }
 
   function normalizarTipoMovimiento(tipo) {
-    return tipo === 'F+DS' ? 'FDS' : tipo;
+    if (tipo === 'F+DS') return 'FDS';
+    if (tipo === 'DS+C') return 'DS';
+    return tipo;
+  }
+
+  function esMovimientoDSCubierto(movOTipo) {
+    if (typeof movOTipo === 'string') return movOTipo === 'DS+C';
+    return normalizarTipoMovimiento(movOTipo?.tipo) === 'DS' && !!movOTipo?.cubierto;
   }
 
   function esMovimientoTarjeta(movOTipo) {
@@ -8324,12 +7983,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   function badgeBancoMovimiento(mov) {
     if (!esMovimientoTarjeta(mov)) return '';
     const tarjetaId = normalizarTarjetaId(tarjetaIdMovimiento(mov));
-    const bankClass = tarjetaId === 'interbank'
-      ? ' bank-interbank'
-      : tarjetaId === 'bcp'
-        ? ' bank-bcp'
-        : '';
-    return `<span class="card-bank-badge${bankClass}">${escapeHtml(nombreTarjeta(tarjetaId))}</span>`;
+    const bankClass = tarjetaId === 'bcp' ? 'bank-bcp' : 'bank-interbank';
+    return `<span class="card-bank-badge ${bankClass}">${escapeHtml(nombreTarjeta(tarjetaId))}</span>`;
   }
 
   let activeCreditCardIndex = 0;
@@ -8372,12 +8027,15 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   }
 
   function afectaPresupuestoSalarial(movOTipo) {
+    if (esMovimientoDSCubierto(movOTipo)) return false;
     const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
     return tipo === 'S' || tipo === 'DS';
   }
 
-  function etiquetaTipoMovimiento(tipo) {
-    return normalizarTipoMovimiento(tipo) === 'FDS' ? 'F+DS' : normalizarTipoMovimiento(tipo);
+  function etiquetaTipoMovimiento(movOTipo) {
+    if (esMovimientoDSCubierto(movOTipo)) return 'DS+C';
+    const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
+    return tipo === 'FDS' ? 'F+DS' : tipo;
   }
 
   function claseEspecialMovimiento(mov) {
@@ -8997,7 +8655,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       div.dataset.canEdit = canEdit ? '1' : '0';
       
       let dotType = normalizarTipoMovimiento(mov.tipo);
-      let dotLabel = etiquetaTipoMovimiento(mov.tipo);
+      let dotLabel = etiquetaTipoMovimiento(mov);
       if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
       
       let badge = '';
@@ -9043,7 +8701,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         }
 
         let dotType = normalizarTipoMovimiento(mov.tipo);
-        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov);
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
         const div = document.createElement('div');
@@ -9213,7 +8871,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       totalFDS,
       totalTarjeta: redondearDinero(totalDS + totalFDS),
       totalS,
-      totalGasto: redondearDinero(totalDS + totalS),
+      totalGasto: redondearDinero(
+        totalS + movimientos
+          .filter(mov => mov.tipo === 'DS' && !esMovimientoDSCubierto(mov))
+          .reduce((total, mov) => total + (Number(mov.monto) || 0), 0)
+      ),
       cantidad: movimientos.filter(mov => afectaPresupuestoSalarial(mov) || normalizarTipoMovimiento(mov.tipo) === 'FDS').length
     };
   }
@@ -9419,6 +9081,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       if (monto > next.montoIntocable + 0.005) throw new Error('Fondo insuficiente');
       next.montoIntocable -= monto;
       if (tipo === 'FDS') next.deudaActual += monto;
+      return next;
+    }
+
+    if (tipo === 'DS' && esMovimientoDSCubierto(mov)) {
+      next.deudaActual += monto;
       return next;
     }
 
@@ -9716,6 +9383,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       else delete editedMov.categoria;
       if (esMovimientoTarjeta(tipo)) editedMov.tarjetaId = tarjetaId;
       else delete editedMov.tarjetaId;
+      if (tipo === 'DS' && esMovimientoDSCubierto(originalMov)) editedMov.cubierto = true;
+      else delete editedMov.cubierto;
 
       const expectedOriginalAfter = applyMovementToSnapshot(targetBefore, originalMov);
       let rebuiltState = applyMovementToSnapshot(targetBefore, editedMov);
@@ -9784,7 +9453,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     openModal(`
       <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'último movimiento'}</span></h2>
       <p class="modal-sub">
-        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov.tipo)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
@@ -9862,7 +9531,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     // Calcular sumas (excluyendo recalcs) sobre los filtrados
     const soloGastos = filtrados.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
-    const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const count = soloGastos.length;
@@ -9885,10 +9554,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         const canEdit = editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
         let dotType = normalizarTipoMovimiento(mov.tipo);
-        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
+        if (esMovimientoTarjeta(mov)) badge += badgeBancoMovimiento(mov);
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
@@ -9898,7 +9568,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span>${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
@@ -10205,7 +9875,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
     openModal(`
       <h2>Ciclos <span class="accent">anteriores</span></h2>
-      <p class="modal-sub">Luki conserva automáticamente los últimos 2 ciclos cerrados.</p>
+      <p class="modal-sub">Ledger conserva automáticamente los últimos 2 ciclos cerrados.</p>
       <div class="cycle-history-list">${cards}</div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Cerrar</button>
@@ -10227,7 +9897,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     } else {
       movimientos.slice().reverse().forEach(mov => {
         let dotType = normalizarTipoMovimiento(mov.tipo);
-        let dotLabel = etiquetaTipoMovimiento(mov.tipo);
+        let dotLabel = etiquetaTipoMovimiento(mov);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
@@ -10298,7 +9968,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const headers = ['Fecha', 'Tipo', 'Tarjeta', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = movimientos.map(m => [
       m.fecha || '',
-      etiquetaTipoMovimiento(m.tipo) || '',
+      etiquetaTipoMovimiento(m) || '',
       esMovimientoTarjeta(m) ? nombreTarjeta(tarjetaIdMovimiento(m)) : '',
       categoriaMovimiento(m) || 'Sin categoría',
       m.etiqueta || '',
@@ -10322,7 +9992,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   function confirmarNuevoCiclo() {
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
-    const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
+    const totalDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const totalGastado = totalS + totalDS;
@@ -10358,7 +10028,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        Este ciclo se guardará en “Ciclos” con todos sus movimientos. Luki conservará como máximo los 2 ciclos anteriores.
+        Este ciclo se guardará en “Ciclos” con todos sus movimientos. Ledger conservará como máximo los 2 ciclos anteriores.
       </p>
 
       <div class="modal-buttons">
@@ -10480,7 +10150,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y el resto se convierte en Disponible del ciclo. La deuda en dólares se convierte a soles solo para obtener la Deuda total que usa Luki.
+        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y el resto se convierte en Disponible del ciclo. La deuda en dólares se convierte a soles solo para obtener la Deuda total que usa Ledger.
       </p>
 
       <div class="modal-buttons">
@@ -10817,7 +10487,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
     openModal(`
       <h2>Conciliar <span class="accent">deuda</span></h2>
-      <p class="modal-sub">La deuda que ingresaste no coincide con el seguimiento actual de la tarjeta. Luki no cambiará nada sin tu confirmación.</p>
+      <p class="modal-sub">La deuda que ingresaste no coincide con el seguimiento actual de la tarjeta. Ledger no cambiará nada sin tu confirmación.</p>
       <div class="rollover-breakdown">
         <div class="rollover-row">
           <span class="rollover-week">Deuda ingresada</span>
@@ -10900,6 +10570,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       detalle: mov.detalle || '',
       categoria: normalizarCategoriaMovimiento(mov.categoria) || null,
       tarjetaId: esMovimientoTarjeta(mov) ? tarjetaIdMovimiento(mov) : null,
+      cubierto: esMovimientoDSCubierto(mov),
       fecha: mov.fecha || '',
       fechaISO: mov.fechaISO || null,
       timestamp: Number(mov.timestamp) || null,
@@ -10996,6 +10667,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         detalle: m.detalle || '',
         categoria: normalizarCategoriaMovimiento(m.categoria) || null,
         tarjetaId: esMovimientoTarjeta(m) ? tarjetaIdMovimiento(m) : null,
+        cubierto: esMovimientoDSCubierto(m),
         fecha: m.fecha || '',
         fechaISO: m.fechaISO || null,
         timestamp: Number(m.timestamp) || null,
@@ -11106,12 +10778,13 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function tipoReporteMovimiento(mov) {
     if (mov?.etiqueta === 'recalcula') return 'AJUSTE';
-    return etiquetaTipoMovimiento(mov?.tipo) || 'S';
+    return etiquetaTipoMovimiento(mov) || 'S';
   }
 
   function impactoReporteMovimiento(mov) {
     const tipo = tipoReporteMovimiento(mov);
     if (tipo === 'S') return 'Disponible';
+    if (tipo === 'DS+C') return 'Tarjeta · cubierto';
     if (tipo === 'DS') return 'Disponible + tarjeta';
     if (tipo === 'F') return 'Fondo';
     if (tipo === 'F+DS') return 'Fondo + tarjeta';
@@ -11141,15 +10814,17 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function resumenReporteMovimientos(movimientos) {
     const reales = movimientos.filter(mov => mov?.etiqueta !== 'recalcula');
-    const resumen = { S: 0, DS: 0, F: 0, FDS: 0, conteos: { S: 0, DS: 0, F: 0, FDS: 0 } };
+    const resumen = { S: 0, DS: 0, DSC: 0, F: 0, FDS: 0, conteos: { S: 0, DS: 0, F: 0, FDS: 0 } };
     reales.forEach(mov => {
       const tipo = normalizarTipoMovimiento(mov?.tipo);
       if (!Object.prototype.hasOwnProperty.call(resumen.conteos, tipo)) return;
-      resumen[tipo] += Number(mov?.monto) || 0;
+      const monto = Number(mov?.monto) || 0;
+      resumen[tipo] += monto;
+      if (esMovimientoDSCubierto(mov)) resumen.DSC += monto;
       resumen.conteos[tipo] += 1;
     });
     resumen.movimientos = reales.length;
-    resumen.gastoDisponible = resumen.S + resumen.DS;
+    resumen.gastoDisponible = resumen.S + Math.max(0, resumen.DS - resumen.DSC);
     resumen.deudaGenerada = resumen.DS + resumen.FDS;
     resumen.fondoUtilizado = resumen.F + resumen.FDS;
     return resumen;
@@ -11161,7 +10836,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       .filter(mov => mov?.etiqueta !== 'recalcula')
       .forEach(mov => {
         const tipo = normalizarTipoMovimiento(mov?.tipo);
-        if (!['S', 'DS', 'F', 'FDS'].includes(tipo)) return;
+        if (!['S', 'DS', 'F', 'FDS'].includes(tipo) || esMovimientoDSCubierto(mov)) return;
         const categoria = categoriaMovimiento(mov) || 'Sin categoría';
         const monto = Math.max(0, Number(mov?.monto) || 0);
         if (!mapa.has(categoria)) {
@@ -11225,8 +10900,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const workbook = new window.ExcelJS.Workbook();
     workbook.calcProperties.fullCalcOnLoad = true;
     workbook.calcProperties.forceFullCalc = true;
-    workbook.creator = 'Luki';
-    workbook.company = 'Luki';
+    workbook.creator = 'Ledger';
+    workbook.company = 'Ledger';
     workbook.created = new Date();
     workbook.modified = new Date();
 
@@ -11992,7 +11667,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const headers = ['Fecha', 'Tipo', 'Tarjeta', 'Categoría', 'Etiqueta', 'Detalle', 'Monto'];
     const rows = state.log.map(m => [
       m.fecha,
-      etiquetaTipoMovimiento(m.tipo),
+      etiquetaTipoMovimiento(m),
       esMovimientoTarjeta(m) ? nombreTarjeta(tarjetaIdMovimiento(m)) : '',
       m.etiqueta === 'recalcula' ? '' : (categoriaMovimiento(m) || 'Sin categoría'),
       m.etiqueta || '',
@@ -12015,11 +11690,16 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   
   let selectedType = null;
   let selectedMod = null;
-  
+  let selectedDSCovered = false;
+  let dsLongPressTimer = null;
+  let dsLongPressTriggered = false;
+
   function setType(tipo) {
+    if (tipo !== 'DS') selectedDSCovered = false;
     if (tipo === 'S') {
       selectedType = selectedType === 'S' ? null : 'S';
     } else if (tipo === 'DS') {
+      selectedDSCovered = false;
       if (selectedType === 'F') selectedType = 'FDS';
       else if (selectedType === 'FDS') selectedType = 'F';
       else selectedType = selectedType === 'DS' ? null : 'DS';
@@ -12031,7 +11711,38 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     if (selectedType === 'F' || selectedType === 'FDS') selectedMod = null;
     updateChipsUI();
   }
-  
+
+  function startDSLongPress(event) {
+    if (event?.pointerType === 'mouse' && event.button !== 0) return;
+    clearTimeout(dsLongPressTimer);
+    dsLongPressTriggered = false;
+    dsLongPressTimer = setTimeout(() => {
+      dsLongPressTriggered = true;
+      selectedType = 'DS';
+      selectedDSCovered = true;
+      selectedMod = null;
+      updateChipsUI();
+      try { navigator.vibrate?.(12); } catch(e) {}
+      toast('DS+C · deuda cubierta');
+    }, 500);
+  }
+
+  function cancelDSLongPress() {
+    clearTimeout(dsLongPressTimer);
+    dsLongPressTimer = null;
+  }
+
+  function handleDSClick(event) {
+    cancelDSLongPress();
+    if (dsLongPressTriggered) {
+      dsLongPressTriggered = false;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      return;
+    }
+    setType('DS');
+  }
+
   let redistribLongPressTimer = null;
   let redistribLongPressTriggered = false;
 
@@ -12159,6 +11870,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function setMod(mod) {
     if (mod === 'recalcula') { ejecutarRecalculo(); return; }
+    if (selectedDSCovered && selectedType === 'DS') {
+      toast('DS+C no usa bloques: el monto ya está cubierto', true);
+      return;
+    }
     if (selectedType === 'F' || selectedType === 'FDS') {
       toast('El fondo no usa reparto por bloques', true);
       return;
@@ -12168,6 +11883,13 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   }
   
   function updateChipsUI() {
+    const dsChip = document.getElementById('dsChip');
+    if (dsChip) {
+      const cubiertoActivo = selectedType === 'DS' && selectedDSCovered;
+      dsChip.textContent = cubiertoActivo ? 'DS+C' : 'DS';
+      dsChip.classList.toggle('covered', cubiertoActivo);
+      dsChip.setAttribute('aria-pressed', selectedType === 'DS' ? 'true' : 'false');
+    }
     document.querySelectorAll('.chip[data-type]').forEach(el => {
       const activoCombinado = selectedType === 'FDS' && (el.dataset.type === 'F' || el.dataset.type === 'DS');
       el.classList.toggle('active', el.dataset.type === selectedType || activoCombinado);
@@ -12324,9 +12046,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function finalizarQuickMovement(datos) {
     if (!datos) return;
-    const { monto, tipo, etiqueta, detalle, categoria, tarjetaId } = datos;
+    const { monto, tipo, etiqueta, detalle, categoria, tarjetaId, cubierto = false } = datos;
 
-    if (afectaPresupuestoSalarial(tipo) && etiqueta !== 'sem') {
+    if (afectaPresupuestoSalarial({ tipo, cubierto }) && etiqueta !== 'sem') {
       const currentIdx = calcularSemanaActualIdx();
       const semActual = currentIdx >= 0 && currentIdx < state.semanas.length
         ? state.semanas[currentIdx]
@@ -12340,6 +12062,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const ok = aplicarMovimiento(monto, tipo, etiqueta, detalle, {
       metadata: {
         categoria,
+        ...(tipo === 'DS' && cubierto ? { cubierto: true } : {}),
         ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(tarjetaId) } : {})
       }
     });
@@ -12378,8 +12101,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     openQuickMovementCategory({
       monto,
       tipo: selectedType,
-      etiqueta: selectedMod,
-      detalle
+      etiqueta: selectedDSCovered && selectedType === 'DS' ? null : selectedMod,
+      detalle,
+      cubierto: selectedType === 'DS' && selectedDSCovered
     });
   }
   
@@ -12388,6 +12112,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     document.getElementById('inputDetalle').value = '';
     selectedType = null;
     selectedMod = null;
+    selectedDSCovered = false;
+    dsLongPressTriggered = false;
+    cancelDSLongPress();
     updateChipsUI();
     // Volver a PEN por defecto tras enviar
     currentCurrency = 'PEN';
@@ -12507,6 +12234,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       ...(esMovimientoTarjeta(tipo)
         ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) }
         : {}),
+      ...(tipo === 'DS' && metadata.cubierto ? { cubierto: true } : {}),
       ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       ...(opciones.soloBloqueActual ? { soloBloqueActualSimulador: true } : {}),
       snapshot: {
@@ -12537,7 +12265,16 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       if (renderizar) render();
       return true;
     }
-    
+
+    // DS+C: genera deuda, pero no consume presupuesto personal.
+    if (tipo === 'DS' && mov.cubierto) {
+      state.deudaActual += monto;
+      state.log.push(mov);
+      if (notificar) toast(`DS+C · S/ ${fmt(monto)} ya cubiertos`);
+      if (renderizar) render();
+      return true;
+    }
+
     state.totalDisponible -= monto;
     state.gastoTotal += monto;
     if (tipo === 'S') state.gastoNoAdeudado += monto;
@@ -12659,11 +12396,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     openModal(`
       <h2>Deshacer <span class="accent">${esRedistribucion ? 'redistribución' : 'movimiento'}</span></h2>
       <p class="modal-sub">
-        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov.tipo)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
+        ${esRedistribucion ? '<strong>Ajuste de presupuesto</strong>' : `<strong>S/ ${fmt(mov.monto)}</strong> — ${etiquetaTipoMovimiento(mov)}${mov.etiqueta ? ' · '+mov.etiqueta : ''}`}<br>
         ${escapeHtml(mov.detalle || 'Sin detalle')}<br>
         <span style="color:var(--ink-mute);font-size:11px;">${escapeHtml(mov.fecha)}</span>
       </p>
-      <p class="modal-sub" style="font-size:11px;">Luki quitará esta entrada y recalculará las posteriores. Podrás recuperarla inmediatamente con “Rehacer”.</p>
+      <p class="modal-sub" style="font-size:11px;">Ledger quitará esta entrada y recalculará las posteriores. Podrás recuperarla inmediatamente con “Rehacer”.</p>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-danger" onclick="doDelete(${idx})">Eliminar</button>
@@ -12861,7 +12598,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
     openModal(`
       <h2>Revisar <span class="accent">totales</span></h2>
-      <p class="modal-sub">Luki volverá a sumar S y DS del ciclo salarial; F+DS se conciliará únicamente dentro de la deuda de tarjeta.</p>
+      <p class="modal-sub">Ledger volverá a sumar S y DS del ciclo salarial; F+DS se conciliará únicamente dentro de la deuda de tarjeta.</p>
 
       <div class="rollover-breakdown">
         <div class="rollover-row">
@@ -14797,11 +14534,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   function getSyncStatusPresentation(status = currentSyncStatus) {
     const configs = {
       off: { label: 'Desconectado', color: 'var(--ink-mute)', note: 'Conecta Drive para comparar tus datos.' },
-      syncing: { label: 'Comprobando…', color: '#4A6F8A', note: 'Luki está comparando este dispositivo con Drive.' },
+      syncing: { label: 'Comprobando…', color: '#4A6F8A', note: 'Ledger está comparando este dispositivo con Drive.' },
       ok: { label: 'Sincronizado', color: 'var(--gain)', note: 'Este dispositivo y Drive tienen el mismo contenido.' },
       'remote-newer': { label: 'Drive tiene cambios', color: '#72540A', note: 'Otro dispositivo guardó información más reciente. Baja los datos antes de editar.' },
       'local-newer': { label: 'Pendiente de subir', color: '#3F6682', note: 'Este dispositivo tiene cambios que todavía no están en Drive.' },
-      conflict: { label: 'Cambios en ambos', color: 'var(--danger)', note: 'Los dos dispositivos fueron editados. Luki no reemplazará nada sin tu confirmación.' },
+      conflict: { label: 'Cambios en ambos', color: 'var(--danger)', note: 'Los dos dispositivos fueron editados. Ledger no reemplazará nada sin tu confirmación.' },
       error: { label: 'No se pudo comprobar', color: 'var(--danger)', note: 'Revisa tu conexión o vuelve a conectar Drive.' }
     };
     return configs[status] || configs.off;
@@ -14949,7 +14686,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       <h2>${isConflict ? 'Cambios en ambos' : 'Drive tiene cambios'}</h2>
       <p class="modal-sub">${isConflict
         ? 'Este dispositivo y Drive fueron editados por separado.'
-        : 'Drive contiene datos más recientes que este dispositivo.'} Luki no reemplazará nada automáticamente.</p>
+        : 'Drive contiene datos más recientes que este dispositivo.'} Ledger no reemplazará nada automáticamente.</p>
       <div class="rollover-breakdown">
         <div class="rollover-row">
           <span class="rollover-week">Este dispositivo</span>
