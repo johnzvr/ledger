@@ -4451,6 +4451,10 @@
   .toast.error { background: var(--danger); }
 
   body.keyboard-open .input-bar {
+    /* iOS/WebKit: evita el desfase del caret dentro de un contenedor fixed
+       cuando el teclado reduce el visualViewport. */
+    position: absolute;
+    bottom: auto;
     padding-top: 10px;
     background: var(--bg);
   }
@@ -6143,7 +6147,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '199';
+  const LEDGER_BUILD = '200';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -14535,26 +14539,62 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const viewport = window.visualViewport;
     if (!viewport) return;
     let maxHeight = viewport.height;
+    const inputBar = document.querySelector('.input-bar');
+
+    const positionInputBarForKeyboard = () => {
+      if (!inputBar || !document.body.classList.contains('keyboard-open')) {
+        if (inputBar) inputBar.style.top = '';
+        return;
+      }
+
+      // Posición real del viewport visible dentro del documento.
+      // Al usar absolute durante el teclado, WebKit mantiene el caret
+      // en el mismo sistema de coordenadas que el input.
+      const pageTop = Number.isFinite(viewport.pageTop)
+        ? viewport.pageTop
+        : (window.scrollY + (viewport.offsetTop || 0));
+
+      const barHeight = inputBar.getBoundingClientRect().height;
+      const top = Math.max(0, pageTop + viewport.height - barHeight);
+      inputBar.style.top = `${Math.round(top)}px`;
+    };
 
     const updateKeyboard = () => {
       if (viewport.height > maxHeight) maxHeight = viewport.height;
       const keyboardOpen = viewport.height < maxHeight * 0.78;
       document.body.classList.toggle('keyboard-open', keyboardOpen);
-      requestAnimationFrame(updateViewHeight);
+
+      requestAnimationFrame(() => {
+        positionInputBarForKeyboard();
+        updateViewHeight();
+      });
     };
 
     viewport.addEventListener('resize', updateKeyboard);
     viewport.addEventListener('scroll', updateKeyboard);
-    ['inputAmount', 'inputDetalle', 'noteDraft'].forEach(id => {
+
+    // Estos inputs ya están dentro de una barra posicionada con visualViewport.
+    // No usar scrollIntoView(): en iOS puede desfasar el caret del cuadro.
+    ['inputAmount', 'inputDetalle'].forEach(id => {
       const input = document.getElementById(id);
       if (!input) return;
       input.addEventListener('focus', () => {
-        setTimeout(() => {
-          updateKeyboard();
-          input.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        }, 180);
+        setTimeout(updateKeyboard, 80);
       });
     });
+
+    // Los campos fuera de la barra sí pueden desplazarse de forma normal.
+    const noteDraft = document.getElementById('noteDraft');
+    if (noteDraft) {
+      noteDraft.addEventListener('focus', () => {
+        setTimeout(() => {
+          updateKeyboard();
+          noteDraft.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        }, 180);
+      });
+    }
+
+    updateKeyboard();
   }
   
   // ============ GOOGLE DRIVE SYNC ============
