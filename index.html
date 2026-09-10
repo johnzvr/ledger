@@ -5713,6 +5713,99 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 }
 .ledger-arc-ui .log-dot.DS { white-space: nowrap; }
 </style>
+
+<style id="luki-202-dsp">
+/* BUILD202 · DS+P es una variante de DS: la deuda/gasto real se registra completo,
+   pero el presupuesto salarial se divide 50/50 entre este ciclo y el siguiente. */
+.ledger-arc-ui .chip.type-DS.own {
+  letter-spacing: -0.015em;
+  font-size: 12px;
+}
+.ds-control {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.ds-control > .chip {
+  width: 100%;
+  flex: none;
+  touch-action: manipulation;
+}
+.ds-variant-menu {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: 202px;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 15px;
+  background: #202020;
+  box-shadow: 0 14px 32px rgba(0,0,0,0.28);
+  z-index: 145;
+  transform: translateX(-50%);
+}
+.ds-variant-menu[hidden] { display: none; }
+.ds-variant-menu::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 10px;
+  height: 10px;
+  background: #202020;
+  border-right: 1px solid rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  transform: translateX(-50%) rotate(45deg);
+}
+.ds-variant-menu-btn {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: transparent;
+  color: rgba(250,248,243,0.92);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.ds-variant-menu-btn + .ds-variant-menu-btn {
+  margin-top: 2px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0 0 10px 10px;
+}
+.ds-variant-menu-btn:active { background: rgba(255,255,255,0.08); }
+.ds-variant-menu-btn small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(250,248,243,0.52);
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.own-installment-cycle-note {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--line-hi);
+  background: var(--surface, var(--bg));
+}
+.own-installment-cycle-note .own-installment-cycle-title {
+  font-size: 10px;
+  font-weight: 750;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.own-installment-cycle-note .own-installment-cycle-copy {
+  font-size: 9.5px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -6097,19 +6190,33 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     <div class="conversion-preview" id="conversionPreview" style="display:none;"></div>
     <div class="chips-row">
       <div class="chip type-S" data-type="S" onclick="setType('S')">S</div>
-      <div
-        class="chip type-DS"
-        id="dsChip"
-        data-type="DS"
-        role="button"
-        aria-label="DS. Mantén presionado para DS+C, deuda cubierta."
-        onclick="handleDSClick(event)"
-        onpointerdown="startDSLongPress(event)"
-        onpointerup="cancelDSLongPress()"
-        onpointercancel="cancelDSLongPress()"
-        onpointerleave="cancelDSLongPress()"
-        oncontextmenu="return false"
-      >DS</div>
+      <div class="ds-control" id="dsControl">
+        <div
+          class="chip type-DS"
+          id="dsChip"
+          data-type="DS"
+          role="button"
+          aria-label="DS. Mantén presionado para elegir DS+C o DS+P."
+          aria-haspopup="menu"
+          aria-expanded="false"
+          onclick="handleDSClick(event)"
+          onpointerdown="startDSLongPress(event)"
+          onpointerup="cancelDSLongPress()"
+          onpointercancel="cancelDSLongPress()"
+          onpointerleave="cancelDSLongPress()"
+          oncontextmenu="return false"
+        >DS</div>
+        <div class="ds-variant-menu" id="dsVariantMenu" role="menu" hidden>
+          <button class="ds-variant-menu-btn" type="button" role="menuitem" onclick="selectDSVariant(event, 'covered')">
+            DS+C
+            <small>Deuda cubierta · no consume tu presupuesto</small>
+          </button>
+          <button class="ds-variant-menu-btn" type="button" role="menuitem" onclick="selectDSVariant(event, 'own')">
+            DS+P
+            <small>2 cuotas propias · 50% este ciclo + 50% próximo</small>
+          </button>
+        </div>
+      </div>
       <div class="chip type-F" data-type="F" onclick="setType('F')" aria-label="Fondo; combínalo con DS para pagar con tarjeta">F</div>
       <div class="chip mod" data-mod="sem" onclick="setMod('sem')">sem</div>
       <div class="redistrib-control" id="redistribControl">
@@ -6147,7 +6254,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '200';
+  const LEDGER_BUILD = '202';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -6609,7 +6716,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const gastoDesdeLog = movimientos
       .filter(mov => mov?.etiqueta !== 'recalcula')
       .reduce((total, mov) => {
-        return total + (afectaPresupuestoSalarial(mov) ? (Number(mov?.monto) || 0) : 0);
+        return total + (afectaPresupuestoSalarial(mov) ? impactoPresupuestoMovimiento(mov) : 0);
       }, 0);
 
     if (gastoDesdeLog > 0.005) {
@@ -8250,7 +8357,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const indices = [];
     for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
       const mov = state.log[i];
-      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot && !mov?.planCuotasId) {
+      if (mov?.etiqueta !== 'recalcula' && mov?.snapshot && (!mov?.planCuotasId || esMovimientoCuotasPropias(mov))) {
         indices.unshift(i);
       }
     }
@@ -8262,7 +8369,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
       const mov = state.log[i];
       if (!mov?.snapshot) break;
-      if (mov?.planCuotasId) continue;
+      if (mov?.planCuotasId && !esMovimientoCuotasPropias(mov)) continue;
       indices.unshift(i);
     }
     return indices;
@@ -8274,13 +8381,20 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function normalizarTipoMovimiento(tipo) {
     if (tipo === 'F+DS') return 'FDS';
-    if (tipo === 'DS+C') return 'DS';
+    if (tipo === 'DS+C' || tipo === 'DS+P') return 'DS';
     return tipo;
   }
 
   function esMovimientoDSCubierto(movOTipo) {
     if (typeof movOTipo === 'string') return movOTipo === 'DS+C';
     return normalizarTipoMovimiento(movOTipo?.tipo) === 'DS' && !!movOTipo?.cubierto;
+  }
+
+  function esMovimientoDSPropio(movOTipo) {
+    if (typeof movOTipo === 'string') return movOTipo === 'DS+P';
+    return normalizarTipoMovimiento(movOTipo?.tipo) === 'DS'
+      && !!movOTipo?.cuotaPropia
+      && !movOTipo?.cubierto;
   }
 
   function esMovimientoTarjeta(movOTipo) {
@@ -8410,6 +8524,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function etiquetaTipoMovimiento(movOTipo) {
     if (esMovimientoDSCubierto(movOTipo)) return 'DS+C';
+    if (esMovimientoDSPropio(movOTipo)) return 'DS+P';
     const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
     return tipo === 'FDS' ? 'F+DS' : tipo;
   }
@@ -8843,7 +8958,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const numero = Number(mov?.cuotaNumero);
     const total = Number(mov?.cuotasTotal);
     if (!mov?.planCuotasId || !Number.isFinite(numero) || !Number.isFinite(total)) return '';
-    return `<span class="installment-badge">Cuota ${numero}/${total}</span>`;
+    return `<span class="installment-badge">${esMovimientoCuotasPropias(mov) ? 'Cuota propia' : 'Cuota'} ${numero}/${total}</span>`;
   }
 
   function planesCuotasActivos() {
@@ -8878,12 +8993,95 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     return `${moneda === 'USD' ? 'US$' : 'S/'} ${fmt(monto)}`;
   }
 
+  function esPlanCuotasPropias(plan) {
+    return !!plan && plan.tipoPlan === 'propio';
+  }
+
+  function planCuotasDeMovimiento(mov) {
+    if (!mov?.planCuotasId || !Array.isArray(state.planesCuotas)) return null;
+    return state.planesCuotas.find(plan => plan?.id === mov.planCuotasId) || null;
+  }
+
+  function esMovimientoCuotasPropias(mov) {
+    return !!mov?.cuotaPropia || esPlanCuotasPropias(planCuotasDeMovimiento(mov));
+  }
+
+  function dividirCuotaPropia(monto) {
+    const total = redondearDinero(Math.max(0, Number(monto) || 0));
+    const actual = redondearDinero(total / 2);
+    const siguiente = redondearDinero(total - actual);
+    return { actual, siguiente };
+  }
+
+  function crearPlanCuotaPropia({ monto, detalle = '', categoria = '', tarjetaId = 'interbank', fecha = new Date() }) {
+    const partes = dividirCuotaPropia(monto);
+    const fechaCompra = fecha instanceof Date ? fecha : new Date(fecha || Date.now());
+    return {
+      plan: {
+        id: 'plan-dsp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        tipoPlan: 'propio',
+        variante: 'DS+P',
+        detalle,
+        categoria: normalizarCategoriaMovimiento(categoria) || null,
+        tipo: 'DS',
+        tarjetaId: normalizarTarjetaId(tarjetaId),
+        moneda: 'PEN',
+        montoCompraOriginal: redondearDinero(monto),
+        montoCompraPen: redondearDinero(monto),
+        cuotas: 2,
+        cuotaOriginal: partes.actual,
+        cuotaPen: partes.actual,
+        cuotaPropiaActualPen: partes.actual,
+        cuotaPropiaSiguientePen: partes.siguiente,
+        fechaCompra: fechaCompra.toISOString(),
+        cuotasRegistradas: 1,
+        estado: 'activo',
+        creadoEn: new Date().toISOString()
+      },
+      ...partes
+    };
+  }
+
+  function impactoPresupuestoMovimiento(mov) {
+    const monto = Math.max(0, Number(mov?.monto) || 0);
+    const explicito = Number(mov?.impactoPresupuesto);
+    if (!Number.isFinite(explicito) || explicito < 0) return monto;
+    return redondearDinero(Math.min(monto, explicito));
+  }
+
+  function cuotasPropiasPendientes() {
+    return (Array.isArray(state.planesCuotas) ? state.planesCuotas : [])
+      .filter(plan => esPlanCuotasPropias(plan)
+        && plan.estado !== 'completado'
+        && Number(plan.cuotasRegistradas) < 2
+        && Number(plan.cuotaPropiaSiguientePen) > 0);
+  }
+
+  function totalCuotasPropiasPendientes() {
+    return redondearDinero(cuotasPropiasPendientes()
+      .reduce((total, plan) => total + (Number(plan.cuotaPropiaSiguientePen) || 0), 0));
+  }
+
+  function completarCuotasPropiasPendientes(fechaNuevoCiclo) {
+    const fecha = fechaNuevoCiclo instanceof Date ? fechaNuevoCiclo : new Date(fechaNuevoCiclo || Date.now());
+    cuotasPropiasPendientes().forEach(plan => {
+      plan.cuotasRegistradas = 2;
+      plan.estado = 'completado';
+      plan.ultimaActivacion = fecha.toISOString();
+      plan.aplicadaEnCiclo = fecha.toISOString();
+      plan.mensajeEstado = '';
+    });
+  }
+
   function activarCuotasPendientes() {
     if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
     const hoy = inicioDelDia(new Date());
     let activadas = 0;
 
     state.planesCuotas.forEach(plan => {
+      // Las cuotas propias no generan un segundo movimiento de tarjeta. Su cuota 2/2
+      // se descuenta al preparar el siguiente ciclo y se completa allí.
+      if (esPlanCuotasPropias(plan)) return;
       const totalCuotas = Math.max(0, Number(plan?.cuotas) || 0);
       let registradas = Math.max(0, Number(plan?.cuotasRegistradas) || 0);
       if (!totalCuotas || registradas >= totalCuotas || plan.estado === 'completado') {
@@ -8946,10 +9144,25 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       const total = Number(plan.cuotas) || 0;
       const registradas = Number(plan.cuotasRegistradas) || 0;
       const pendientes = Math.max(0, total - registradas);
+      const tarjetaId = normalizarTarjetaId(plan.tarjetaId);
+      if (esPlanCuotasPropias(plan)) {
+        const siguiente = Math.max(0, Number(plan.cuotaPropiaSiguientePen) || 0);
+        return `
+          <div class="installment-plan-row">
+            <div class="installment-plan-top">
+              <span class="installment-plan-name">${escapeHtml(plan.detalle || 'Compra')}</span>
+              <span class="installment-plan-progress">Propia ${registradas}/${total}</span>
+            </div>
+            <div class="installment-plan-meta">
+              <span>${escapeHtml(nombreTarjeta(tarjetaId))} · S/ ${fmt(siguiente)} pendiente</span>
+              <span>Se descontará al iniciar el próximo ciclo · no genera deuda nueva</span>
+            </div>
+          </div>
+        `;
+      }
       const pendienteOriginal = pendientes * (Number(plan.cuotaOriginal) || 0);
       const siguienteNumero = registradas + 1;
       const siguienteActivacion = fechaActivacionCuota(plan, siguienteNumero);
-      const tarjetaId = normalizarTarjetaId(plan.tarjetaId);
       const siguienteCalendario = fechaPagoParaCompraTarjeta(siguienteActivacion, tarjetaId);
       const siguientePago = siguienteCalendario?.pago || null;
       const estadoFondo = plan.estado === 'sin_fondo' ? ' · fondo insuficiente' : '';
@@ -8987,7 +9200,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     
     // Estado de Deshacer y Rehacer
     const btnUndo = document.getElementById('btnUndo');
-    if (btnUndo) btnUndo.disabled = state.log.length === 0 || !!state.log[state.log.length - 1]?.planCuotasId;
+    if (btnUndo) { const ultimo = state.log[state.log.length - 1]; btnUndo.disabled = state.log.length === 0 || (!!ultimo?.planCuotasId && !esMovimientoCuotasPropias(ultimo)); }
     const btnRedo = document.getElementById('btnRedo');
     if (btnRedo) btnRedo.disabled = !state.redoMovement;
     const btnHistory = document.getElementById('btnCycleHistory');
@@ -9465,7 +9678,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       return next;
     }
 
-    next.totalDisponible -= monto;
+    const impactoPresupuesto = impactoPresupuestoMovimiento(mov);
+    next.totalDisponible -= impactoPresupuesto;
     next.gastoTotal += monto;
     if (tipo === 'S') next.gastoNoAdeudado += monto;
     if (tipo === 'DS') next.deudaActual += monto;
@@ -9474,7 +9688,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       ? new Date(mov.fechaISO)
       : (Number.isFinite(Number(mov.timestamp)) ? new Date(Number(mov.timestamp)) : new Date());
     if (mov.soloBloqueActualSimulador) {
-      aplicarGastoSoloBloqueActual(next.semanas, monto, fechaMovimiento);
+      aplicarGastoSoloBloqueActual(next.semanas, impactoPresupuesto, fechaMovimiento);
     } else if (mov.redistribucionSimulador) {
       redistribuirPresupuestoRestante(
         next.semanas,
@@ -9483,7 +9697,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         fechaMovimiento
       );
     } else {
-      aplicarGastoEnBloques(next.semanas, monto, next.totalDisponible, next.metaResidual, mov.etiqueta, fechaMovimiento);
+      aplicarGastoEnBloques(next.semanas, impactoPresupuesto, next.totalDisponible, next.metaResidual, mov.etiqueta, fechaMovimiento);
     }
     return next;
   }
@@ -9537,6 +9751,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function openEditMovement(idx) {
     const mov = state.log[idx];
+    const esCuotaPropia = esMovimientoCuotasPropias(mov);
     if (!mov || mov.etiqueta === 'recalcula') {
       toast('Este movimiento no se puede editar', true);
       return;
@@ -9578,7 +9793,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     }
     openModal(`
       <h2>Editar <span class="accent">movimiento</span></h2>
-      <p class="modal-sub">Se conservará la fecha ${escapeHtml(mov.fecha || '')}. Solo cambios de monto, tipo o SEM recalculan movimientos posteriores.</p>
+      <p class="modal-sub">${esCuotaPropia
+        ? `DS+P · el monto se vuelve a dividir 50/50 y permanece como variante de DS.`
+        : `Se conservará la fecha ${escapeHtml(mov.fecha || '')}. Solo cambios de monto, tipo o SEM recalculan movimientos posteriores.`}</p>
       <div class="modal-field">
         <label>Monto en soles</label>
         <input type="number" id="editMovementAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(mov.monto).toFixed(2)}">
@@ -9587,19 +9804,19 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         <label>Tipo</label>
         <div class="edit-type-grid">
           <label class="edit-type-option">
-            <input type="radio" name="editMovementType" value="S" ${mov.tipo === 'S' ? 'checked' : ''}>
+            <input type="radio" name="editMovementType" value="S" ${mov.tipo === 'S' ? 'checked' : ''} ${esCuotaPropia ? 'disabled' : ''}>
             <span>S · Contado</span>
           </label>
           <label class="edit-type-option">
             <input type="radio" name="editMovementType" value="DS" ${mov.tipo === 'DS' ? 'checked' : ''}>
-            <span>${esMovimientoDSCubierto(mov) ? 'DS+C · Tarjeta cubierta' : 'DS · Tarjeta'}</span>
+            <span>${esMovimientoDSCubierto(mov) ? 'DS+C · Tarjeta cubierta' : (esMovimientoDSPropio(mov) ? 'DS+P · 2 cuotas propias' : 'DS · Tarjeta')}</span>
           </label>
           <label class="edit-type-option">
-            <input type="radio" name="editMovementType" value="F" ${mov.tipo === 'F' ? 'checked' : ''}>
+            <input type="radio" name="editMovementType" value="F" ${mov.tipo === 'F' ? 'checked' : ''} ${esCuotaPropia ? 'disabled' : ''}>
             <span>F · Fondo</span>
           </label>
           <label class="edit-type-option fds">
-            <input type="radio" name="editMovementType" value="FDS" ${normalizarTipoMovimiento(mov.tipo) === 'FDS' ? 'checked' : ''}>
+            <input type="radio" name="editMovementType" value="FDS" ${normalizarTipoMovimiento(mov.tipo) === 'FDS' ? 'checked' : ''} ${esCuotaPropia ? 'disabled' : ''}>
             <span>F+DS · Fondo/tarjeta</span>
           </label>
         </div>
@@ -9708,6 +9925,11 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     }
 
     const currentMov = state.log[idx];
+    const planCuotaPropia = esMovimientoCuotasPropias(currentMov) ? planCuotasDeMovimiento(currentMov) : null;
+    if (planCuotaPropia && tipo !== 'DS') {
+      toast('DS+P debe permanecer como variante de DS. Elimina el movimiento si quieres cambiar su tipo.', true);
+      return;
+    }
     const montoCambio = Math.abs((Number(currentMov?.monto) || 0) - monto) > 0.0001;
     const tipoCambio = normalizarTipoMovimiento(currentMov?.tipo) !== normalizarTipoMovimiento(tipo);
     const semCambio = (currentMov?.etiqueta === 'sem' ? 'sem' : null) !== etiqueta;
@@ -9724,6 +9946,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       if (currentMov.planCuotasId && Array.isArray(state.planesCuotas)) {
         const plan = state.planesCuotas.find(item => item?.id === currentMov.planCuotasId);
         if (plan) {
+          plan.detalle = detalle;
           if (categoria) plan.categoria = categoria;
           else delete plan.categoria;
           if (esMovimientoTarjeta(tipo)) plan.tarjetaId = tarjetaId;
@@ -9754,6 +9977,14 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         tipo,
         etiqueta,
         detalle,
+        ...(planCuotaPropia ? {
+          cuotaPropia: true,
+          impactoPresupuesto: redondearDinero(monto / 2),
+          cuotaNumero: 1,
+          cuotasTotal: 2,
+          cuotaMoneda: 'PEN',
+          cuotaOriginal: redondearDinero(monto / 2)
+        } : {}),
         snapshot: cloneMovementSnapshot(targetBefore)
       };
       if (categoria) editedMov.categoria = categoria;
@@ -9805,6 +10036,22 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
       restoreMovementState(rebuiltState);
       state.log = rebuiltLog;
+      if (planCuotaPropia) {
+        const primera = redondearDinero(monto / 2);
+        const segunda = redondearDinero(monto - primera);
+        planCuotaPropia.detalle = detalle;
+        planCuotaPropia.tarjetaId = normalizarTarjetaId(tarjetaId);
+        planCuotaPropia.montoCompraPen = redondearDinero(monto);
+        planCuotaPropia.montoCompraOriginal = redondearDinero(monto);
+        planCuotaPropia.monedaCompra = 'PEN';
+        planCuotaPropia.tipoCambio = null;
+        planCuotaPropia.cuotaPropiaActualPen = primera;
+        planCuotaPropia.cuotaPropiaSiguientePen = segunda;
+        planCuotaPropia.cuotaPen = primera;
+        planCuotaPropia.cuotaOriginal = primera;
+        if (categoria) planCuotaPropia.categoria = categoria;
+        else delete planCuotaPropia.categoria;
+      }
       state.redoMovement = null;
       closeModal();
       toast('Movimiento actualizado');
@@ -9821,8 +10068,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     }
     const lastIdx = state.log.length - 1;
     const mov = state.log[lastIdx];
-    if (mov?.planCuotasId) {
-      toast('Esta cuota pertenece a un plan y no se deshace como movimiento suelto', true);
+    if (mov?.planCuotasId && !esMovimientoCuotasPropias(mov)) {
+      toast('Esta cuota pertenece a un plan del banco y no se deshace como movimiento suelto', true);
       return;
     }
     const esRedistribucion = mov?.etiqueta === 'recalcula';
@@ -9859,6 +10106,12 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       }
       restoreMovementState(redo.beforeDeleteState);
       state.log = JSON.parse(redo.beforeDeleteLog);
+      if (redo.cuotaPropiaPlan) {
+        if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+        if (!state.planesCuotas.some(plan => plan?.id === redo.cuotaPropiaPlan.id)) {
+          state.planesCuotas.push(JSON.parse(JSON.stringify(redo.cuotaPropiaPlan)));
+        }
+      }
       state.redoMovement = null;
       toast(redo.movement?.etiqueta === 'recalcula' ? 'Redistribución recuperada' : 'Movimiento recuperado');
       render();
@@ -10464,6 +10717,12 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         <label>Fondo a reservar</label>
         <input type="number" min="0" step="0.01" id="newFondo" value="${state.montoIntocable.toFixed(2)}" oninput="previewNuevoCiclo()">
       </div>
+      ${totalCuotasPropiasPendientes() > 0 ? `
+        <div class="own-installment-cycle-note">
+          <div class="own-installment-cycle-title">DS+P pendientes · −S/ ${fmt(totalCuotasPropiasPendientes())}</div>
+          <div class="own-installment-cycle-copy">${cuotasPropiasPendientes().map(plan => `${escapeHtml(plan.detalle || 'Compra')}: S/ ${fmt(plan.cuotaPropiaSiguientePen)}`).join(' · ')}. Se descontarán de este nuevo sueldo sin crear deuda ni gasto personal otra vez.</div>
+        </div>
+      ` : ''}
       <div class="rollover-breakdown new-cycle-derived">
         <div class="rollover-row highlight">
           <span class="rollover-week">Disponible del ciclo</span>
@@ -10531,7 +10790,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       </div>
 
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y el resto se convierte en Disponible del ciclo. La deuda en dólares se convierte a soles solo para obtener la Deuda total que usa Luki.
+        El total general es solo una foto de tus cuentas. El Fondo se separa de ese total y, si existen cuotas propias pendientes, se descuentan después del Fondo antes de obtener el Disponible del ciclo. La deuda en dólares se convierte a soles solo para obtener la Deuda total que usa Luki.
       </p>
 
       <div class="modal-buttons">
@@ -10576,7 +10835,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const requiereTc = cuentaDolares > 0.0001;
     const dolaresEnSoles = tcValido ? redondearDinero(cuentaDolares * Number(tc)) : 0;
     const totalGeneral = redondearDinero(cuentaSoles + cuentaAhorros + dolaresEnSoles);
-    const disponible = redondearDinero(totalGeneral - fondo);
+    const disponibleAntesCuotasPropias = redondearDinero(totalGeneral - fondo);
+    const cuotasPropiasPendientesTotal = totalCuotasPropiasPendientes();
+    const disponible = redondearDinero(disponibleAntesCuotasPropias - cuotasPropiasPendientesTotal);
 
     return {
       cuentaSoles,
@@ -10587,6 +10848,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       dolaresEnSoles,
       totalGeneral,
       fondo,
+      disponibleAntesCuotasPropias,
+      cuotasPropiasPendientesTotal,
+      fondoExcedeTotal: fondo > totalGeneral + 0.005,
+      compromisosExcedenDisponible: cuotasPropiasPendientesTotal > Math.max(0, disponibleAntesCuotasPropias) + 0.005,
       disponible
     };
   }
@@ -10657,8 +10922,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     if (disponiblePreview) {
       if (datos.requiereTc && !datos.tc) {
         disponiblePreview.textContent = 'TC pendiente';
-      } else if (datos.disponible < -0.005) {
+      } else if (datos.fondoExcedeTotal) {
         disponiblePreview.textContent = 'Fondo excede total';
+      } else if (datos.compromisosExcedenDisponible) {
+        disponiblePreview.textContent = 'DS+P excede disponible';
       } else {
         disponiblePreview.textContent = `S/ ${fmt(Math.max(0, datos.disponible))}`;
       }
@@ -10694,12 +10961,12 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const wrapManual = document.getElementById('newNumSemWrap');
     if (!preview || !detalle) return;
     if (wrapManual) wrapManual.style.display = manual ? 'block' : 'none';
-    if ((requiereTcFormulario && !tcFormulario) || disp < -0.005 || meta < 0 || meta > Math.max(0, disp)
+    if ((requiereTcFormulario && !tcFormulario) || cuentas.fondoExcedeTotal || cuentas.compromisosExcedenDisponible || disp < -0.005 || meta < 0 || meta > Math.max(0, disp)
       || !fechaInicio || (!manual && !fechaProximo)
       || (manual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       preview.textContent = requiereTcFormulario && !tcFormulario
         ? 'Esperando TC'
-        : (disp < -0.005 ? 'Fondo excede total' : 'Revisa los datos');
+        : (cuentas.fondoExcedeTotal ? 'Fondo excede total' : (cuentas.compromisosExcedenDisponible ? 'DS+P excede disponible' : 'Revisa los datos'));
       detalle.innerHTML = '';
       return;
     }
@@ -10740,15 +11007,17 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const requiereTcFormulario = cuentas.requiereTc || deudaDetalle.requiereTc;
     const tcFormulario = cuentas.tc || deudaDetalle.tc;
 
-    if ((requiereTcFormulario && !tcFormulario) || disponible < -0.005
+    if ((requiereTcFormulario && !tcFormulario) || cuentas.fondoExcedeTotal || cuentas.compromisosExcedenDisponible || disponible < -0.005
       || meta < 0 || meta > Math.max(0, disponible)
       || isNaN(deuda) || deuda < 0
       || !fechaInicio || (!modoManual && !fechaProximoSueldo)
       || (modoManual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       if (requiereTcFormulario && !tcFormulario) {
         toast('No hay tipo de cambio para convertir los montos en dólares', true);
-      } else if (disponible < -0.005) {
+      } else if (cuentas.fondoExcedeTotal) {
         toast('El Fondo no puede superar el Total general', true);
+      } else if (cuentas.compromisosExcedenDisponible) {
+        toast('Los compromisos DS+P pendientes superan el disponible de este ciclo', true);
       } else {
         toast('Revisa los datos del nuevo ciclo', true);
       }
@@ -10794,6 +11063,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       dolaresEnSoles: redondearDinero(cuentas.dolaresEnSoles),
       totalGeneral: redondearDinero(cuentas.totalGeneral),
       fondo: redondearDinero(cuentas.fondo),
+      disponibleAntesCuotasPropias: redondearDinero(Math.max(0, cuentas.disponibleAntesCuotasPropias)),
+      cuotasPropiasAplicadas: redondearDinero(cuentas.cuotasPropiasPendientesTotal),
       disponible: redondearDinero(Math.max(0, disponible)),
       capturadoEn: new Date().toISOString()
     };
@@ -10821,6 +11092,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       resumenTarjeta,
       candidatoPago,
       candidatosPago,
+      cuotasPropiasPendientesIds: cuotasPropiasPendientes().map(plan => plan.id),
+      cuotasPropiasPendientesTotal: redondearDinero(cuentas.cuotasPropiasPendientesTotal),
       pagoMarcadoVisual,
       totalCandidatosPago,
       deudaEsperadaTrasPago,
@@ -10960,6 +11233,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       cuotasTotal: Number(mov.cuotasTotal) || null,
       cuotaMoneda: mov.cuotaMoneda || null,
       cuotaOriginal: Number(mov.cuotaOriginal) || null,
+      cuotaPropia: !!mov.cuotaPropia,
+      impactoPresupuesto: Number.isFinite(Number(mov.impactoPresupuesto)) ? Number(mov.impactoPresupuesto) : null,
       fechaInicioCiclo
     };
   }
@@ -11058,7 +11333,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         cuotaNumero: Number(m.cuotaNumero) || null,
         cuotasTotal: Number(m.cuotasTotal) || null,
         cuotaMoneda: m.cuotaMoneda || null,
-        cuotaOriginal: Number(m.cuotaOriginal) || null
+        cuotaOriginal: Number(m.cuotaOriginal) || null,
+        cuotaPropia: !!m.cuotaPropia,
+        impactoPresupuesto: Number.isFinite(Number(m.impactoPresupuesto)) ? Number(m.impactoPresupuesto) : null
       }))
     };
 
@@ -11104,6 +11381,18 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     state.modoManualSemanas = modoManual;
     state.ultimaSemanaVista = null;
     state.ultimoBloqueProcesado = 0;
+
+    // La cuota propia 2/2 ya fue descontada del Disponible calculado para este ciclo.
+    // Completar el compromiso no crea movimiento, deuda ni gasto personal adicional.
+    const idsCuotasPropiasAplicadas = new Set(Array.isArray(datos.cuotasPropiasPendientesIds) ? datos.cuotasPropiasPendientesIds : []);
+    (Array.isArray(state.planesCuotas) ? state.planesCuotas : []).forEach(plan => {
+      if (!idsCuotasPropiasAplicadas.has(plan?.id) || !esPlanCuotasPropias(plan)) return;
+      plan.cuotasRegistradas = 2;
+      plan.estado = 'completado';
+      plan.ultimaActivacion = nuevaFechaInicio.toISOString();
+      plan.aplicadaEnCiclo = nuevaFechaInicio.toISOString();
+      plan.mensajeEstado = '';
+    });
 
     const nuevosRangos = modoManual
       ? rangosManualesParaNuevoCiclo(nuevaFechaInicio, numSem, rangosAnteriores)
@@ -11166,6 +11455,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function impactoReporteMovimiento(mov) {
     const tipo = tipoReporteMovimiento(mov);
+    if (esMovimientoCuotasPropias(mov)) return 'DS+P · 50% presupuesto + tarjeta';
     if (tipo === 'S') return 'Disponible';
     if (tipo === 'DS+C') return 'Tarjeta · cubierto';
     if (tipo === 'DS') return 'Disponible + tarjeta';
@@ -11192,7 +11482,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const total = Number(mov?.cuotasTotal);
     if (!Number.isFinite(numero) || !Number.isFinite(total) || total < 1) return '';
     const moneda = mov?.cuotaMoneda ? ` · ${mov.cuotaMoneda}` : '';
-    return `${numero}/${total}${moneda}`;
+    return `${esMovimientoCuotasPropias(mov) ? 'Propia ' : ''}${numero}/${total}${moneda}`;
   }
 
   function resumenReporteMovimientos(movimientos) {
@@ -11207,7 +11497,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       resumen.conteos[tipo] += 1;
     });
     resumen.movimientos = reales.length;
-    resumen.gastoDisponible = resumen.S + Math.max(0, resumen.DS - resumen.DSC);
+    resumen.gastoDisponible = redondearDinero(reales
+      .filter(mov => afectaPresupuestoSalarial(mov) && !esMovimientoDSCubierto(mov))
+      .reduce((total, mov) => total + impactoPresupuestoMovimiento(mov), 0));
     resumen.deudaGenerada = resumen.DS + resumen.FDS;
     resumen.fondoUtilizado = resumen.F + resumen.FDS;
     return resumen;
@@ -12074,26 +12366,51 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   let selectedType = null;
   let selectedMod = null;
   let selectedDSCovered = false;
+  let selectedDSOwn = false;
   let dsLongPressTimer = null;
   let dsLongPressTriggered = false;
-  
+
   function setType(tipo) {
     if (tipo === 'S') {
       selectedDSCovered = false;
+      selectedDSOwn = false;
       selectedType = selectedType === 'S' ? null : 'S';
     } else if (tipo === 'DS') {
       selectedDSCovered = false;
+      selectedDSOwn = false;
       if (selectedType === 'F') selectedType = 'FDS';
       else if (selectedType === 'FDS') selectedType = 'F';
       else selectedType = selectedType === 'DS' ? null : 'DS';
     } else if (tipo === 'F') {
       selectedDSCovered = false;
+      selectedDSOwn = false;
       if (selectedType === 'DS') selectedType = 'FDS';
       else if (selectedType === 'FDS') selectedType = 'DS';
       else selectedType = selectedType === 'F' ? null : 'F';
     }
     if (selectedType === 'F' || selectedType === 'FDS') selectedMod = null;
+    closeDSVariantMenu();
     updateChipsUI();
+  }
+
+  function dsVariantMenuAbierto() {
+    return !document.getElementById('dsVariantMenu')?.hidden;
+  }
+
+  function openDSVariantMenu() {
+    const menu = document.getElementById('dsVariantMenu');
+    const chip = document.getElementById('dsChip');
+    if (!menu || !chip) return;
+    closeRedistribMenu();
+    menu.hidden = false;
+    chip.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeDSVariantMenu() {
+    const menu = document.getElementById('dsVariantMenu');
+    const chip = document.getElementById('dsChip');
+    if (menu) menu.hidden = true;
+    if (chip) chip.setAttribute('aria-expanded', 'false');
   }
 
   function startDSLongPress(event) {
@@ -12102,18 +12419,28 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     dsLongPressTriggered = false;
     dsLongPressTimer = setTimeout(() => {
       dsLongPressTriggered = true;
-      selectedType = 'DS';
-      selectedDSCovered = true;
-      selectedMod = null;
-      updateChipsUI();
+      openDSVariantMenu();
       try { navigator.vibrate?.(12); } catch(e) {}
-      toast('DS+C · deuda cubierta');
     }, 520);
   }
 
   function cancelDSLongPress() {
     clearTimeout(dsLongPressTimer);
     dsLongPressTimer = null;
+  }
+
+  function selectDSVariant(event, variant) {
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    cancelDSLongPress();
+    dsLongPressTriggered = false;
+    selectedType = 'DS';
+    selectedDSCovered = variant === 'covered';
+    selectedDSOwn = variant === 'own';
+    selectedMod = null;
+    closeDSVariantMenu();
+    updateChipsUI();
+    toast(selectedDSOwn ? 'DS+P · 2 cuotas propias' : 'DS+C · deuda cubierta');
   }
 
   function handleDSClick(event) {
@@ -12124,14 +12451,21 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       event?.stopPropagation?.();
       return;
     }
-    if (selectedType === 'DS' && selectedDSCovered) {
+    if (dsVariantMenuAbierto()) {
+      closeDSVariantMenu();
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      return;
+    }
+    if (selectedType === 'DS' && (selectedDSCovered || selectedDSOwn)) {
       selectedDSCovered = false;
+      selectedDSOwn = false;
       updateChipsUI();
       return;
     }
     setType('DS');
   }
-  
+
   let redistribLongPressTimer = null;
   let redistribLongPressTriggered = false;
 
@@ -12253,8 +12587,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   }
 
   document.addEventListener('pointerdown', (event) => {
-    if (event.target.closest('#redistribControl')) return;
-    closeRedistribMenu();
+    if (!event.target.closest('#redistribControl')) closeRedistribMenu();
+    if (!event.target.closest('#dsControl')) closeDSVariantMenu();
   });
 
   function setMod(mod) {
@@ -12275,8 +12609,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const dsChip = document.getElementById('dsChip');
     if (dsChip) {
       const cubiertoActivo = selectedType === 'DS' && selectedDSCovered;
-      dsChip.textContent = cubiertoActivo ? 'DS+C' : 'DS';
+      const propioActivo = selectedType === 'DS' && selectedDSOwn;
+      dsChip.textContent = cubiertoActivo ? 'DS+C' : (propioActivo ? 'DS+P' : 'DS');
       dsChip.classList.toggle('covered', cubiertoActivo);
+      dsChip.classList.toggle('own', propioActivo);
       dsChip.setAttribute('aria-pressed', selectedType === 'DS' ? 'true' : 'false');
     }
     document.querySelectorAll('.chip[data-type]').forEach(el => {
@@ -12435,17 +12771,60 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 
   function finalizarQuickMovement(datos) {
     if (!datos) return;
-    const { monto, tipo, etiqueta, detalle, categoria, tarjetaId, cubierto = false } = datos;
+    const {
+      monto,
+      tipo,
+      etiqueta,
+      detalle,
+      categoria,
+      tarjetaId,
+      cubierto = false,
+      cuotaPropia = false
+    } = datos;
+    const esDSP = normalizarTipoMovimiento(tipo) === 'DS' && cuotaPropia && !cubierto;
+    const partesDSP = esDSP ? dividirCuotaPropia(monto) : null;
+    const impactoActual = esDSP ? partesDSP.actual : monto;
 
     if (afectaPresupuestoSalarial({ tipo, cubierto }) && etiqueta !== 'sem') {
       const currentIdx = calcularSemanaActualIdx();
       const semActual = currentIdx >= 0 && currentIdx < state.semanas.length
         ? state.semanas[currentIdx]
         : null;
-      if (semActual && monto > (Number(semActual.presupuesto) || 0)) {
-        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId);
+      if (semActual && impactoActual > (Number(semActual.presupuesto) || 0)) {
+        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId, esDSP);
         return;
       }
+    }
+
+    if (esDSP) {
+      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: new Date() });
+      if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+      state.planesCuotas.push(creado.plan);
+      const ok = aplicarMovimiento(monto, 'DS', etiqueta, detalle, {
+        renderizar: false,
+        notificar: false,
+        impactoPresupuesto: creado.actual,
+        metadata: {
+          categoria,
+          planCuotasId: creado.plan.id,
+          cuotaNumero: 1,
+          cuotasTotal: 2,
+          cuotaMoneda: 'PEN',
+          cuotaOriginal: creado.actual,
+          cuotaAutomatica: false,
+          cuotaPropia: true,
+          tarjetaId: normalizarTarjetaId(tarjetaId)
+        }
+      });
+      if (!ok) {
+        state.planesCuotas = state.planesCuotas.filter(plan => plan?.id !== creado.plan.id);
+        toast('No se pudo registrar DS+P', true);
+        return;
+      }
+      toast(`DS+P · S/ ${fmt(creado.actual)} ahora + S/ ${fmt(creado.siguiente)} próximo ciclo`);
+      render();
+      resetInputs();
+      return;
     }
 
     const ok = aplicarMovimiento(monto, tipo, etiqueta, detalle, {
@@ -12492,7 +12871,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       tipo: selectedType,
       etiqueta: selectedType === 'DS' && selectedDSCovered ? null : selectedMod,
       detalle,
-      cubierto: selectedType === 'DS' && selectedDSCovered
+      cubierto: selectedType === 'DS' && selectedDSCovered,
+      cuotaPropia: selectedType === 'DS' && selectedDSOwn
     });
   }
   
@@ -12502,8 +12882,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     selectedType = null;
     selectedMod = null;
     selectedDSCovered = false;
+    selectedDSOwn = false;
     dsLongPressTriggered = false;
     cancelDSLongPress();
+    closeDSVariantMenu();
     updateChipsUI();
     // Volver a PEN por defecto tras enviar
     currentCurrency = 'PEN';
@@ -12512,18 +12894,19 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     document.getElementById('inputAmount').focus();
   }
   
-  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank') {
+  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false) {
     const ahora = new Date();
+    const impactoActual = cuotaPropia ? dividirCuotaPropia(monto).actual : monto;
     const semActualIdx = calcularSemanaIdxParaFecha(ahora);
     const semActual = semActualIdx >= 0 && semActualIdx < state.semanas.length ? state.semanas[semActualIdx] : null;
     if (!semActual) { toast('El ciclo ya terminó; inicia uno nuevo', true); return; }
     const restanteSemActual = Math.max(0, Number(semActual.presupuesto) || 0);
-    const exceso = Math.max(0, monto - restanteSemActual);
+    const exceso = Math.max(0, impactoActual - restanteSemActual);
     const semanasSimuladas = JSON.parse(JSON.stringify(state.semanas));
     aplicarGastoEnBloques(
       semanasSimuladas,
-      monto,
-      state.totalDisponible - monto,
+      impactoActual,
+      state.totalDisponible - impactoActual,
       state.metaResidual || 0,
       etiqueta,
       ahora
@@ -12548,38 +12931,74 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       `);
     }
 
-    const fueraDelGastable = Math.max(0, monto - Math.max(0, state.totalDisponible - (state.metaResidual || 0)));
+    const fueraDelGastable = Math.max(0, impactoActual - Math.max(0, state.totalDisponible - (state.metaResidual || 0)));
     const alertaMeta = fueraDelGastable > 0 ? `
         <div class="rollover-row danger">
           <span class="rollover-week">Fuera del monto gastable</span>
           <span class="rollover-amount">S/ ${fmt(fueraDelGastable)}</span>
         </div>
       ` : '';
-    
+    const partes = cuotaPropia ? dividirCuotaPropia(monto) : null;
+
     openModal(`
       <h2>Excede el <span class="accent">bloque actual</span></h2>
       <p class="modal-sub">
-        Tu gasto de <strong>S/ ${fmt(monto)}</strong> excede este bloque en <strong>S/ ${fmt(exceso)}</strong>. El disponible restante se repartirá proporcionalmente entre los bloques futuros:
+        ${cuotaPropia
+          ? `Tu DS+P de <strong>S/ ${fmt(monto)}</strong> carga <strong>S/ ${fmt(partes.actual)}</strong> a este ciclo y deja <strong>S/ ${fmt(partes.siguiente)}</strong> para el próximo. La parte actual excede este bloque en <strong>S/ ${fmt(exceso)}</strong>.`
+          : `Tu gasto de <strong>S/ ${fmt(monto)}</strong> excede este bloque en <strong>S/ ${fmt(exceso)}</strong>. El disponible restante se repartirá proporcionalmente entre los bloques futuros:`}
       </p>
-      
+
       <div class="rollover-breakdown">
         ${desgloseHtml.join('')}
         ${alertaMeta}
       </div>
-      
+
       <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-        El gasto sí reduce tu total disponible. El fondo nunca se usa automáticamente.
+        ${cuotaPropia
+          ? `La tarjeta y el gasto personal registrarán S/ ${fmt(monto)} completos; solo S/ ${fmt(partes.actual)} afectan este presupuesto.`
+          : 'El gasto sí reduce tu total disponible. El fondo nunca se usa automáticamente.'}
       </p>
-      
+
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))})'>Confirmar gasto</button>
+        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))}, ${cuotaPropia ? 'true' : 'false'})'>Confirmar gasto</button>
       </div>
     `);
   }
-  
-  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank') {
+
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false) {
     closeModal();
+    if (cuotaPropia && normalizarTipoMovimiento(tipo) === 'DS') {
+      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: new Date() });
+      if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
+      state.planesCuotas.push(creado.plan);
+      const ok = aplicarMovimiento(monto, 'DS', etiqueta === 'null' ? null : etiqueta, detalle, {
+        renderizar: false,
+        notificar: false,
+        impactoPresupuesto: creado.actual,
+        metadata: {
+          categoria: normalizarCategoriaMovimiento(categoria),
+          planCuotasId: creado.plan.id,
+          cuotaNumero: 1,
+          cuotasTotal: 2,
+          cuotaMoneda: 'PEN',
+          cuotaOriginal: creado.actual,
+          cuotaAutomatica: false,
+          cuotaPropia: true,
+          tarjetaId: normalizarTarjetaId(tarjetaId)
+        }
+      });
+      if (!ok) {
+        state.planesCuotas = state.planesCuotas.filter(plan => plan?.id !== creado.plan.id);
+        toast('No se pudo registrar DS+P', true);
+        return;
+      }
+      toast(`DS+P · S/ ${fmt(creado.actual)} ahora + S/ ${fmt(creado.siguiente)} próximo ciclo`);
+      render();
+      resetInputs();
+      return;
+    }
+
     const ok = aplicarMovimiento(
       monto,
       tipo,
@@ -12594,7 +13013,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     );
     if (ok) resetInputs();
   }
-  
+
   function aplicarMovimiento(monto, tipo, etiqueta, detalle, opciones = {}) {
     const renderizar = opciones.renderizar !== false;
     const notificar = opciones.notificar !== false;
@@ -12603,6 +13022,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     if (Number.isNaN(ahora.getTime())) return false;
     const metadata = opciones.metadata || {};
     tipo = normalizarTipoMovimiento(tipo);
+    const impactoPresupuesto = Number.isFinite(Number(opciones.impactoPresupuesto))
+      ? redondearDinero(Math.max(0, Math.min(monto, Number(opciones.impactoPresupuesto))))
+      : redondearDinero(monto);
     const mov = {
       id: 'mov-' + ahora.getTime() + '-' + Math.random().toString(36).slice(2, 7),
       monto, tipo, etiqueta, detalle,
@@ -12624,6 +13046,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) }
         : {}),
       ...(tipo === 'DS' && metadata.cubierto ? { cubierto: true } : {}),
+      ...(metadata.cuotaPropia ? { cuotaPropia: true } : {}),
+      ...(Math.abs(impactoPresupuesto - monto) > 0.0001 ? { impactoPresupuesto } : {}),
       ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
       ...(opciones.soloBloqueActual ? { soloBloqueActualSimulador: true } : {}),
       snapshot: {
@@ -12664,13 +13088,13 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       return true;
     }
     
-    state.totalDisponible -= monto;
+    state.totalDisponible -= impactoPresupuesto;
     state.gastoTotal += monto;
     if (tipo === 'S') state.gastoNoAdeudado += monto;
     if (tipo === 'DS') state.deudaActual += monto;
 
     const resultadoBloques = opciones.soloBloqueActual
-      ? aplicarGastoSoloBloqueActual(state.semanas, monto, ahora)
+      ? aplicarGastoSoloBloqueActual(state.semanas, impactoPresupuesto, ahora)
       : opciones.redistribuirRestantes
         ? {
             currentIdx: Math.max(0, calcularSemanaIdxParaFecha(ahora)),
@@ -12684,7 +13108,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
           }
         : aplicarGastoEnBloques(
             state.semanas,
-            monto,
+            impactoPresupuesto,
             state.totalDisponible,
             state.metaResidual || 0,
             etiqueta,
@@ -12701,9 +13125,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     } else if (notificar && resultadoBloques.exceso > 0) {
       toast(`Excediste S/ ${fmt(resultadoBloques.exceso)} · bloques futuros ajustados`, true);
     } else if (notificar && opciones.soloBloqueActual) {
-      toast(`−S/ ${fmt(monto)} · solo bloque actual`);
+      toast(`−S/ ${fmt(impactoPresupuesto)} · solo bloque actual`);
     } else if (notificar) {
-      toast(`−S/ ${fmt(monto)} registrado`);
+      toast(`−S/ ${fmt(impactoPresupuesto)} registrado`);
     }
     
     state.log.push(mov);
@@ -12772,8 +13196,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     if (!getDeletableMovementIndices().includes(idx)) {
       const mov = state.log[idx];
       toast(
-        mov?.planCuotasId
-          ? 'Esta cuota pertenece a un plan y no se elimina como movimiento suelto'
+        mov?.planCuotasId && !esMovimientoCuotasPropias(mov)
+          ? 'Esta cuota pertenece a un plan del banco y no se elimina como movimiento suelto'
           : 'Solo puedes eliminar los últimos 10 movimientos',
         true
       );
@@ -12806,8 +13230,14 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     const eraUltimo = idx === state.log.length - 1;
     try {
       const reconstruido = reconstruirSinMovimiento(idx);
+      const cuotaPropiaPlan = esMovimientoCuotasPropias(reconstruido.target)
+        ? planCuotasDeMovimiento(reconstruido.target)
+        : null;
       restoreMovementState(reconstruido.rebuiltState);
       state.log = reconstruido.rebuiltLog;
+      if (cuotaPropiaPlan && Array.isArray(state.planesCuotas)) {
+        state.planesCuotas = state.planesCuotas.filter(plan => plan?.id !== cuotaPropiaPlan.id);
+      }
       const afterDeleteState = captureMovementState();
       state.redoMovement = {
         kind: 'restore-deleted',
@@ -12816,7 +13246,8 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         beforeDeleteState: reconstruido.originalCurrent,
         beforeDeleteLog: JSON.stringify(reconstruido.originalLog),
         afterDeleteState,
-        afterDeleteLog: JSON.stringify(state.log)
+        afterDeleteLog: JSON.stringify(state.log),
+        cuotaPropiaPlan: cuotaPropiaPlan ? JSON.parse(JSON.stringify(cuotaPropiaPlan)) : null
       };
       closeModal();
       toast(reconstruido.target.etiqueta === 'recalcula'
@@ -12846,6 +13277,20 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
           <span class="help-item-title">Deuda o tarjeta</span>
         </div>
         <div class="help-item-desc">Resta del disponible y del bloque, y suma a la deuda acumulada.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip DS">DS+C</span>
+          <span class="help-item-title">Deuda cubierta</span>
+        </div>
+        <div class="help-item-desc">Mantén DS presionado y elige DS+C. Suma deuda de tarjeta, pero no consume presupuesto ni gasto personal.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
+          <span class="help-item-chip DS">DS+P</span>
+          <span class="help-item-title">2 cuotas propias</span>
+        </div>
+        <div class="help-item-desc">Mantén DS presionado y elige DS+P. La compra y la deuda se registran completas; 50% consume este ciclo y 50% queda comprometido para el próximo sueldo.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
@@ -13675,7 +14120,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
     requestAnimationFrame(() => {
       updatePurchaseSimulationConversion();
       updatePurchaseInstallmentUi();
-      updatePurchaseSimulatorFooter(false);
+        updatePurchaseSimulatorFooter(false);
       document.getElementById('simPurchaseAmount')?.focus();
     });
   }
@@ -14233,7 +14678,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
       const bloquesTexto = capacidad.presupuestosDespues
         .map((bloque, i) => `${i === 0 ? 'Actual' : 'B' + (bloque.index + 1)}: S/ ${fmtSim(bloque.presupuesto)}`)
         .join(' · ');
-      ritmoSemanalTexto = `${planCuotas ? 'Después de la primera cuota' : 'Después de la compra'} · ${bloquesTexto}`;
+      ritmoSemanalTexto = `${planCuotas.meses > 1 ? 'Después de la primera cuota' : 'Después de la compra'} · ${bloquesTexto}`;
     }
     const conversionResumen = purchaseSimulationCurrency === 'USD'
       ? `<div class="purchase-result-conversion">Compra simulada: <strong>US$ ${fmtSim(montoIngresado)}</strong> ≈ <strong>S/ ${fmtSim(monto)}</strong> · TC ${rate.toFixed(3)}</div>`
@@ -14247,6 +14692,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
         rate,
         plan: { ...planCuotas },
         estrategiaBloques: purchaseBudgetStrategy,
+        impactoPresupuestoPen: redondearDinero(montoImpacto),
         tarjetaId: purchaseSimulationCardId,
         fechaCompra: hoy.toISOString(),
         primerCierre: compraHoy.calendario.cierre.toISOString(),
