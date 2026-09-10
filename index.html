@@ -5806,6 +5806,15 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 }
 </style>
 
+<style id="luki-203-sem-dark-active-fix">
+/* BUILD203 · en dark mode, sem activo usa el mismo tratamiento claro que DS. */
+body.dark.ledger-arc-ui .chip.mod.active {
+  background: #FFFFFF;
+  color: #242629;
+  border-color: #FFFFFF;
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -6254,7 +6263,7 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '202';
+  const LEDGER_BUILD = '203';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
