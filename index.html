@@ -2666,6 +2666,150 @@
     font-weight: 700;
     cursor: pointer;
   }
+
+  /* BUILD 208 — simulator action hierarchy */
+  .purchase-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .purchase-modal-head .purchase-modal-title {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 8px;
+  }
+  .purchase-modal-close {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    margin-top: -4px;
+    padding: 0;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-ui);
+    font-size: 23px;
+    font-weight: 400;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .purchase-modal-close:active { transform: scale(.94); }
+  body.dark .purchase-modal-close {
+    border-color: rgba(255,255,255,.18);
+    color: #F5F5F7;
+  }
+
+  .purchase-dates-btn {
+    min-height: 44px;
+    border: 1.5px solid var(--line-hi);
+    border-radius: 12px;
+    padding: 9px 13px;
+    background: transparent;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  body.dark .purchase-dates-btn {
+    border-color: rgba(255,255,255,.16);
+    background: rgba(255,255,255,.035);
+    color: #F5F5F7;
+  }
+
+  /* BUILD 210 — simulator toolbar: dates left, close right */
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    margin-bottom: 10px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-dates-btn-head {
+    min-height: 36px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 10px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-toolbar .purchase-modal-close {
+    margin: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-modal-close .purchase-close-glyph {
+    display: block;
+    width: 18px;
+    height: 18px;
+    position: relative;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-modal-close .purchase-close-glyph::before,
+  #modalContent:has(#simPurchaseAmount) .purchase-modal-close .purchase-close-glyph::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transform-origin: center;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-modal-close .purchase-close-glyph::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-modal-close .purchase-close-glyph::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-sim-actions {
+    display: block;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-amount-field {
+    margin-bottom: 0;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-amount-wrap {
+    position: relative;
+    width: 100%;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-amount-wrap #simPurchaseAmount {
+    padding-left: 66px;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-currency-toggle {
+    position: absolute;
+    z-index: 2;
+    left: 5px;
+    top: 5px;
+    bottom: 5px;
+    min-width: 52px;
+    padding: 0 9px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--line);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-currency-toggle:active {
+    transform: scale(.96);
+  }
+  #modalContent:has(#simPurchaseAmount) .purchase-currency-toggle.usd {
+    background: rgba(107,142,78,.18);
+    color: var(--gain);
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-currency-toggle {
+    background: rgba(255,255,255,.08);
+    color: #F5F5F7;
+  }
+  body.dark #modalContent:has(#simPurchaseAmount) .purchase-currency-toggle.usd {
+    background: rgba(126,232,160,.12);
+    color: #7EE8A0;
+  }
   .purchase-impact {
     margin-top: 14px;
     padding: 12px 14px;
@@ -6283,7 +6427,7 @@ body.dark.ledger-arc-ui .chip.mod.active {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '207';
+  const LEDGER_BUILD = '210';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -13920,22 +14064,18 @@ body.dark.ledger-arc-ui .chip.mod.active {
   }
 
   function updatePurchaseSimulatorFooter(canRegister = false) {
-    const secondary = document.getElementById('purchaseFooterSecondary');
-    const close = document.getElementById('purchaseFooterClose');
+    const analyze = document.getElementById('purchaseFooterAnalyze');
     const register = document.getElementById('purchaseFooterRegister');
-    if (!secondary || !close || !register) return;
-    secondary.classList.toggle('purchase-footer-ghost-close', canRegister);
+    if (!analyze || !register) return;
+
+    analyze.textContent = 'Analizar';
+    analyze.setAttribute('onclick', 'calculatePurchaseSimulation()');
+    analyze.classList.toggle('btn-secondary', canRegister);
+    analyze.classList.toggle('btn-primary', !canRegister);
+
+    register.hidden = !canRegister;
     if (canRegister) {
-      secondary.textContent = 'Cerrar';
-      secondary.setAttribute('onclick', 'closeModal()');
-      close.hidden = true;
-      register.hidden = false;
       register.textContent = purchaseSimulationMode === 'single' ? 'Registrar compra' : 'Registrar en cuotas';
-    } else {
-      secondary.textContent = 'Editar fechas';
-      secondary.setAttribute('onclick', `openCCConfig('', '${normalizarTarjetaId(purchaseSimulationCardId)}')`);
-      close.hidden = false;
-      register.hidden = true;
     }
   }
 
@@ -14025,12 +14165,22 @@ body.dark.ledger-arc-ui .chip.mod.active {
       btn.classList.toggle('active', active);
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+    const compactToggle = document.getElementById('purchaseCurrencyToggle');
+    if (compactToggle) {
+      compactToggle.textContent = purchaseSimulationCurrency === 'USD' ? 'US$' : 'S/';
+      compactToggle.classList.toggle('usd', purchaseSimulationCurrency === 'USD');
+      compactToggle.setAttribute('aria-label', `Cambiar moneda del simulador. Actual: ${purchaseSimulationCurrency === 'USD' ? 'dólares' : 'soles'}`);
+    }
     clearPurchaseSimulationResult();
     updatePurchaseSimulationConversion();
     updatePurchaseInstallmentUi();
     if (purchaseSimulationCurrency === 'USD') {
       Promise.resolve(fetchExchangeRate()).finally(updatePurchaseSimulationConversion);
     }
+  }
+
+  function togglePurchaseSimulationCurrency() {
+    setPurchaseSimulationCurrency(purchaseSimulationCurrency === 'PEN' ? 'USD' : 'PEN');
   }
 
   function onPurchaseSimulationInput() {
@@ -14113,20 +14263,17 @@ body.dark.ledger-arc-ui .chip.mod.active {
     purchaseBudgetStrategy = 'redistribute';
     pendingPurchaseSimulation = null;
     openModal(`
-      <h2 class="purchase-modal-title">Simular compra · ${escapeHtml(nombreTarjeta(purchaseSimulationCardId))}</h2>
-      <p class="modal-sub" style="font-size:10px;margin-bottom:12px;">Sueldo: día ${diaSueldoConfigurado()} · calendario ${escapeHtml(nombreTarjeta(purchaseSimulationCardId))}</p>
-      <div class="purchase-sim-field-head">
-        <label for="simPurchaseAmount">Monto</label>
-        <div class="purchase-currency-switch" role="group" aria-label="Moneda del simulador">
-          <button class="purchase-currency-option active" data-currency="PEN" aria-pressed="true" onclick="setPurchaseSimulationCurrency('PEN')">S/</button>
-          <button class="purchase-currency-option" data-currency="USD" aria-pressed="false" onclick="setPurchaseSimulationCurrency('USD')">US$</button>
-        </div>
+      <div class="purchase-sim-toolbar">
+        <button type="button" class="purchase-dates-btn purchase-dates-btn-head" onclick="openCCConfig('', '${normalizarTarjetaId(purchaseSimulationCardId)}')">Editar fechas</button>
+        <button type="button" class="purchase-modal-close" onclick="closeModal()" aria-label="Cerrar simulador"><span class="purchase-close-glyph" aria-hidden="true"></span></button>
       </div>
       <div class="purchase-sim-actions">
-        <div class="modal-field">
-          <input type="number" min="0" step="0.01" inputmode="decimal" id="simPurchaseAmount" placeholder="0.00" oninput="onPurchaseSimulationInput()" onkeydown="if(event.key === 'Enter') calculatePurchaseSimulation()">
+        <div class="modal-field purchase-amount-field">
+          <div class="purchase-amount-wrap">
+            <button type="button" class="purchase-currency-toggle" id="purchaseCurrencyToggle" onclick="togglePurchaseSimulationCurrency()" aria-label="Cambiar moneda del simulador. Actual: soles">S/</button>
+            <input type="number" min="0" step="0.01" inputmode="decimal" id="simPurchaseAmount" placeholder="0.00" oninput="onPurchaseSimulationInput()" onkeydown="if(event.key === 'Enter') calculatePurchaseSimulation()">
+          </div>
         </div>
-        <button class="purchase-analyze-btn" onclick="calculatePurchaseSimulation()">Analizar</button>
       </div>
       <div class="purchase-conversion-preview" id="purchaseConversionPreview"></div>
       <div class="purchase-installment-settings" id="purchaseInstallmentSettings">
@@ -14148,8 +14295,7 @@ body.dark.ledger-arc-ui .chip.mod.active {
       </div>
       <div id="purchaseSimulationResult"></div>
       <div class="modal-buttons">
-        <button class="btn-secondary" id="purchaseFooterSecondary" onclick="openCCConfig()">Editar fechas</button>
-        <button class="btn-primary purchase-footer-close" id="purchaseFooterClose" onclick="closeModal()">Cerrar</button>
+        <button class="btn-primary purchase-footer-analyze" id="purchaseFooterAnalyze" onclick="calculatePurchaseSimulation()">Analizar</button>
         <button class="btn-primary purchase-footer-register" id="purchaseFooterRegister" onclick="openInstallmentRegistration()" hidden>Registrar en cuotas</button>
       </div>
     `);
