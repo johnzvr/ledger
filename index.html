@@ -6217,7 +6217,7 @@ body.dark .pace-confidence, body.dark .pace-status-copy { color: var(--ink-dim);
 
 /* BUILD212 · Ritmo: resumen primero, detalle bajo demanda */
 /* BUILD213 · Ritmo: cifras con la tipografía numérica del sistema */
-/* BUILD214 · Ritmo: prefijo monetario compacto en el margen principal */
+/* BUILD215 · Ritmo: nomenclatura principal de margen → ahorro */
 .pace-hero-number,
 .pace-budget-value strong,
 .pace-quick-value,
@@ -6888,7 +6888,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '214';
+  const LEDGER_BUILD = '215';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11350,7 +11350,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           <span class="pace-summary-status ${m.clase}">${escapeHtml(estadoContextual)}</span>
           <div class="pace-hero-result">
             <div class="pace-hero-number ${margenClase}">${margenTexto}</div>
-            <div class="pace-hero-label">margen estimado al cierre</div>
+            <div class="pace-hero-label">ahorro</div>
           </div>
           <div class="pace-summary-copy">${escapeHtml(historialBreve)}</div>
 
