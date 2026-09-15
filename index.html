@@ -6218,11 +6218,15 @@ body.dark .pace-confidence, body.dark .pace-status-copy { color: var(--ink-dim);
 /* BUILD212 · Ritmo: resumen primero, detalle bajo demanda */
 /* BUILD213 · Ritmo: cifras con la tipografía numérica del sistema */
 /* BUILD215 · Ritmo: nomenclatura principal de margen → ahorro */
+/* BUILD216 · Ritmo: sustento diario de la proyección */
+/* BUILD217 · Ritmo: sustento visible también al cerrar el ciclo */
 .pace-hero-number,
 .pace-budget-value strong,
 .pace-quick-value,
 .pace-item-amount,
-.pace-detail-equation strong {
+.pace-detail-equation strong,
+.pace-daily-main strong,
+.pace-daily-meta .num {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
@@ -6279,6 +6283,48 @@ body.dark .pace-summary-status.warn { color: #E8C76D; }
   font-size: 10.5px;
   line-height: 1.45;
 }
+
+.pace-daily-guide {
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+.pace-daily-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.pace-daily-main strong {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 730;
+  letter-spacing: -.035em;
+  line-height: 1;
+  white-space: nowrap;
+}
+.pace-daily-main span {
+  min-width: 0;
+  color: var(--ink-dim);
+  font-size: 10px;
+  font-weight: 620;
+  line-height: 1.3;
+}
+.pace-daily-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 5px;
+  color: var(--ink-mute);
+  font-size: 8.5px;
+  line-height: 1.35;
+}
+.pace-daily-meta .num { white-space: nowrap; }
+.pace-daily-meta .under { color: var(--gain); }
+.pace-daily-meta .over { color: var(--danger); }
+.pace-daily-meta .match { color: var(--ink-dim); }
+.pace-daily-guide.closed .pace-daily-main span { color: var(--ink-mute); }
 
 .pace-budget-viz { margin-top: 18px; }
 .pace-budget-track {
@@ -6435,6 +6481,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   .pace-hero-number { font-size: 44px; }
   .pace-budget-values { gap: 4px; }
   .pace-budget-value strong { font-size: 9px; }
+  .pace-daily-main { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .pace-daily-meta { flex-direction: column; gap: 2px; }
 }
 
 </style>
@@ -6888,7 +6936,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '215';
+  const LEDGER_BUILD = '217';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11138,6 +11186,21 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       .reduce((t,mov) => t + montoRitmoMovimiento(mov), 0));
     const ritmoVariableDiario = diasTranscurridos > 0 ? variableActual / diasTranscurridos : 0;
 
+    // Ritmo variable reciente: últimos 7 días como máximo, excluyendo
+    // suscripciones, recurrentes reconocidos y cuotas bancarias.
+    const diasVentanaReciente = Math.max(1, Math.min(7, diasTranscurridos));
+    const inicioVentanaReciente = new Date(hoy);
+    inicioVentanaReciente.setDate(inicioVentanaReciente.getDate() - (diasVentanaReciente - 1));
+    const variableReciente = redondearDinero((Array.isArray(state.log) ? state.log : []).reduce((total, mov, index) => {
+      if (!movimientoCuentaRitmo(mov) || esFijoActual(mov)) return total;
+      const fecha = inicioDelDia(fechaDeMovimiento(mov, index, state.fechaInicioCiclo));
+      if (Number.isNaN(fecha.getTime()) || fecha < inicioVentanaReciente || fecha > hoy) return total;
+      return total + montoRitmoMovimiento(mov);
+    }, 0));
+    const ritmoVariableRecienteDiario = diasVentanaReciente > 0
+      ? variableReciente / diasVentanaReciente
+      : 0;
+
     const ciclos = ciclosDetalladosRitmo();
     const previo = ciclos[0] || null;
     let gastadoPrevioComparable = null;
@@ -11178,7 +11241,11 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     }
 
     const presupuesto = redondearDinero(Math.max(0, (Number(state.presupuestoInicial) || 0) - (Number(state.metaResidual) || 0)));
-    const proyectado = redondearDinero(gastadoActual + pendientesRecurrentesTotal + cuotasFuturasTotal + Math.max(0, variableAdicionalProyectado));
+    const variableRestanteProyectado = redondearDinero(Math.max(0, variableAdicionalProyectado));
+    const gastoDiarioObjetivo = diasRestantes > 0
+      ? redondearDinero(variableRestanteProyectado / diasRestantes)
+      : 0;
+    const proyectado = redondearDinero(gastadoActual + pendientesRecurrentesTotal + cuotasFuturasTotal + variableRestanteProyectado);
     const margen = redondearDinero(presupuesto - proyectado);
     const margenPct = presupuesto > 0 ? margen / presupuesto : 0;
     const progreso = diasTranscurridos / diasTotales;
@@ -11218,7 +11285,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       cuotasFuturas, cuotasFuturasTotal,
       compromisoProximoCiclo: totalCuotasPropiasPendientes(),
       historialDetallado: ciclos.length,
-      variableAdicionalProyectado
+      variableAdicionalProyectado,
+      gastoDiarioObjetivo,
+      ritmoVariableRecienteDiario: redondearDinero(ritmoVariableRecienteDiario),
+      diasVentanaReciente
     };
   }
 
@@ -11247,6 +11317,42 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const margenClase = m.margen >= 0 ? 'positive' : 'negative';
     const compromisosTotal = redondearDinero(m.pendientesRecurrentesTotal + m.cuotasFuturasTotal);
     const compromisosCount = m.pendientesRecurrentes.length + m.cuotasFuturas.length;
+
+    let ritmoDiarioEstado = 'match';
+    let ritmoDiarioLectura = 'en línea';
+    if (m.diasRestantes > 0) {
+      if (m.gastoDiarioObjetivo <= 0.01) {
+        ritmoDiarioEstado = m.ritmoVariableRecienteDiario <= 0.01 ? 'match' : 'over';
+        ritmoDiarioLectura = m.ritmoVariableRecienteDiario <= 0.01 ? 'en línea' : 'por encima';
+      } else {
+        const ratioRitmo = m.ritmoVariableRecienteDiario / m.gastoDiarioObjetivo;
+        if (ratioRitmo < 0.90) { ritmoDiarioEstado = 'under'; ritmoDiarioLectura = 'por debajo'; }
+        else if (ratioRitmo > 1.10) { ritmoDiarioEstado = 'over'; ritmoDiarioLectura = 'por encima'; }
+      }
+    }
+
+    const guiaDiaria = m.diasRestantes > 0
+      ? `
+        <div class="pace-daily-guide">
+          <div class="pace-daily-main">
+            <strong>~S/${fmt(m.gastoDiarioObjetivo)}/día</strong>
+            <span>para sostener este ahorro</span>
+          </div>
+          <div class="pace-daily-meta">
+            <span>gasto variable · suscripciones y pagos previstos van aparte</span>
+            <span class="num ${ritmoDiarioEstado}">Ritmo reciente · S/${fmt(m.ritmoVariableRecienteDiario)}/día · ${ritmoDiarioLectura}</span>
+          </div>
+        </div>`
+      : `
+        <div class="pace-daily-guide closed">
+          <div class="pace-daily-main">
+            <strong>S/${fmt(m.ritmoVariableDiario)}/día</strong>
+            <span>promedio variable del ciclo</span>
+          </div>
+          <div class="pace-daily-meta">
+            <span>ciclo cerrado · suscripciones y pagos previstos van aparte</span>
+          </div>
+        </div>`;
 
     let estadoContextual = m.estado;
     if (m.progreso >= .85) {
@@ -11352,6 +11458,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
             <div class="pace-hero-number ${margenClase}">${margenTexto}</div>
             <div class="pace-hero-label">ahorro</div>
           </div>
+          ${guiaDiaria}
           <div class="pace-summary-copy">${escapeHtml(historialBreve)}</div>
 
           <div class="pace-budget-viz">
