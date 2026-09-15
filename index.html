@@ -5977,6 +5977,466 @@ body.dark.ledger-arc-ui .chip.mod.active {
   color: #242629;
   border-color: #FFFFFF;
 }
+
+
+/* BUILD211 · Ritmo de gasto */
+.hero-pace-btn {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-dim);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: 650 11px/1 var(--font-ui);
+  cursor: pointer;
+}
+.hero-pace-btn .ui-icon { width: 15px; height: 15px; }
+.hero-pace-btn:active { transform: scale(.97); }
+.ledger-arc-ui .hero-actions .hero-pace-btn { width: auto; min-width: 40px; padding: 0 11px; }
+body.dark .hero-pace-btn { border-color: var(--line); color: var(--ink-dim); }
+
+#modalContent:has(.pace-analysis) { max-width: 430px; }
+.pace-analysis { --pace-good: #DDEDD1; --pace-mid: #F3E9CD; --pace-warn: #F5DEA0; --pace-risk: #F0D0C4; }
+.pace-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.pace-head-copy { min-width: 0; }
+.pace-kicker {
+  margin-bottom: 5px;
+  color: var(--ink-mute);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.pace-head h2 { margin: 0; }
+.pace-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-dim);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+.pace-close::before, .pace-close::after {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.pace-close::before { transform: rotate(45deg); }
+.pace-close::after { transform: rotate(-45deg); }
+.pace-status-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--pace-good);
+  margin-bottom: 10px;
+}
+.pace-status-card.mid { background: var(--pace-mid); }
+.pace-status-card.warn { background: var(--pace-warn); }
+.pace-status-card.risk { background: var(--pace-risk); }
+.pace-status-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pace-status-title {
+  color: #1A1A1A;
+  font-size: 21px;
+  font-weight: 760;
+  letter-spacing: -.035em;
+  line-height: 1;
+}
+.pace-confidence {
+  color: rgba(26,26,26,.56);
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pace-status-copy {
+  margin-top: 8px;
+  color: rgba(26,26,26,.72);
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1.45;
+}
+.pace-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.pace-metric {
+  min-width: 0;
+  padding: 12px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface, var(--bg));
+}
+.pace-metric span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-mute);
+  font-size: 8px;
+  font-weight: 720;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+.pace-metric strong {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 720;
+  letter-spacing: -.035em;
+  white-space: nowrap;
+}
+.pace-metric strong.positive { color: var(--gain); }
+.pace-metric strong.negative { color: var(--danger); }
+.pace-insight {
+  margin-bottom: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.48;
+}
+.pace-insight strong { color: var(--ink); font-weight: 720; }
+.pace-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.pace-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+.pace-section-title {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 730;
+  letter-spacing: -.02em;
+}
+.pace-section-meta {
+  color: var(--ink-mute);
+  font-size: 9px;
+  font-weight: 650;
+  text-align: right;
+}
+.pace-list { display: grid; gap: 6px; }
+.pace-item {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.pace-item:last-child { border-bottom: 0; }
+.pace-item-main { min-width: 0; }
+.pace-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+.pace-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--ink-mute);
+  font-size: 9px;
+}
+.pace-item-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-dim);
+  font-size: 8px;
+  font-weight: 720;
+}
+.pace-item-amount {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 720;
+  white-space: nowrap;
+  text-align: right;
+}
+.pace-empty {
+  padding: 11px 0;
+  color: var(--ink-mute);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.pace-footnote {
+  margin-top: 14px;
+  color: var(--ink-mute);
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: center;
+}
+body.dark .pace-analysis { --pace-good: #182219; --pace-mid: #211F18; --pace-warn: #252116; --pace-risk: #261A18; }
+body.dark .pace-status-card { border: 1px solid rgba(255,255,255,.07); }
+body.dark .pace-status-title { color: var(--ink); }
+body.dark .pace-confidence, body.dark .pace-status-copy { color: var(--ink-dim); }
+@media (max-width: 380px) {
+  .hero-pace-btn span { display: none; }
+  .ledger-arc-ui .hero-actions .hero-pace-btn { width: 40px; padding: 0; }
+  .pace-metrics { grid-template-columns: 1fr; }
+  .pace-metric { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .pace-metric span { margin:0; }
+}
+
+
+/* BUILD212 · Ritmo: resumen primero, detalle bajo demanda */
+/* BUILD213 · Ritmo: cifras con la tipografía numérica del sistema */
+/* BUILD214 · Ritmo: prefijo monetario compacto en el margen principal */
+.pace-hero-number,
+.pace-budget-value strong,
+.pace-quick-value,
+.pace-item-amount,
+.pace-detail-equation strong {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+#modalContent:has(.pace-analysis) { max-width: 410px; }
+.pace-analysis { padding-bottom: 2px; }
+.pace-head { margin-bottom: 12px; align-items: center; }
+.pace-head h2 { font-size: 31px; line-height: .98; letter-spacing: -.05em; }
+.pace-kicker { margin-bottom: 4px; }
+
+.pace-summary {
+  padding: 4px 0 0;
+}
+.pace-summary-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--line);
+  color: var(--ink-dim);
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: .025em;
+}
+.pace-summary-status.good { background: rgba(107,142,78,.14); color: var(--gain); }
+.pace-summary-status.mid { background: rgba(196,176,214,.14); color: var(--ink-dim); }
+.pace-summary-status.warn { background: rgba(245,222,160,.20); color: #8A6818; }
+.pace-summary-status.risk { background: rgba(196,85,59,.12); color: var(--danger); }
+body.dark .pace-summary-status.warn { color: #E8C76D; }
+
+.pace-hero-result {
+  margin-top: 13px;
+}
+.pace-hero-number {
+  color: var(--ink);
+  font-size: clamp(46px, 12vw, 58px);
+  font-weight: 780;
+  letter-spacing: -.065em;
+  line-height: .94;
+  font-variant-numeric: tabular-nums;
+}
+.pace-hero-number.positive { color: var(--gain); }
+.pace-hero-number.negative { color: var(--danger); }
+.pace-hero-label {
+  margin-top: 6px;
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 580;
+}
+.pace-summary-copy {
+  margin-top: 9px;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.pace-budget-viz { margin-top: 18px; }
+.pace-budget-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.pace-budget-projected,
+.pace-budget-spent {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+.pace-budget-projected { background: rgba(107,142,78,.24); }
+.pace-budget-spent { background: var(--ink); }
+body.dark .pace-budget-projected { background: rgba(126,232,160,.22); }
+body.dark .pace-budget-spent { background: #F5F5F7; }
+.pace-budget-projected.over { background: rgba(196,85,59,.25); }
+body.dark .pace-budget-projected.over { background: rgba(255,107,74,.26); }
+.pace-budget-values {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.pace-budget-value:nth-child(2) { text-align: center; }
+.pace-budget-value:last-child { text-align: right; }
+.pace-budget-value span {
+  display: block;
+  color: var(--ink-mute);
+  font-size: 7.5px;
+  font-weight: 720;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.pace-budget-value strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.pace-quick-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+}
+.pace-quick-row {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.pace-quick-title {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 680;
+}
+.pace-quick-sub {
+  margin-top: 2px;
+  color: var(--ink-mute);
+  font-size: 9px;
+  line-height: 1.3;
+}
+.pace-quick-value {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 730;
+  white-space: nowrap;
+  text-align: right;
+}
+.pace-quick-row.clear .pace-quick-title { color: var(--gain); }
+
+.pace-detail-toggle {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 720;
+  cursor: pointer;
+}
+body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
+.pace-detail-toggle:active { transform: scale(.99); }
+.pace-detail-panel { display: none; margin-top: 14px; }
+.pace-analysis.detail-open .pace-detail-panel { display: block; }
+.pace-analysis.detail-open .pace-detail-toggle .pace-more { display: none; }
+.pace-detail-toggle .pace-less { display: none; }
+.pace-analysis.detail-open .pace-detail-toggle .pace-less { display: inline; }
+
+.pace-detail-block {
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+}
+.pace-detail-block:first-child { border-top: 0; padding-top: 0; }
+.pace-detail-title {
+  margin-bottom: 7px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 720;
+}
+.pace-detail-copy {
+  color: var(--ink-dim);
+  font-size: 10px;
+  line-height: 1.48;
+}
+.pace-detail-equation {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.pace-detail-equation div {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.pace-detail-equation span {
+  display: block;
+  color: var(--ink-mute);
+  font-size: 7.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pace-detail-equation strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 690;
+}
+.pace-detail-panel .pace-list { margin-top: 3px; }
+.pace-detail-panel .pace-footnote { margin-top: 8px; }
+
+/* La UI antigua de BUILD211 queda fuera de la vista principal. */
+.pace-status-card,
+.pace-metrics { display: none; }
+
+@media (max-width: 380px) {
+  .pace-head h2 { font-size: 28px; }
+  .pace-hero-number { font-size: 44px; }
+  .pace-budget-values { gap: 4px; }
+  .pace-budget-value strong { font-size: 9px; }
+}
+
 </style>
 
 </head>
@@ -6054,6 +6514,7 @@ body.dark.ledger-arc-ui .chip.mod.active {
     <div class="arc-heading-row">
       <div><h1 class="arc-heading">Tu ciclo</h1><div class="arc-period" id="arcPeriod">—</div></div>
       <div class="hero-actions">
+        <button class="hero-pace-btn" onclick="openSpendingPace()" aria-label="Ver ritmo de gasto"><svg class="ui-icon"><use href="#icon-chart"></use></svg><span>Ritmo</span></button>
         <button class="hero-privacy" id="heroPrivacyBtn" onclick="toggleBalancePrivacy()" aria-label="Ocultar monto disponible"><svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg></button>
         <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
       </div>
@@ -6427,7 +6888,7 @@ body.dark.ledger-arc-ui .chip.mod.active {
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '210';
+  const LEDGER_BUILD = '214';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -10466,6 +10927,489 @@ body.dark.ledger-arc-ui .chip.mod.active {
     searchQuery = '';
     renderAllMovements();
   }
+
+
+
+  // ============ RITMO DE GASTO · BUILD211 ============
+  // Lectura predictiva: nunca modifica Disponible, bloques, Fondo ni deuda.
+  const RITMO_RECURRENT_CATEGORIES = new Set(['fitness', 'servicios']);
+
+  function normalizarTextoRitmo(value) {
+    return String(value || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  function claveDetalleRitmo(mov) {
+    let detalle = normalizarTextoRitmo(mov?.detalle || '');
+    detalle = detalle
+      .replace(/\s*[·|]\s*usd\s*[\d.,]+.*$/i, '')
+      .replace(/\s+@\s*[\d.,]+.*$/i, '')
+      .replace(/[^a-z0-9ñ]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (detalle) return detalle;
+    return `${normalizarTextoRitmo(categoriaMovimiento(mov))}|${Math.round(Number(mov?.monto) || 0)}`;
+  }
+
+  function categoriaClaveRitmo(mov) {
+    return normalizarTextoRitmo(categoriaMovimiento(mov));
+  }
+
+  function esSuscripcionRitmo(mov) {
+    return categoriaClaveRitmo(mov) === 'suscripciones';
+  }
+
+  function movimientoCuentaRitmo(mov) {
+    return !!mov
+      && mov.etiqueta !== 'recalcula'
+      && afectaPresupuestoSalarial(mov)
+      && !esMovimientoDSCubierto(mov);
+  }
+
+  function montoRitmoMovimiento(mov) {
+    return movimientoCuentaRitmo(mov) ? redondearDinero(impactoPresupuestoMovimiento(mov)) : 0;
+  }
+
+  function offsetRitmoMovimiento(mov, index, fechaInicio) {
+    const inicio = inicioDelDia(fechaInicio || new Date());
+    const fecha = inicioDelDia(fechaDeMovimiento(mov, index, fechaInicio));
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fecha.getTime())) return 0;
+    return Math.max(0, Math.round((fecha - inicio) / MS_DIA));
+  }
+
+  function diasTotalesCicloArchivadoRitmo(ciclo) {
+    const porRangos = (Array.isArray(ciclo?.rangos) ? ciclo.rangos : [])
+      .reduce((total, rango) => total + Math.max(0, Number(rango?.dias) || 0), 0);
+    if (porRangos > 0) return porRangos;
+    const guardado = Math.max(0, Number(ciclo?.dias) || 0);
+    if (guardado > 0) return guardado;
+    const inicio = inicioDelDia(ciclo?.fechaInicio || new Date());
+    const fin = inicioDelDia(ciclo?.fechaFin || inicio);
+    return Math.max(1, Math.round((fin - inicio) / MS_DIA) + 1);
+  }
+
+  function ciclosDetalladosRitmo() {
+    return getArchivedCycles()
+      .filter(ciclo => ciclo?.detalleDisponible !== false && Array.isArray(ciclo?.movimientos) && ciclo.movimientos.length)
+      .slice(0, 2);
+  }
+
+  function agregadosCicloRitmo(ciclo, cycleIndex) {
+    const mapa = new Map();
+    const movimientos = Array.isArray(ciclo?.movimientos) ? ciclo.movimientos : [];
+    movimientos.forEach((mov, index) => {
+      if (!movimientoCuentaRitmo(mov)) return;
+      const categoria = categoriaClaveRitmo(mov);
+      const suscripcion = categoria === 'suscripciones';
+      const candidatoRecurrente = RITMO_RECURRENT_CATEGORIES.has(categoria);
+      if (!suscripcion && !candidatoRecurrente) return;
+      const key = claveDetalleRitmo(mov);
+      if (!key) return;
+      const actual = mapa.get(key) || {
+        key,
+        detalle: mov.detalle || categoriaMovimiento(mov) || 'Gasto recurrente',
+        categoria: categoriaMovimiento(mov) || '',
+        suscripcion: false,
+        monto: 0,
+        offsets: [],
+        cycleIndex
+      };
+      actual.suscripcion = actual.suscripcion || suscripcion;
+      actual.monto = redondearDinero(actual.monto + montoRitmoMovimiento(mov));
+      actual.offsets.push(offsetRitmoMovimiento(mov, index, ciclo.fechaInicio));
+      mapa.set(key, actual);
+    });
+    return mapa;
+  }
+
+  function construirRecurrentesRitmo() {
+    const ciclos = ciclosDetalladosRitmo();
+    const porCiclo = ciclos.map((ciclo, i) => agregadosCicloRitmo(ciclo, i));
+    if (!porCiclo.length) return [];
+    const keys = new Set();
+    porCiclo.forEach(mapa => mapa.forEach((_, key) => keys.add(key)));
+    const resultado = [];
+
+    keys.forEach(key => {
+      const ocurrencias = porCiclo
+        .map((mapa, i) => mapa.has(key) ? { ...mapa.get(key), cycleIndex: i } : null)
+        .filter(Boolean);
+      if (!ocurrencias.length) return;
+      const apareceEnUltimo = ocurrencias.some(item => item.cycleIndex === 0);
+      const esSuscripcion = ocurrencias.some(item => item.suscripcion);
+      if (esSuscripcion && !apareceEnUltimo) return;
+
+      if (!esSuscripcion) {
+        if (ocurrencias.length < 2 || !apareceEnUltimo) return;
+        const montos = ocurrencias.map(item => Math.max(0, Number(item.monto) || 0)).filter(Boolean);
+        if (montos.length < 2) return;
+        const min = Math.min(...montos);
+        const max = Math.max(...montos);
+        const similares = min > 0 && (max / min <= 1.25 || max - min <= 10);
+        if (!similares) return;
+      }
+
+      const pesos = ocurrencias.map(item => item.cycleIndex === 0 ? 0.65 : 0.35);
+      const pesoTotal = pesos.reduce((a,b) => a+b, 0) || 1;
+      const monto = redondearDinero(ocurrencias.reduce((total, item, i) => total + (Number(item.monto) || 0) * pesos[i], 0) / pesoTotal);
+      const offset = Math.max(0, Math.round(ocurrencias.reduce((total, item, i) => {
+        const promedioOffset = item.offsets.length
+          ? item.offsets.reduce((a,b) => a+b, 0) / item.offsets.length
+          : 0;
+        return total + promedioOffset * pesos[i];
+      }, 0) / pesoTotal));
+      const masReciente = ocurrencias.slice().sort((a,b) => a.cycleIndex - b.cycleIndex)[0];
+      resultado.push({
+        key,
+        detalle: masReciente.detalle || 'Gasto recurrente',
+        categoria: masReciente.categoria || '',
+        monto,
+        offset,
+        tipo: esSuscripcion ? 'suscripcion' : 'recurrente'
+      });
+    });
+
+    return resultado.sort((a,b) => a.offset - b.offset || a.detalle.localeCompare(b.detalle, 'es'));
+  }
+
+  function compromisosCuotasFuturasRitmo() {
+    const hoy = inicioDelDia(new Date());
+    const fin = inicioDelDia(diaAnterior(proximoSueldoDelCiclo()));
+    return planesCuotasActivos()
+      .filter(plan => !esPlanCuotasPropias(plan) && normalizarTipoMovimiento(plan?.tipo) === 'DS')
+      .map(plan => {
+        const numero = Math.max(1, Number(plan?.cuotasRegistradas) || 0) + 1;
+        const fecha = inicioDelDia(fechaActivacionCuota(plan, numero));
+        return {
+          id: plan.id,
+          detalle: plan.detalle || 'Compra en cuotas',
+          monto: cuotaPlanEnSoles(plan),
+          fecha,
+          numero,
+          total: Number(plan?.cuotas) || 0
+        };
+      })
+      .filter(item => item.monto > 0 && item.fecha > hoy && item.fecha <= fin)
+      .sort((a,b) => a.fecha - b.fecha);
+  }
+
+  function modeloRitmoGasto() {
+    const inicio = inicioDelDia(state.fechaInicioCiclo || new Date());
+    const fin = inicioDelDia(diaAnterior(proximoSueldoDelCiclo()));
+    const hoyReal = inicioDelDia(new Date());
+    const hoy = hoyReal < inicio ? inicio : (hoyReal > fin ? fin : hoyReal);
+    const diasTotales = Math.max(1, diasEntreInclusive(inicio, fin));
+    const diasTranscurridos = Math.max(1, Math.min(diasTotales, diasEntreInclusive(inicio, hoy)));
+    const diasRestantes = Math.max(0, diasTotales - diasTranscurridos);
+    const recurrentes = construirRecurrentesRitmo();
+    const clavesRecurrentes = new Set(recurrentes.map(item => item.key));
+    const actuales = (Array.isArray(state.log) ? state.log : []).filter(movimientoCuentaRitmo);
+    const actualesPorClave = new Map();
+    actuales.forEach((mov, index) => {
+      const key = claveDetalleRitmo(mov);
+      const item = actualesPorClave.get(key) || { monto: 0, movimientos: [] };
+      item.monto = redondearDinero(item.monto + montoRitmoMovimiento(mov));
+      item.movimientos.push({ mov, index });
+      actualesPorClave.set(key, item);
+    });
+
+    const pendientesRecurrentes = recurrentes.filter(item => !actualesPorClave.has(item.key));
+    const pendientesRecurrentesTotal = redondearDinero(pendientesRecurrentes.reduce((t,item) => t + item.monto, 0));
+    const suscripciones = recurrentes.filter(item => item.tipo === 'suscripcion');
+    const suscripcionesPagadas = suscripciones.filter(item => actualesPorClave.has(item.key));
+    const suscripcionesPendientes = pendientesRecurrentes.filter(item => item.tipo === 'suscripcion');
+    const suscripcionesPrevistasTotal = redondearDinero(suscripciones.reduce((t,item) => t + item.monto, 0));
+    const suscripcionesPagadasEstimadas = redondearDinero(suscripcionesPagadas.reduce((t,item) => t + (actualesPorClave.get(item.key)?.monto || item.monto), 0));
+
+    const cuotasFuturas = compromisosCuotasFuturasRitmo();
+    const cuotasFuturasTotal = redondearDinero(cuotasFuturas.reduce((t,item) => t + item.monto, 0));
+
+    const esFijoActual = mov => {
+      const key = claveDetalleRitmo(mov);
+      return esSuscripcionRitmo(mov)
+        || clavesRecurrentes.has(key)
+        || (!!mov?.planCuotasId && !esMovimientoCuotasPropias(mov));
+    };
+    const gastadoActual = redondearDinero(actuales.reduce((t,mov) => t + montoRitmoMovimiento(mov), 0));
+    const variableActual = redondearDinero(actuales
+      .filter(mov => !esFijoActual(mov))
+      .reduce((t,mov) => t + montoRitmoMovimiento(mov), 0));
+    const ritmoVariableDiario = diasTranscurridos > 0 ? variableActual / diasTranscurridos : 0;
+
+    const ciclos = ciclosDetalladosRitmo();
+    const previo = ciclos[0] || null;
+    let gastadoPrevioComparable = null;
+    let variableAdicionalProyectado = redondearDinero(ritmoVariableDiario * diasRestantes);
+
+    if (previo) {
+      const prevMovs = (Array.isArray(previo.movimientos) ? previo.movimientos : []).filter(movimientoCuentaRitmo);
+      const prevDias = Math.max(1, diasTotalesCicloArchivadoRitmo(previo));
+      const progresoActual = diasTranscurridos / diasTotales;
+      const prevDiasComparables = Math.max(1, Math.min(prevDias, Math.round(progresoActual * prevDias)));
+      const prevHasta = prevDiasComparables - 1;
+      gastadoPrevioComparable = redondearDinero(prevMovs.reduce((total, mov, index) => {
+        return offsetRitmoMovimiento(mov, index, previo.fechaInicio) <= prevHasta
+          ? total + montoRitmoMovimiento(mov)
+          : total;
+      }, 0));
+
+      const prevVariable = prevMovs.filter(mov => {
+        const key = claveDetalleRitmo(mov);
+        return !esSuscripcionRitmo(mov)
+          && !clavesRecurrentes.has(key)
+          && !(mov?.planCuotasId && !esMovimientoCuotasPropias(mov));
+      });
+      const prevVariableTotal = redondearDinero(prevVariable.reduce((t,mov) => t + montoRitmoMovimiento(mov), 0));
+      const prevVariableHasta = redondearDinero(prevVariable.reduce((total, mov, index) => {
+        return offsetRitmoMovimiento(mov, index, previo.fechaInicio) <= prevHasta
+          ? total + montoRitmoMovimiento(mov)
+          : total;
+      }, 0));
+      const prevRestante = Math.max(0, redondearDinero(prevVariableTotal - prevVariableHasta));
+      const prevDiasRestantes = Math.max(1, prevDias - prevDiasComparables);
+      const historicoEscalado = redondearDinero(prevRestante * (diasRestantes / prevDiasRestantes));
+      const actualEscalado = redondearDinero(ritmoVariableDiario * diasRestantes);
+      const pesoHistorico = diasTranscurridos < 5 ? 0.70 : 0.55;
+      variableAdicionalProyectado = redondearDinero(
+        historicoEscalado * pesoHistorico + actualEscalado * (1 - pesoHistorico)
+      );
+    }
+
+    const presupuesto = redondearDinero(Math.max(0, (Number(state.presupuestoInicial) || 0) - (Number(state.metaResidual) || 0)));
+    const proyectado = redondearDinero(gastadoActual + pendientesRecurrentesTotal + cuotasFuturasTotal + Math.max(0, variableAdicionalProyectado));
+    const margen = redondearDinero(presupuesto - proyectado);
+    const margenPct = presupuesto > 0 ? margen / presupuesto : 0;
+    const progreso = diasTranscurridos / diasTotales;
+
+    let estado = 'Buen ritmo';
+    let clase = 'good';
+    if (margen < 0) { estado = 'Sin margen'; clase = 'risk'; }
+    else if (margenPct < 0.05) { estado = 'Ajustado'; clase = 'warn'; }
+    else if (margenPct < 0.15) { estado = 'En línea'; clase = 'mid'; }
+
+    let comparacion = '';
+    let diferenciaPct = null;
+    if (gastadoPrevioComparable !== null) {
+      if (gastadoPrevioComparable > 0) {
+        diferenciaPct = (gastadoActual - gastadoPrevioComparable) / gastadoPrevioComparable * 100;
+        const abs = Math.abs(Math.round(diferenciaPct));
+        if (abs <= 3) comparacion = 'Vas prácticamente igual que el ciclo anterior a esta altura.';
+        else comparacion = `Vas ${abs}% ${diferenciaPct < 0 ? 'por debajo' : 'por encima'} del ciclo anterior a esta altura.`;
+      } else {
+        comparacion = 'Ya hay un ciclo anterior para comparar, pero todavía no tenía gasto a esta altura.';
+      }
+    } else {
+      comparacion = 'Aún no hay un ciclo anterior detallado suficiente para comparar el ritmo.';
+    }
+
+    const pagadoPctSuscripciones = suscripcionesPrevistasTotal > 0
+      ? Math.max(0, Math.min(100, suscripcionesPagadasEstimadas / suscripcionesPrevistasTotal * 100))
+      : 0;
+
+    return {
+      inicio, fin, hoy, diasTotales, diasTranscurridos, diasRestantes, progreso,
+      presupuesto, gastadoActual, variableActual, proyectado, margen, margenPct,
+      estado, clase, comparacion, diferenciaPct,
+      recurrentes, pendientesRecurrentes, pendientesRecurrentesTotal,
+      suscripciones, suscripcionesPagadas, suscripcionesPendientes,
+      suscripcionesPrevistasTotal, suscripcionesPagadasEstimadas, pagadoPctSuscripciones,
+      cuotasFuturas, cuotasFuturasTotal,
+      compromisoProximoCiclo: totalCuotasPropiasPendientes(),
+      historialDetallado: ciclos.length,
+      variableAdicionalProyectado
+    };
+  }
+
+  function fechaPrevistaRitmo(item, inicioCiclo) {
+    const fecha = inicioDelDia(inicioCiclo);
+    fecha.setDate(fecha.getDate() + Math.max(0, Number(item?.offset) || 0));
+    return fecha;
+  }
+
+  function etiquetaFechaRitmo(fecha, hoy = new Date()) {
+    const f = inicioDelDia(fecha);
+    const h = inicioDelDia(hoy);
+    if (f <= h) return 'pendiente';
+    return `previsto ${f.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace(/\./g, '')}`;
+  }
+
+  function toggleSpendingPaceDetail() {
+    const root = document.querySelector('.pace-analysis');
+    if (!root) return;
+    root.classList.toggle('detail-open');
+  }
+
+  function openSpendingPace() {
+    const m = modeloRitmoGasto();
+    const margenTexto = `${m.margen >= 0 ? '+' : '−'}S/${fmt(Math.abs(m.margen))}`;
+    const margenClase = m.margen >= 0 ? 'positive' : 'negative';
+    const compromisosTotal = redondearDinero(m.pendientesRecurrentesTotal + m.cuotasFuturasTotal);
+    const compromisosCount = m.pendientesRecurrentes.length + m.cuotasFuturas.length;
+
+    let estadoContextual = m.estado;
+    if (m.progreso >= .85) {
+      estadoContextual = m.margen >= 0 ? 'Buen cierre' : 'Cierre ajustado';
+    } else if (m.progreso <= .30 && m.margen >= 0 && m.margenPct >= .15) {
+      estadoContextual = 'Buen arranque';
+    }
+
+    const historialBreve = m.historialDetallado
+      ? m.comparacion
+      : 'Sin comparación histórica todavía.';
+
+    const gastadoPct = m.presupuesto > 0
+      ? Math.max(0, Math.min(100, m.gastadoActual / m.presupuesto * 100))
+      : 0;
+    const proyectadoPct = m.presupuesto > 0
+      ? Math.max(0, Math.min(100, m.proyectado / m.presupuesto * 100))
+      : 0;
+
+    const pendientes = m.pendientesRecurrentes.map(item => {
+      const fecha = fechaPrevistaRitmo(item, m.inicio);
+      const tipo = item.tipo === 'suscripcion' ? 'Suscripción' : 'Recurrente';
+      return `
+        <div class="pace-item">
+          <div class="pace-item-main">
+            <div class="pace-item-name">${escapeHtml(item.detalle || 'Gasto previsto')}</div>
+            <div class="pace-item-meta"><span class="pace-item-tag">${tipo}</span><span>${escapeHtml(etiquetaFechaRitmo(fecha, m.hoy))}</span></div>
+          </div>
+          <div class="pace-item-amount">~S/ ${fmt(item.monto)}</div>
+        </div>`;
+    }).join('');
+
+    const cuotas = m.cuotasFuturas.map(item => `
+      <div class="pace-item">
+        <div class="pace-item-main">
+          <div class="pace-item-name">${escapeHtml(item.detalle || 'Compra en cuotas')}</div>
+          <div class="pace-item-meta"><span class="pace-item-tag">Cuota ${item.numero}/${item.total}</span><span>${escapeHtml(item.fecha.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' }).replace(/\./g, ''))}</span></div>
+        </div>
+        <div class="pace-item-amount">S/ ${fmt(item.monto)}</div>
+      </div>`).join('');
+    const listaCompromisos = pendientes + cuotas;
+
+    let resumenPendiente = '';
+    if (compromisosTotal > 0) {
+      resumenPendiente = `
+        <div class="pace-quick-row">
+          <div>
+            <div class="pace-quick-title">Aún viene</div>
+            <div class="pace-quick-sub">${compromisosCount} ${compromisosCount === 1 ? 'pago previsto' : 'pagos previstos'} este ciclo</div>
+          </div>
+          <div class="pace-quick-value">~S/ ${fmt(compromisosTotal)}</div>
+        </div>`;
+    } else {
+      resumenPendiente = `
+        <div class="pace-quick-row clear">
+          <div>
+            <div class="pace-quick-title">✓ Sin pagos habituales pendientes</div>
+            <div class="pace-quick-sub">No detecto suscripciones, recurrentes o cuotas por venir.</div>
+          </div>
+        </div>`;
+    }
+
+    const resumenProximo = m.compromisoProximoCiclo > 0
+      ? `
+        <div class="pace-quick-row">
+          <div>
+            <div class="pace-quick-title">Próximo ciclo</div>
+            <div class="pace-quick-sub">Compromiso heredado por DS+P</div>
+          </div>
+          <div class="pace-quick-value">S/ ${fmt(m.compromisoProximoCiclo)}</div>
+        </div>`
+      : '';
+
+    let detalleSuscripciones = '';
+    if (m.suscripciones.length) {
+      const pagadas = m.suscripcionesPagadas.length;
+      const total = m.suscripciones.length;
+      const pesada = m.pagadoPctSuscripciones >= 70 && total > 1
+        ? ` La parte pesada probablemente ya pasó: ~${Math.round(m.pagadoPctSuscripciones)}% del monto habitual ya apareció.`
+        : '';
+      detalleSuscripciones = `<strong>${pagadas} de ${total}</strong> suscripciones habituales ya aparecieron.${pesada}`;
+    } else {
+      detalleSuscripciones = 'Todavía no hay historial suficiente en “Suscripciones” para anticiparlas.';
+    }
+
+    const detalleComparacion = m.historialDetallado
+      ? escapeHtml(m.comparacion)
+      : 'Aún no hay un ciclo anterior detallado suficiente para comparar.';
+
+    openModal(`
+      <div class="pace-analysis">
+        <div class="pace-head">
+          <div class="pace-head-copy">
+            <div class="pace-kicker">Día ${m.diasTranscurridos} de ${m.diasTotales} · ${Math.round(m.progreso * 100)}%</div>
+            <h2>Ritmo</h2>
+          </div>
+          <button class="pace-close" onclick="closeModal()" aria-label="Cerrar"></button>
+        </div>
+
+        <div class="pace-summary">
+          <span class="pace-summary-status ${m.clase}">${escapeHtml(estadoContextual)}</span>
+          <div class="pace-hero-result">
+            <div class="pace-hero-number ${margenClase}">${margenTexto}</div>
+            <div class="pace-hero-label">margen estimado al cierre</div>
+          </div>
+          <div class="pace-summary-copy">${escapeHtml(historialBreve)}</div>
+
+          <div class="pace-budget-viz">
+            <div class="pace-budget-track" aria-label="Gastado y proyección respecto al límite">
+              <div class="pace-budget-projected${m.proyectado > m.presupuesto ? ' over' : ''}" style="width:${proyectadoPct.toFixed(2)}%"></div>
+              <div class="pace-budget-spent" style="width:${gastadoPct.toFixed(2)}%"></div>
+            </div>
+            <div class="pace-budget-values">
+              <div class="pace-budget-value"><span>Gastado</span><strong>S/ ${fmt(m.gastadoActual)}</strong></div>
+              <div class="pace-budget-value"><span>Proyección</span><strong>S/ ${fmt(m.proyectado)}</strong></div>
+              <div class="pace-budget-value"><span>Límite</span><strong>S/ ${fmt(m.presupuesto)}</strong></div>
+            </div>
+          </div>
+
+          <div class="pace-quick-list">
+            ${resumenPendiente}
+            ${resumenProximo}
+          </div>
+
+          <button class="pace-detail-toggle" onclick="toggleSpendingPaceDetail()">
+            <span class="pace-more">Ver análisis completo ↓</span>
+            <span class="pace-less">Ocultar análisis ↑</span>
+          </button>
+        </div>
+
+        <div class="pace-detail-panel">
+          <div class="pace-detail-block">
+            <div class="pace-detail-title">Comparación</div>
+            <div class="pace-detail-copy">${detalleComparacion}</div>
+          </div>
+
+          <div class="pace-detail-block">
+            <div class="pace-detail-title">Suscripciones</div>
+            <div class="pace-detail-copy">${detalleSuscripciones}</div>
+          </div>
+
+          ${listaCompromisos ? `
+          <div class="pace-detail-block">
+            <div class="pace-detail-title">Pendiente previsto · ~S/ ${fmt(compromisosTotal)}</div>
+            <div class="pace-list">${listaCompromisos}</div>
+          </div>` : ''}
+
+          <div class="pace-detail-block">
+            <div class="pace-detail-title">Cómo llega Luki a la proyección</div>
+            <div class="pace-detail-equation">
+              <div><span>Gastado</span><strong>S/ ${fmt(m.gastadoActual)}</strong></div>
+              <div><span>Pendiente conocido</span><strong>S/ ${fmt(compromisosTotal)}</strong></div>
+              <div><span>Variable estimado</span><strong>S/ ${fmt(Math.max(0, m.variableAdicionalProyectado))}</strong></div>
+              <div><span>Proyección</span><strong>S/ ${fmt(m.proyectado)}</strong></div>
+            </div>
+          </div>
+
+          <div class="pace-footnote">Proyección orientativa basada en tu historial y movimientos actuales. No modifica Disponible, bloques, deuda ni Fondo.</div>
+        </div>
+      </div>
+    `);
+  }
+
 
   // ============ HISTORIAL DE CICLOS (MÁXIMO 2) ============
   function getArchivedCycles() {
