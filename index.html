@@ -6724,6 +6724,24 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 
 </style>
 
+
+<style id="luki-225-mobile-no-auto-zoom">
+/* BUILD225 · iOS: evita el auto-zoom al enfocar campos o tocar controles del input bar.
+   No bloquea pinch-to-zoom manual del navegador. */
+@media (max-width: 768px) {
+  #inputAmount {
+    font-size: 17px !important;
+  }
+  #inputDetalle {
+    font-size: 16px !important;
+  }
+  .input-bar .chip,
+  .input-bar button,
+  .input-bar [role="button"] {
+    touch-action: manipulation;
+  }
+}
+</style>
 </head>
 <body class="ledger-arc-ui">
 
@@ -7144,20 +7162,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           id="redistribChip"
           data-mod="recalcula"
           role="button"
-          aria-label="Redistribuir presupuesto. Mantén presionado para más opciones."
-          aria-haspopup="menu"
-          aria-expanded="false"
-          onclick="handleRedistribClick(event)"
-          onpointerdown="startRedistribLongPress(event)"
-          onpointerup="cancelRedistribLongPress()"
-          onpointercancel="cancelRedistribLongPress()"
-          onpointerleave="cancelRedistribLongPress()"
-          oncontextmenu="return false"
+          aria-label="Redistribuir presupuesto entre bloques"
+          onclick="ejecutarRecalculo()"
         >redistrib.</div>
-        <div class="redistrib-menu" id="redistribMenu" role="menu" hidden>
-          <button class="redistrib-menu-btn" type="button" role="menuitem" onclick="redistribuirBloquesDesdeMenu(event)">Redistribuir bloques</button>
-          <button class="redistrib-menu-btn" type="button" role="menuitem" onclick="actualizarGastoDiarioDesdeMenu(event)">Actualizar gasto/día</button>
-        </div>
       </div>
     </div>
   </div>
@@ -7173,7 +7180,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '223';
+  const LEDGER_BUILD = '225';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9158,13 +9165,18 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       const rango = rangos[i];
       const rangoTxt = rango ? formatRangoCorto(rango) : '';
       const diasTxt = rango && rango.inicio ? ` · ${rango.dias}d` : '';
-      const diasRitmo = Math.max(1, Number(sem.diasRitmo) || Number(rango?.dias) || 1);
-      const presupuestoAsignado = Math.max(0, Number(sem.presupuestoAsignado) || 0);
-      const ritmoGuardado = Number(sem.ritmoDiarioFijo);
-      const ritmoDiario = Number.isFinite(ritmoGuardado) && ritmoGuardado >= 0
-        ? ritmoGuardado
-        : presupuestoAsignado / diasRitmo;
-      const ritmoTxt = !isClosed && presupuestoAsignado > 0
+      // BUILD224: el gasto/día es siempre dinámico. Se calcula con el saldo REAL
+      // del bloque y los días que todavía corresponden a ese bloque; no necesita
+      // una acción manual para actualizarse después de cada gasto.
+      const diasRitmoVisual = isClosed
+        ? 0
+        : (i === currentBlockIdx
+            ? Math.max(1, diasRestantesParaBloque(rango, new Date()))
+            : Math.max(1, Number(rango?.dias) || Number(sem.diasRitmo) || 1));
+      const ritmoDiario = !isClosed && presupuestoActual > 0
+        ? redondearDinero(presupuestoActual / diasRitmoVisual)
+        : 0;
+      const ritmoTxt = !isClosed && presupuestoActual > 0
         ? `<div class="wk-daily">S/ ${fmt(ritmoDiario)}/día</div>`
         : '';
       const excesoTxt = mostrarExceso ? `<div class="wk-overrun">Excediste S/ ${fmt(sem.exceso)}</div>` : '';
@@ -14069,19 +14081,15 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       gastoTotal: state.gastoTotal,
       semanas: JSON.parse(JSON.stringify(state.semanas))
     };
-    // Solo modifica los bloques restantes y pondera sus días reales.
-    // Un redistrib. puede mantener exactamente los mismos montos y, aun así,
-    // tener que actualizar el ritmo diario porque ahora quedan menos días.
+    // BUILD224: redistrib. modifica únicamente la distribución de los bloques.
+    // El gasto/día se deriva automáticamente del saldo actual de cada bloque.
     const antes = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-    const ritmosAntes = state.semanas.map(sem => Number(sem.ritmoDiarioFijo) || 0);
     const asignaciones = distribuirEntreBloques(state.semanas, gastable, currentIdx, calcularRangoSemanas(), new Date());
     const despues = state.semanas.map(sem => Number(sem.presupuesto) || 0);
-    const ritmosDespues = state.semanas.map(sem => Number(sem.ritmoDiarioFijo) || 0);
     const cambioPresupuesto = presupuestosCambiaron(antes, despues, currentIdx);
-    const cambioRitmo = presupuestosCambiaron(ritmosAntes, ritmosDespues, currentIdx);
-    if (!cambioPresupuesto && !cambioRitmo) {
+    if (!cambioPresupuesto) {
       state.semanas = JSON.parse(JSON.stringify(snapshot.semanas));
-      toast('El presupuesto y el ritmo diario ya estaban actualizados');
+      toast('Los bloques ya estaban distribuidos');
       return;
     }
     const nuevoPresupuesto = asignaciones[0]?.presupuesto || 0;
@@ -14096,12 +14104,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       timestamp: ahora.getTime(),
       snapshot
     });
-    const ritmoActualizado = asignaciones[0]?.ritmoDiario;
-    if (!cambioPresupuesto && cambioRitmo && Number.isFinite(Number(ritmoActualizado))) {
-      toast(`Ritmo diario actualizado · S/ ${fmt(ritmoActualizado)}/día`);
-    } else {
-      toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
-    }
+    toast(`Redistribuido · ${presupuestosDeAsignaciones(asignaciones)}`);
     render();
   }
   
