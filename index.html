@@ -5340,6 +5340,43 @@ body.dark .savings-min-progress {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+
+/* BUILD223 · referencia Savings por bloque, sin modificar presupuestos reales */
+.savings-block-guide {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.savings-block-guide-title {
+  margin-bottom: 8px;
+  color: var(--ink-dim);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+.savings-block-guide-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.savings-block-guide-row:last-child { border-bottom: 0; }
+.savings-block-guide-label {
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+.savings-block-guide-amount {
+  color: var(--ink);
+  font-family: var(--font-num);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .savings-min-gap.is-over { color: var(--danger); }
 .savings-min-progress.is-over .savings-min-progress-fill { background: var(--danger); }
 .savings-minimal {
@@ -7136,7 +7173,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '222';
+  const LEDGER_BUILD = '223';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11553,6 +11590,43 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     return { diasTotales, diasTranscurridos, progresoCiclo, presupuesto, gastadoReal };
   }
 
+  // BUILD223 · reparte SOLO COMO REFERENCIA el margen de gasto restante
+  // entre los bloques aún abiertos, respetando la proporción de sus presupuestos
+  // actuales. No escribe en state.semanas ni modifica ninguna cifra financiera.
+  function guiaSavingsPorBloque(restanteParaGastar) {
+    if (!Array.isArray(state.semanas) || state.semanas.length === 0) return [];
+    const currentIdx = calcularSemanaActualIdx();
+    if (currentIdx < 0 || currentIdx >= state.semanas.length) return [];
+
+    const activos = [];
+    for (let i = currentIdx; i < state.semanas.length; i++) {
+      const presupuesto = redondearDinero(Math.max(0, Number(state.semanas[i]?.presupuesto) || 0));
+      activos.push({
+        index: i,
+        label: i === currentIdx ? 'Bloque actual' : `Bloque ${i + 1}`,
+        presupuesto
+      });
+    }
+    if (activos.length === 0) return [];
+
+    const totalBloques = redondearDinero(activos.reduce((sum, item) => sum + item.presupuesto, 0));
+    const totalGuia = redondearDinero(Math.max(0, Math.min(Number(restanteParaGastar) || 0, totalBloques)));
+    if (totalBloques <= 0) return activos.map(item => ({ ...item, sugerido: 0 }));
+
+    const factor = Math.max(0, Math.min(1, totalGuia / totalBloques));
+    let acumulado = 0;
+    return activos.map((item, idx) => {
+      let sugerido;
+      if (idx === activos.length - 1) {
+        sugerido = redondearDinero(Math.max(0, totalGuia - acumulado));
+      } else {
+        sugerido = redondearDinero(item.presupuesto * factor);
+        acumulado = redondearDinero(acumulado + sugerido);
+      }
+      return { ...item, sugerido };
+    });
+  }
+
   function openSpendingPace() {
     const m = modeloSavingsLimite();
     const savingsTarget = Math.max(0, Number(state.savingsTarget) || 0);
@@ -11589,6 +11663,20 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
          </div>`
       : '';
 
+
+    const guiaBloques = savingsTarget > 0 ? guiaSavingsPorBloque(restanteParaGastar) : [];
+    const guiaBloquesHtml = guiaBloques.length > 0
+      ? `<div class="savings-block-guide">
+           <div class="savings-block-guide-title">Para mantener Savings</div>
+           ${guiaBloques.map(item => `
+             <div class="savings-block-guide-row">
+               <span class="savings-block-guide-label">${item.label}</span>
+               <span class="savings-block-guide-amount">S/${fmt(item.sugerido)}</span>
+             </div>
+           `).join('')}
+         </div>`
+      : '';
+
     openModal(`
       <div class="pace-analysis savings-analysis savings-minimal">
         <div class="pace-head">
@@ -11617,6 +11705,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         </div>
 
         ${progresoHtml}
+        ${guiaBloquesHtml}
       </div>
     `);
   }
