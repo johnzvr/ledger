@@ -5341,6 +5341,30 @@ body.dark .savings-min-progress {
   font-variant-numeric: tabular-nums;
 }
 
+
+/* BUILD227 · guía diaria de Savings por bloque: referencia visual, no modifica presupuesto */
+.savings-daily-guide {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 16px;
+  color: var(--ink-dim);
+  font-size: 10px;
+  font-weight: 600;
+}
+.savings-daily-guide strong {
+  color: var(--ink);
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+.savings-daily-guide span {
+  min-width: 0;
+}
+
 /* BUILD223 · referencia Savings por bloque, sin modificar presupuestos reales */
 .savings-block-guide {
   margin-top: 20px;
@@ -7180,7 +7204,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '225';
+  const LEDGER_BUILD = '227';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -11598,8 +11622,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const presupuesto = redondearDinero(Math.max(0, (Number(state.presupuestoInicial) || 0) - (Number(state.metaResidual) || 0)));
     const gastableActual = redondearDinero(Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0)));
     const gastadoReal = redondearDinero(Math.max(0, presupuesto - gastableActual));
-
-    return { diasTotales, diasTranscurridos, progresoCiclo, presupuesto, gastadoReal };
+    return {
+      diasTotales, diasTranscurridos, progresoCiclo, presupuesto, gastadoReal
+    };
   }
 
   // BUILD223 · reparte SOLO COMO REFERENCIA el margen de gasto restante
@@ -11657,6 +11682,20 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           : (m.gastadoReal > 0 ? 100 : 0))
       : 0;
 
+    // BUILD227: la guía S/x día de Savings pertenece SOLO al bloque actual.
+    // Usa el monto sugerido de Savings para ese bloque y sus días restantes;
+    // no altera el gasto/día normal de Luki ni escribe en state.semanas.
+    const guiaBloques = savingsTarget > 0 ? guiaSavingsPorBloque(restanteParaGastar) : [];
+    const currentSavingsBlockIdx = calcularSemanaActualIdx();
+    const guiaBloqueActual = guiaBloques.find(item => item.index === currentSavingsBlockIdx) || null;
+    const rangosSavings = calcularRangoSemanas();
+    const diasRestantesBloqueSavings = guiaBloqueActual
+      ? Math.max(0, diasRestantesParaBloque(rangosSavings[guiaBloqueActual.index], new Date()))
+      : 0;
+    const gastoDiarioSavings = guiaBloqueActual && diasRestantesBloqueSavings > 0
+      ? redondearDinero(Math.max(0, Number(guiaBloqueActual.sugerido) || 0) / diasRestantesBloqueSavings)
+      : 0;
+
     const estadoHtml = savingsTarget > 0
       ? (exceso > 0
           ? `<div class="savings-min-gap-label">Te pasaste del límite por</div>
@@ -11675,8 +11714,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
          </div>`
       : '';
 
+    const gastoDiarioHtml = savingsTarget > 0 && guiaBloqueActual && diasRestantesBloqueSavings > 0
+      ? `<div class="savings-daily-guide">
+           <strong>≈ S/${fmt(gastoDiarioSavings)}/día</strong>
+           <span>en este bloque para mantener Savings</span>
+         </div>`
+      : '';
 
-    const guiaBloques = savingsTarget > 0 ? guiaSavingsPorBloque(restanteParaGastar) : [];
     const guiaBloquesHtml = guiaBloques.length > 0
       ? `<div class="savings-block-guide">
            <div class="savings-block-guide-title">Para mantener Savings</div>
@@ -11717,6 +11761,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         </div>
 
         ${progresoHtml}
+        ${gastoDiarioHtml}
         ${guiaBloquesHtml}
       </div>
     `);
