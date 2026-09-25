@@ -3266,27 +3266,61 @@
   }
 
 
-  /* BUILD231 · sumatorias fijas por banco. Son solo resumen; no reemplazan
-     ni mueven los heads-up cronológicos de cierre/pago de tarjeta. */
+  /* BUILD233 · estados de cuenta vivos por banco.
+     Arriba vive únicamente el ciclo actual de cada banco. El ciclo anterior
+     vuelve a la cronología y se atenúa allí; así los movimientos del nuevo
+     ciclo se acumulan naturalmente entre ambos estados. */
   .card-bank-totals {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 10px;
     margin: 10px 0 14px;
+    align-items: start;
+  }
+  .card-bank-stack {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
   }
   .card-bank-total {
     min-width: 0;
     border-radius: 12px;
     padding: 10px 12px;
     color: #fff;
+    transition: opacity .18s ease, filter .18s ease;
+  }
+  .card-bank-total.interbank { background: #05BE50; }
+  .card-bank-total.bcp { background: #0030B3; }
+  .card-bank-total.previous {
+    opacity: .55;
+    filter: saturate(.62);
+  }
+  .card-bank-total.previous.payment-marked {
+    opacity: .42;
+    filter: saturate(.38);
+  }
+  .card-cycle-divider.previous-cycle-dim {
+    opacity: .55;
+    filter: saturate(.62);
+  }
+  .card-cycle-divider.previous-cycle-dim.payment-marked {
+    opacity: .42;
+    filter: saturate(.38);
+  }
+  .card-bank-total-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
   }
-  .card-bank-total.interbank { background: #05BE50; }
-  .card-bank-total.bcp { background: #0030B3; }
+  .card-bank-total-text {
+    display: block;
+    min-width: 0;
+    flex: 1;
+  }
   .card-bank-total-label {
+    display: block;
     font-size: 8px;
     line-height: 1.1;
     font-weight: 800;
@@ -3296,19 +3330,53 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-bottom: 2px;
   }
-  .card-bank-total-amount {
-    flex: 0 0 auto;
+  .card-bank-total-date {
+    display: block;
+    font-size: 10px;
+    line-height: 1.25;
+    font-weight: 650;
+    white-space: normal;
+  }
+  .card-bank-total-date strong {
     font-family: var(--font-num);
-    font-size: 13px;
-    line-height: 1;
-    font-weight: 700;
-    white-space: nowrap;
+    font-weight: 750;
   }
-  @media (max-width: 430px) {
+  .card-bank-total-status {
+    display: block;
+    margin-top: 4px;
+    font-size: 8px;
+    line-height: 1.2;
+    font-weight: 700;
+    opacity: .78;
+  }
+  .card-bank-total-action {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 10px;
+    padding: 7px 9px;
+    background: rgba(255,255,255,.90);
+    color: #171716;
+    font-family: inherit;
+    font-size: 8px;
+    line-height: 1.1;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .card-bank-total.empty .card-bank-total-date { opacity: .72; }
+  body.dark .card-bank-total-action {
+    background: rgba(255,255,255,.90);
+    color: #171716;
+  }
+  @media (max-width: 560px) {
+    .card-bank-totals { gap: 7px; }
     .card-bank-total { padding: 9px 10px; }
     .card-bank-total-label { font-size: 7px; }
-    .card-bank-total-amount { font-size: 11px; }
+    .card-bank-total-date { font-size: 9px; }
+    .card-bank-total-action { padding: 6px 7px; font-size: 7px; }
   }
 
   .card-cycle-divider {
@@ -7250,7 +7318,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '231';
+  const LEDGER_BUILD = '233';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9761,16 +9829,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   }
 
 
-  // BUILD231 · grupo vigente para la sumatoria superior. No reutiliza
-  // divisorCicloTarjeta(), así que los heads-up "Paga el..." conservan su
-  // posición cronológica original.
+  // BUILD233 · el resumen superior muestra solo el ciclo vigente.
+  // El ciclo anterior se identifica aparte para atenuarlo en su posición cronológica.
   function grupoVigenteResumenBanco(tarjetaId, grupos = gruposPagoTarjetas(), fechaReferencia = new Date()) {
     const id = normalizarTarjetaId(tarjetaId);
     const propios = grupos
       .filter(grupo => normalizarTarjetaId(grupo?.tarjetaId) === id)
       .slice();
-    if (propios.length === 0) return null;
-
     const hoy = new Date(fechaReferencia);
     hoy.setHours(12, 0, 0, 0);
 
@@ -9784,6 +9849,32 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     });
     if (activoExacto) return activoExacto;
 
+    const calendarioActual = calendarioExactoParaFecha(hoy, calendariosTarjetaPorId(id));
+    if (calendarioActual) {
+      const baseKey = calendarioActual.pendiente
+        ? (calendarioActual.key || `pendiente-${fechaParaInput(calendarioActual.inicio)}`)
+        : `exacto-${calendarioActual.id}`;
+      const key = `${id}:${baseKey}`;
+      const existente = propios.find(grupo => grupo.key === key);
+      if (existente) return existente;
+      return {
+        key,
+        tarjetaId: id,
+        tarjetaNombre: nombreTarjeta(id),
+        inicio: calendarioActual.inicio ? new Date(calendarioActual.inicio) : hoy,
+        cierre: calendarioActual.cierre ? new Date(calendarioActual.cierre) : null,
+        pago: calendarioActual.pago ? new Date(calendarioActual.pago) : null,
+        pendiente: !!calendarioActual.pendiente,
+        cerrado: false,
+        total: 0,
+        totalFondo: 0,
+        count: 0,
+        indices: [],
+        movimientos: [],
+        sintetico: true
+      };
+    }
+
     const pendientes = propios
       .filter(grupo => grupo?.pendiente)
       .sort((a,b) => (b.inicio?.getTime?.() || 0) - (a.inicio?.getTime?.() || 0));
@@ -9792,25 +9883,87 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const abiertos = propios
       .filter(grupo => !grupo?.cerrado)
       .sort((a,b) => (b.inicio?.getTime?.() || 0) - (a.inicio?.getTime?.() || 0));
-    if (abiertos.length > 0) return abiertos[0];
+    return abiertos[0] || null;
+  }
 
-    // Sin ciclo vigente con movimientos: la sumatoria superior queda en 0.
-    return null;
+  function grupoAnteriorResumenBanco(tarjetaId, grupoActual, grupos = gruposPagoTarjetas()) {
+    const id = normalizarTarjetaId(tarjetaId);
+    const inicioActual = grupoActual?.inicio ? new Date(grupoActual.inicio).getTime() : Number.POSITIVE_INFINITY;
+    return grupos
+      .filter(grupo =>
+        normalizarTarjetaId(grupo?.tarjetaId) === id
+        && grupo?.cerrado
+        && grupo?.key !== grupoActual?.key
+        && (grupo?.inicio?.getTime?.() || 0) < inicioActual
+      )
+      .sort((a,b) => (b.cierre?.getTime?.() || 0) - (a.cierre?.getTime?.() || 0))[0] || null;
+  }
+
+  function tarjetaResumenSuperiorElement(grupo, tarjetaId, estado = 'current') {
+    const id = normalizarTarjetaId(tarjetaId);
+    const card = document.createElement('div');
+    const pagoPendiente = grupo && !grupo.sintetico ? pagoPendienteParaGrupo(grupo) : null;
+    card.className = `card-bank-total ${id} ${estado}`
+      + (pagoPendiente ? ' payment-marked' : '')
+      + (!grupo ? ' empty' : '');
+
+    if (!grupo) {
+      card.innerHTML = `
+        <div class="card-bank-total-main">
+          <span class="card-bank-total-text">
+            <span class="card-bank-total-label">${escapeHtml(nombreTarjeta(id))}</span>
+            <span class="card-bank-total-date">Sin ciclo activo · <strong>S/ ${fmt(0)}</strong></span>
+          </span>
+        </div>
+      `;
+      return card;
+    }
+
+    const total = redondearDinero(Number(grupo.total) || 0);
+    const rango = grupo.pendiente || !grupo.cierre
+      ? `${escapeHtml(nombreTarjeta(id))} · ciclo en curso`
+      : `${escapeHtml(nombreTarjeta(id))} · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.`;
+    const detalle = grupo.pendiente || !grupo.pago
+      ? `Compras desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(total)}</strong>`
+      : `Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(total)}</strong>`;
+    const keySeguro = grupo.sintetico ? '' : encodeURIComponent(grupo.key || '');
+    const accion = estado === 'previous' && grupo.cerrado && keySeguro
+      ? `<button class="card-bank-total-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`
+      : '';
+    const status = pagoPendiente
+      ? '<span class="card-bank-total-status">Pagado · pendiente de conciliar con Inicio</span>'
+      : '';
+
+    card.innerHTML = `
+      <div class="card-bank-total-main">
+        <span class="card-bank-total-text">
+          <span class="card-bank-total-label">${rango}</span>
+          <span class="card-bank-total-date">${detalle}</span>
+          ${status}
+        </span>
+        ${accion}
+      </div>
+    `;
+    return card;
+  }
+
+  function esGrupoAnteriorResumenBanco(grupo, grupos = gruposPagoTarjetas()) {
+    if (!grupo) return false;
+    const id = normalizarTarjetaId(grupo.tarjetaId);
+    const actual = grupoVigenteResumenBanco(id, grupos);
+    const anterior = grupoAnteriorResumenBanco(id, actual, grupos);
+    return !!anterior && anterior.key === grupo.key;
   }
 
   function resumenTotalesBancosElement(grupos = gruposPagoTarjetas()) {
     const wrap = document.createElement('div');
     wrap.className = 'card-bank-totals';
     ['interbank', 'bcp'].forEach(id => {
-      const grupo = grupoVigenteResumenBanco(id, grupos);
-      const total = grupo ? redondearDinero(Number(grupo.total) || 0) : 0;
-      const card = document.createElement('div');
-      card.className = `card-bank-total ${id}`;
-      card.innerHTML = `
-        <span class="card-bank-total-label">${escapeHtml(nombreTarjeta(id))}</span>
-        <span class="card-bank-total-amount">S/ ${fmt(total)}</span>
-      `;
-      wrap.appendChild(card);
+      const stack = document.createElement('div');
+      stack.className = `card-bank-stack ${id}`;
+      const actual = grupoVigenteResumenBanco(id, grupos);
+      stack.appendChild(tarjetaResumenSuperiorElement(actual, id, 'current'));
+      wrap.appendChild(stack);
     });
     return wrap;
   }
@@ -9900,7 +10053,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const div = document.createElement('div');
     const pagoPendiente = pagoPendienteParaGrupo(grupo);
     const tarjetaClase = normalizarTarjetaId(grupo?.tarjetaId) === 'bcp' ? ' card-bcp' : ' card-interbank';
-    div.className = 'card-cycle-divider' + tarjetaClase + (pagoPendiente ? ' payment-marked' : '');
+    const esAnterior = esGrupoAnteriorResumenBanco(grupo);
+    div.className = 'card-cycle-divider' + tarjetaClase
+      + (esAnterior ? ' previous-cycle-dim' : '')
+      + (pagoPendiente ? ' payment-marked' : '');
     if (grupo.pendiente) {
       div.innerHTML = `
         <div class="card-cycle-divider-main">
@@ -10279,6 +10435,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     
     logEl.innerHTML = '';
     appendInstallmentPlansSummary(logEl);
+    // BUILD233: arriba solo los ciclos actuales. El anterior aparece más abajo,
+    // en su posición cronológica, mediante divisorCicloTarjeta().
     logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
