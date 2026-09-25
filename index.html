@@ -3285,6 +3285,15 @@
   .card-cycle-top-empty .card-cycle-divider-date {
     opacity: .92;
   }
+  /* BUILD230 · el pago del ciclo anterior vuelve como heads-up independiente. */
+  .card-cycle-paid-headsup {
+    display: grid;
+    gap: 8px;
+    margin: -4px 0 16px;
+  }
+  .card-cycle-paid-headsup .card-cycle-divider {
+    margin: 0;
+  }
   /* BUILD 170 · identidad visual sólida por tarjeta */
   .card-cycle-divider.card-interbank {
     background: #05BE50;
@@ -7217,7 +7226,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '229';
+  const LEDGER_BUILD = '230';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9861,12 +9870,16 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (abiertos.length > 0) return abiertos[0];
 
     // Fallback: si no existe ciclo abierto con movimientos, mostrar el cerrado
-    // más reciente, no el más antiguo.
-    return propios.sort((a, b) => {
-      const pa = a.pago instanceof Date ? a.pago.getTime() : (a.inicio?.getTime?.() || 0);
-      const pb = b.pago instanceof Date ? b.pago.getTime() : (b.inicio?.getTime?.() || 0);
-      return pb - pa;
-    })[0];
+    // más reciente que TODAVÍA no está marcado como pagado. Los pagos marcados
+    // viven en su propio heads-up y no deben reemplazar al resumen vigente.
+    const cerradosNoPagados = propios
+      .filter(grupo => grupo.cerrado && !pagoPendienteParaGrupo(grupo))
+      .sort((a, b) => {
+        const pa = a.pago instanceof Date ? a.pago.getTime() : (a.inicio?.getTime?.() || 0);
+        const pb = b.pago instanceof Date ? b.pago.getTime() : (b.inicio?.getTime?.() || 0);
+        return pb - pa;
+      });
+    return cerradosNoPagados[0] || null;
   }
 
   function divisorResumenTarjetaVacio(tarjetaId) {
@@ -9896,6 +9909,34 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 
   function resumenTarjetasSuperiorHTML(grupos = gruposPagoTarjetas()) {
     return resumenTarjetasSuperiorElement(grupos).outerHTML;
+  }
+
+  // BUILD230 · recuperar el heads-up de estados ya marcados como pagados
+  // pero todavía pendientes de conciliación con Inicio. Se muestran aparte
+  // de Interbank/BCP actuales para no volver a mezclarlos con la cronología.
+  function gruposPagoMarcadosHeadup(grupos = gruposPagoTarjetas()) {
+    return (Array.isArray(grupos) ? grupos : [])
+      .filter(grupo => !!pagoPendienteParaGrupo(grupo))
+      .slice()
+      .sort((a, b) => {
+        const pa = a.pago instanceof Date ? a.pago.getTime() : (a.cierre?.getTime?.() || 0);
+        const pb = b.pago instanceof Date ? b.pago.getTime() : (b.cierre?.getTime?.() || 0);
+        return pb - pa;
+      });
+  }
+
+  function headsupPagosPreviosElement(grupos = gruposPagoTarjetas()) {
+    const pendientes = gruposPagoMarcadosHeadup(grupos);
+    if (pendientes.length === 0) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'card-cycle-paid-headsup';
+    pendientes.forEach(grupo => wrap.appendChild(divisorCicloTarjeta(grupo)));
+    return wrap;
+  }
+
+  function headsupPagosPreviosHTML(grupos = gruposPagoTarjetas()) {
+    const wrap = headsupPagosPreviosElement(grupos);
+    return wrap ? wrap.outerHTML : '';
   }
 
   function grupoTarjetaPorKeyCodificada(keyCodificada) {
@@ -10250,6 +10291,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     logEl.innerHTML = '';
     appendInstallmentPlansSummary(logEl);
     logEl.appendChild(resumenTarjetasSuperiorElement(pagosTarjeta.grupos));
+    const paidHeadsup = headsupPagosPreviosElement(pagosTarjeta.grupos);
+    if (paidHeadsup) logEl.appendChild(paidHeadsup);
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
     const recent = state.log.slice(-15).reverse();
@@ -11263,6 +11306,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       </div>
 
       ${resumenTarjetasSuperiorHTML(pagosTarjeta.grupos)}
+      ${headsupPagosPreviosHTML(pagosTarjeta.grupos)}
       
       <div class="all-list">${listaHTML}</div>
       
