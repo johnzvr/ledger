@@ -7318,7 +7318,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '234';
+  const LEDGER_BUILD = '235';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -10513,7 +10513,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           : null;
         const grupoPosicion = grupoPago;
 
-        if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+        // BUILD235: aunque el movimiento venga del ciclo de sueldo anterior,
+        // no repetimos un estado que ya está representado en el top. Solo el
+        // estado anterior REAL del banco puede aparecer dentro de la cronología.
+        if (grupoPosicion
+            && esGrupoAnteriorResumenBanco(grupoPosicion, pagosTarjeta.grupos)
+            && !ciclosMostrados.has(grupoPosicion.key)) {
           logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
           ciclosMostrados.add(grupoPosicion.key);
         }
@@ -11405,7 +11410,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
         const grupoPago = pagosTarjeta.porIndice.get(originalIdx);
-        if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
+        // BUILD235: "Ver todos" aplica la misma regla que Movimientos.
+        // El estado vigente vive únicamente en los cuadros superiores; aquí
+        // solo puede aparecer el estado anterior real del banco.
+        if (grupoPago
+            && esGrupoAnteriorResumenBanco(grupoPago, pagosTarjeta.grupos)
+            && !ciclosMostrados.has(grupoPago.key)) {
           listaHTML += divisorCicloTarjeta(grupoPago).outerHTML;
           ciclosMostrados.add(grupoPago.key);
         }
