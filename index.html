@@ -3265,34 +3265,58 @@
     letter-spacing: 0.03em;
   }
 
+
+  /* BUILD231 · sumatorias fijas por banco. Son solo resumen; no reemplazan
+     ni mueven los heads-up cronológicos de cierre/pago de tarjeta. */
+  .card-bank-totals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 10px 0 14px;
+  }
+  .card-bank-total {
+    min-width: 0;
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .card-bank-total.interbank { background: #05BE50; }
+  .card-bank-total.bcp { background: #0030B3; }
+  .card-bank-total-label {
+    font-size: 8px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    opacity: .82;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-bank-total-amount {
+    flex: 0 0 auto;
+    font-family: var(--font-num);
+    font-size: 13px;
+    line-height: 1;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  @media (max-width: 430px) {
+    .card-bank-total { padding: 9px 10px; }
+    .card-bank-total-label { font-size: 7px; }
+    .card-bank-total-amount { font-size: 11px; }
+  }
+
   .card-cycle-divider {
     margin: 14px 0 6px;
     padding: 10px 12px;
     border-radius: 12px;
     background: rgba(223, 211, 232, 0.58);
     color: var(--ink);
-  }
-
-  /* BUILD228 · estados de cuenta relevantes siempre arriba de Movimientos */
-  .card-cycle-top-summaries {
-    display: grid;
-    gap: 8px;
-    margin: 12px 0 16px;
-  }
-  .card-cycle-top-summaries .card-cycle-divider {
-    margin: 0;
-  }
-  .card-cycle-top-empty .card-cycle-divider-date {
-    opacity: .92;
-  }
-  /* BUILD230 · el pago del ciclo anterior vuelve como heads-up independiente. */
-  .card-cycle-paid-headsup {
-    display: grid;
-    gap: 8px;
-    margin: -4px 0 16px;
-  }
-  .card-cycle-paid-headsup .card-cycle-divider {
-    margin: 0;
   }
   /* BUILD 170 · identidad visual sólida por tarjeta */
   .card-cycle-divider.card-interbank {
@@ -7226,7 +7250,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '230';
+  const LEDGER_BUILD = '231';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9736,6 +9760,61 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     ].sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
   }
 
+
+  // BUILD231 · grupo vigente para la sumatoria superior. No reutiliza
+  // divisorCicloTarjeta(), así que los heads-up "Paga el..." conservan su
+  // posición cronológica original.
+  function grupoVigenteResumenBanco(tarjetaId, grupos = gruposPagoTarjetas(), fechaReferencia = new Date()) {
+    const id = normalizarTarjetaId(tarjetaId);
+    const propios = grupos
+      .filter(grupo => normalizarTarjetaId(grupo?.tarjetaId) === id)
+      .slice();
+    if (propios.length === 0) return null;
+
+    const hoy = new Date(fechaReferencia);
+    hoy.setHours(12, 0, 0, 0);
+
+    const activoExacto = propios.find(grupo => {
+      if (grupo?.pendiente || !grupo?.inicio || !grupo?.cierre) return false;
+      const inicio = new Date(grupo.inicio);
+      const cierre = new Date(grupo.cierre);
+      inicio.setHours(0,0,0,0);
+      cierre.setHours(23,59,59,999);
+      return hoy >= inicio && hoy <= cierre;
+    });
+    if (activoExacto) return activoExacto;
+
+    const pendientes = propios
+      .filter(grupo => grupo?.pendiente)
+      .sort((a,b) => (b.inicio?.getTime?.() || 0) - (a.inicio?.getTime?.() || 0));
+    if (pendientes.length > 0) return pendientes[0];
+
+    const abiertos = propios
+      .filter(grupo => !grupo?.cerrado)
+      .sort((a,b) => (b.inicio?.getTime?.() || 0) - (a.inicio?.getTime?.() || 0));
+    if (abiertos.length > 0) return abiertos[0];
+
+    // Sin ciclo vigente con movimientos: la sumatoria superior queda en 0.
+    return null;
+  }
+
+  function resumenTotalesBancosElement(grupos = gruposPagoTarjetas()) {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-bank-totals';
+    ['interbank', 'bcp'].forEach(id => {
+      const grupo = grupoVigenteResumenBanco(id, grupos);
+      const total = grupo ? redondearDinero(Number(grupo.total) || 0) : 0;
+      const card = document.createElement('div');
+      card.className = `card-bank-total ${id}`;
+      card.innerHTML = `
+        <span class="card-bank-total-label">${escapeHtml(nombreTarjeta(id))}</span>
+        <span class="card-bank-total-amount">S/ ${fmt(total)}</span>
+      `;
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+
   function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjetas()) {
     if (Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       return redondearDinero(state.tarjetaAjusteDeuda);
@@ -9848,95 +9927,6 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       </div>
     `;
     return div;
-  }
-
-  // BUILD228 · el estado relevante de cada banco vive arriba de la lista,
-  // independiente de la antigüedad de su último movimiento.
-  function grupoResumenSuperiorTarjeta(tarjetaId, grupos = gruposPagoTarjetas()) {
-    const id = normalizarTarjetaId(tarjetaId);
-    const propios = grupos
-      .filter(grupo => normalizarTarjetaId(grupo?.tarjetaId) === id && (Number(grupo?.total) || 0) > 0)
-      .slice();
-    if (propios.length === 0) return null;
-
-    // BUILD229: arriba debe vivir el estado ACTUAL de cada banco.
-    // Un estado viejo ya cerrado/pagado no debe desplazar al ciclo vigente
-    // solo por seguir pendiente de conciliación en Inicio.
-    const abiertos = propios
-      .filter(grupo => !grupo.cerrado)
-      .sort((a, b) =>
-        (b.inicio?.getTime?.() || 0) - (a.inicio?.getTime?.() || 0)
-      );
-    if (abiertos.length > 0) return abiertos[0];
-
-    // Fallback: si no existe ciclo abierto con movimientos, mostrar el cerrado
-    // más reciente que TODAVÍA no está marcado como pagado. Los pagos marcados
-    // viven en su propio heads-up y no deben reemplazar al resumen vigente.
-    const cerradosNoPagados = propios
-      .filter(grupo => grupo.cerrado && !pagoPendienteParaGrupo(grupo))
-      .sort((a, b) => {
-        const pa = a.pago instanceof Date ? a.pago.getTime() : (a.inicio?.getTime?.() || 0);
-        const pb = b.pago instanceof Date ? b.pago.getTime() : (b.inicio?.getTime?.() || 0);
-        return pb - pa;
-      });
-    return cerradosNoPagados[0] || null;
-  }
-
-  function divisorResumenTarjetaVacio(tarjetaId) {
-    const id = normalizarTarjetaId(tarjetaId);
-    const div = document.createElement('div');
-    div.className = `card-cycle-divider ${id === 'bcp' ? 'card-bcp' : 'card-interbank'} card-cycle-top-empty`;
-    div.innerHTML = `
-      <div class="card-cycle-divider-main">
-        <span class="card-cycle-divider-text">
-          <span class="card-cycle-divider-label">${escapeHtml(nombreTarjeta(id))} · sin gastos pendientes</span>
-          <span class="card-cycle-divider-date"><strong>S/ 0.00</strong></span>
-        </span>
-      </div>
-    `;
-    return div;
-  }
-
-  function resumenTarjetasSuperiorElement(grupos = gruposPagoTarjetas()) {
-    const wrap = document.createElement('div');
-    wrap.className = 'card-cycle-top-summaries';
-    ['interbank', 'bcp'].forEach(id => {
-      const grupo = grupoResumenSuperiorTarjeta(id, grupos);
-      wrap.appendChild(grupo ? divisorCicloTarjeta(grupo) : divisorResumenTarjetaVacio(id));
-    });
-    return wrap;
-  }
-
-  function resumenTarjetasSuperiorHTML(grupos = gruposPagoTarjetas()) {
-    return resumenTarjetasSuperiorElement(grupos).outerHTML;
-  }
-
-  // BUILD230 · recuperar el heads-up de estados ya marcados como pagados
-  // pero todavía pendientes de conciliación con Inicio. Se muestran aparte
-  // de Interbank/BCP actuales para no volver a mezclarlos con la cronología.
-  function gruposPagoMarcadosHeadup(grupos = gruposPagoTarjetas()) {
-    return (Array.isArray(grupos) ? grupos : [])
-      .filter(grupo => !!pagoPendienteParaGrupo(grupo))
-      .slice()
-      .sort((a, b) => {
-        const pa = a.pago instanceof Date ? a.pago.getTime() : (a.cierre?.getTime?.() || 0);
-        const pb = b.pago instanceof Date ? b.pago.getTime() : (b.cierre?.getTime?.() || 0);
-        return pb - pa;
-      });
-  }
-
-  function headsupPagosPreviosElement(grupos = gruposPagoTarjetas()) {
-    const pendientes = gruposPagoMarcadosHeadup(grupos);
-    if (pendientes.length === 0) return null;
-    const wrap = document.createElement('div');
-    wrap.className = 'card-cycle-paid-headsup';
-    pendientes.forEach(grupo => wrap.appendChild(divisorCicloTarjeta(grupo)));
-    return wrap;
-  }
-
-  function headsupPagosPreviosHTML(grupos = gruposPagoTarjetas()) {
-    const wrap = headsupPagosPreviosElement(grupos);
-    return wrap ? wrap.outerHTML : '';
   }
 
   function grupoTarjetaPorKeyCodificada(keyCodificada) {
@@ -10282,19 +10272,17 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
     const planesActivos = planesCuotasActivos();
-    const hayResumenTarjeta = pagosTarjeta.grupos.some(grupo => (Number(grupo?.total) || 0) > 0);
-    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0 && !hayResumenTarjeta) {
+    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
       logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
       return;
     }
     
     logEl.innerHTML = '';
     appendInstallmentPlansSummary(logEl);
-    logEl.appendChild(resumenTarjetasSuperiorElement(pagosTarjeta.grupos));
-    const paidHeadsup = headsupPagosPreviosElement(pagosTarjeta.grupos);
-    if (paidHeadsup) logEl.appendChild(paidHeadsup);
+    logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
+    const ciclosMostrados = new Set();
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
@@ -10302,6 +10290,17 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       const grupoPago = esMovimientoTarjeta(mov)
         ? (pagosTarjeta.porIndice.get(idx) || grupoPagoParaMovimiento(mov, idx, state.fechaInicioCiclo, pagosTarjeta.grupos))
         : null;
+      const grupoPosicion = grupoPago;
+
+      // El heads-up pertenece al tramo cronológico del ciclo de tarjeta,
+      // no al primer gasto DS/FDS. Por eso también puede aparecer antes
+      // de un movimiento S/F/RC si ese movimiento es el más reciente
+      // dentro del mismo rango de fechas.
+      if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+        logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
+        ciclosMostrados.add(grupoPosicion.key);
+      }
+
       const div = document.createElement('div');
       const canUndo = deletableIndices.has(idx);
       const canEdit = editableIndices.has(idx);
@@ -10349,6 +10348,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         const grupoPago = esMovimientoTarjeta(mov)
           ? grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos)
           : null;
+        const grupoPosicion = grupoPago;
+
+        if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+          logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
+          ciclosMostrados.add(grupoPosicion.key);
+        }
+
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov);
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
@@ -11232,9 +11238,14 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
     } else {
+      const ciclosMostrados = new Set();
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
         const grupoPago = pagosTarjeta.porIndice.get(originalIdx);
+        if (grupoPago && !ciclosMostrados.has(grupoPago.key)) {
+          listaHTML += divisorCicloTarjeta(grupoPago).outerHTML;
+          ciclosMostrados.add(grupoPago.key);
+        }
         const canUndo = deletableIndices.has(originalIdx);
         const canEdit = editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
@@ -11304,9 +11315,6 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div>
         </div>` : ''}
       </div>
-
-      ${resumenTarjetasSuperiorHTML(pagosTarjeta.grupos)}
-      ${headsupPagosPreviosHTML(pagosTarjeta.grupos)}
       
       <div class="all-list">${listaHTML}</div>
       
