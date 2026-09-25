@@ -7318,7 +7318,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '233';
+  const LEDGER_BUILD = '234';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -10454,7 +10454,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       // no al primer gasto DS/FDS. Por eso también puede aparecer antes
       // de un movimiento S/F/RC si ese movimiento es el más reciente
       // dentro del mismo rango de fechas.
-      if (grupoPosicion && !ciclosMostrados.has(grupoPosicion.key)) {
+      // BUILD234: el ciclo vigente ya está representado en los cuadros superiores.
+      // Dentro de la cronología solo insertamos el ciclo anterior dim, para que
+      // vaya bajando naturalmente conforme aparecen movimientos nuevos.
+      if (grupoPosicion
+          && esGrupoAnteriorResumenBanco(grupoPosicion, pagosTarjeta.grupos)
+          && !ciclosMostrados.has(grupoPosicion.key)) {
         logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
         ciclosMostrados.add(grupoPosicion.key);
       }
