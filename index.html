@@ -3300,6 +3300,10 @@
     opacity: .42;
     filter: saturate(.38);
   }
+  .card-bank-totals.previous-bank-totals {
+    margin-top: 14px;
+    margin-bottom: 8px;
+  }
   .card-cycle-divider.previous-cycle-dim {
     opacity: .55;
     filter: saturate(.62);
@@ -7318,7 +7322,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '235';
+  const LEDGER_BUILD = '237';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -9974,6 +9978,37 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     return wrap;
   }
 
+
+  // BUILD237 · los dos estados vencidos se mueven como una sola pareja.
+  // Su posición cronológica se decide por el cierre más reciente de ambos,
+  // nunca por la fecha de la última compra visible de cada banco.
+  function resumenAnterioresBancosElement(grupos = gruposPagoTarjetas()) {
+    const anteriores = gruposAnterioresResumenBancos(grupos);
+    if (anteriores.length === 0) return null;
+    const wrap = document.createElement('div');
+    wrap.className = 'card-bank-totals previous-bank-totals';
+    ['interbank', 'bcp'].forEach(id => {
+      const stack = document.createElement('div');
+      stack.className = `card-bank-stack ${id}`;
+      const anterior = anteriores.find(grupo => normalizarTarjetaId(grupo?.tarjetaId) === id) || null;
+      if (anterior) stack.appendChild(tarjetaResumenSuperiorElement(anterior, id, 'previous'));
+      wrap.appendChild(stack);
+    });
+    return wrap;
+  }
+
+  function fechaCorteResumenAnteriorBancos(grupos = gruposPagoTarjetas()) {
+    const cierres = gruposAnterioresResumenBancos(grupos)
+      .map(grupo => grupo?.cierre ? new Date(grupo.cierre) : null)
+      .filter(fecha => fecha && !Number.isNaN(fecha.getTime()))
+      .map(fecha => {
+        const fin = new Date(fecha);
+        fin.setHours(23, 59, 59, 999);
+        return fin.getTime();
+      });
+    return cierres.length ? Math.max(...cierres) : null;
+  }
+
   function ajusteDeudaTarjetaActual(grupos = gruposPagoTarjetas()) {
     if (Number.isFinite(Number(state.tarjetaAjusteDeuda))) {
       return redondearDinero(state.tarjetaAjusteDeuda);
@@ -10446,7 +10481,18 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
-    const ciclosMostrados = new Set();
+    const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos);
+    let estadosAnterioresInsertados = false;
+    const insertarEstadosAnterioresAntesDe = (fechaMovimiento) => {
+      if (estadosAnterioresInsertados || !Number.isFinite(corteEstadosAnteriores)) return;
+      const tiempo = new Date(fechaMovimiento).getTime();
+      if (!Number.isFinite(tiempo) || tiempo > corteEstadosAnteriores) return;
+      const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos);
+      if (bloque) {
+        logEl.appendChild(bloque);
+        estadosAnterioresInsertados = true;
+      }
+    };
     const recent = state.log.slice(-15).reverse();
     recent.forEach((mov, i) => {
       const idx = state.log.length - 1 - i;
@@ -10454,21 +10500,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       const grupoPago = esMovimientoTarjeta(mov)
         ? (pagosTarjeta.porIndice.get(idx) || grupoPagoParaMovimiento(mov, idx, state.fechaInicioCiclo, pagosTarjeta.grupos))
         : null;
-      const grupoPosicion = grupoPago;
 
-      // El heads-up pertenece al tramo cronológico del ciclo de tarjeta,
-      // no al primer gasto DS/FDS. Por eso también puede aparecer antes
-      // de un movimiento S/F/RC si ese movimiento es el más reciente
-      // dentro del mismo rango de fechas.
-      // BUILD234: el ciclo vigente ya está representado en los cuadros superiores.
-      // Dentro de la cronología solo insertamos el ciclo anterior dim, para que
-      // vaya bajando naturalmente conforme aparecen movimientos nuevos.
-      if (grupoPosicion
-          && esGrupoAnteriorResumenBanco(grupoPosicion, pagosTarjeta.grupos)
-          && !ciclosMostrados.has(grupoPosicion.key)) {
-        logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
-        ciclosMostrados.add(grupoPosicion.key);
-      }
+      // BUILD237: la pareja vencida entra por fecha de cierre, no por el banco
+      // del movimiento. Por eso Interbank y BCP permanecen juntos.
+      insertarEstadosAnterioresAntesDe(fechaMovimiento);
 
       const div = document.createElement('div');
       const canUndo = deletableIndices.has(idx);
@@ -10505,18 +10540,6 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       `;
       logEl.appendChild(div);
     });
-
-    // BUILD236: si ya terminó el ciclo de una tarjeta pero todavía no hay
-    // movimientos visibles de ese banco en el tramo mostrado, igual mantenemos
-    // visible su heads-up de pago anterior. Así pueden aparecer ambos bancos
-    // aunque solo uno tenga movimientos recientes en pantalla.
-    gruposAnterioresResumenBancos(pagosTarjeta.grupos).forEach(grupoPrevio => {
-      if (!ciclosMostrados.has(grupoPrevio.key)) {
-        logEl.appendChild(divisorCicloTarjeta(grupoPrevio));
-        ciclosMostrados.add(grupoPrevio.key);
-      }
-    });
-
     if (recientesAnteriores.length > 0) {
       const marker = document.createElement('div');
       marker.className = 'previous-cycle-marker';
@@ -10528,17 +10551,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         const grupoPago = esMovimientoTarjeta(mov)
           ? grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos)
           : null;
-        const grupoPosicion = grupoPago;
 
-        // BUILD235: aunque el movimiento venga del ciclo de sueldo anterior,
-        // no repetimos un estado que ya está representado en el top. Solo el
-        // estado anterior REAL del banco puede aparecer dentro de la cronología.
-        if (grupoPosicion
-            && esGrupoAnteriorResumenBanco(grupoPosicion, pagosTarjeta.grupos)
-            && !ciclosMostrados.has(grupoPosicion.key)) {
-          logEl.appendChild(divisorCicloTarjeta(grupoPosicion));
-          ciclosMostrados.add(grupoPosicion.key);
-        }
+        insertarEstadosAnterioresAntesDe(fechaMovimiento);
 
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov);
@@ -11423,18 +11437,21 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
     } else {
-      const ciclosMostrados = new Set();
+      const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos);
+      let estadosAnterioresInsertados = false;
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
         const grupoPago = pagosTarjeta.porIndice.get(originalIdx);
-        // BUILD235: "Ver todos" aplica la misma regla que Movimientos.
-        // El estado vigente vive únicamente en los cuadros superiores; aquí
-        // solo puede aparecer el estado anterior real del banco.
-        if (grupoPago
-            && esGrupoAnteriorResumenBanco(grupoPago, pagosTarjeta.grupos)
-            && !ciclosMostrados.has(grupoPago.key)) {
-          listaHTML += divisorCicloTarjeta(grupoPago).outerHTML;
-          ciclosMostrados.add(grupoPago.key);
+        const fechaMovimiento = fechaDeMovimiento(mov, originalIdx, state.fechaInicioCiclo);
+        if (!estadosAnterioresInsertados && Number.isFinite(corteEstadosAnteriores)) {
+          const tiempo = new Date(fechaMovimiento).getTime();
+          if (Number.isFinite(tiempo) && tiempo <= corteEstadosAnteriores) {
+            const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos);
+            if (bloque) {
+              listaHTML += bloque.outerHTML;
+              estadosAnterioresInsertados = true;
+            }
+          }
         }
         const canUndo = deletableIndices.has(originalIdx);
         const canEdit = editableIndices.has(originalIdx);
