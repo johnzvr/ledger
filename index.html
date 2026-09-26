@@ -9899,6 +9899,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       .sort((a,b) => (b.cierre?.getTime?.() || 0) - (a.cierre?.getTime?.() || 0))[0] || null;
   }
 
+  function gruposAnterioresResumenBancos(grupos = gruposPagoTarjetas()) {
+    return ['interbank', 'bcp']
+      .map(id => grupoAnteriorResumenBanco(id, grupoVigenteResumenBanco(id, grupos), grupos))
+      .filter(Boolean);
+  }
+
   function tarjetaResumenSuperiorElement(grupo, tarjetaId, estado = 'current') {
     const id = normalizarTarjetaId(tarjetaId);
     const card = document.createElement('div');
@@ -10498,6 +10504,17 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         </div>
       `;
       logEl.appendChild(div);
+    });
+
+    // BUILD236: si ya terminó el ciclo de una tarjeta pero todavía no hay
+    // movimientos visibles de ese banco en el tramo mostrado, igual mantenemos
+    // visible su heads-up de pago anterior. Así pueden aparecer ambos bancos
+    // aunque solo uno tenga movimientos recientes en pantalla.
+    gruposAnterioresResumenBancos(pagosTarjeta.grupos).forEach(grupoPrevio => {
+      if (!ciclosMostrados.has(grupoPrevio.key)) {
+        logEl.appendChild(divisorCicloTarjeta(grupoPrevio));
+        ciclosMostrados.add(grupoPrevio.key);
+      }
     });
 
     if (recientesAnteriores.length > 0) {
