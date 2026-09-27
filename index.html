@@ -3347,6 +3347,14 @@
     font-family: var(--font-num);
     font-weight: 750;
   }
+  .card-bank-total-amount {
+    display: block;
+    font-size: 10px;
+    line-height: 1.18;
+    font-family: var(--font-num);
+    font-weight: 750;
+    white-space: normal;
+  }
   .card-bank-total-status {
     display: block;
     margin-top: 4px;
@@ -9942,7 +9950,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       : `${escapeHtml(nombreTarjeta(id))} · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.`;
     const detalle = grupo.pendiente || !grupo.pago
       ? `Compras desde el ${fechaPagoSinAnio(grupo.inicio)} · <strong>S/ ${fmt(total)}</strong>`
-      : `Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(total)}</strong>`;
+      : (estado === 'previous'
+        ? `Paga el ${fechaPagoSinAnio(grupo.pago)}`
+        : `Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(total)}</strong>`);
+    const montoLinea = (!grupo.pendiente && grupo.pago && estado === 'previous')
+      ? `<span class="card-bank-total-amount">S/ ${fmt(total)}</span>`
+      : '';
     const keySeguro = grupo.sintetico ? '' : encodeURIComponent(grupo.key || '');
     const accion = estado === 'previous' && grupo.cerrado && keySeguro
       ? `<button class="card-bank-total-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`
@@ -9956,6 +9969,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         <span class="card-bank-total-text">
           <span class="card-bank-total-label">${rango}</span>
           <span class="card-bank-total-date">${detalle}</span>
+          ${montoLinea}
           ${status}
         </span>
         ${accion}
