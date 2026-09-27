@@ -9670,11 +9670,11 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (filtroBanco !== 'all' && movimientoCoincideFiltroBanco(mov, filtroBanco)) {
       const infoMoneda = infoMonedaOriginalMovimiento(mov);
       if (infoMoneda.moneda === 'USD') {
-        return `US$ ${fmt(infoMoneda.montoOriginal)}`;
+        return `US$${fmt(infoMoneda.montoOriginal)}`;
       }
     }
 
-    return `S/ ${fmt(mov?.monto)}`;
+    return `S/${fmt(mov?.monto)}`;
   }
 
   function normalizarTipoMovimiento(tipo) {
