@@ -4229,6 +4229,77 @@
     transition: all 0.15s;
   }
   .btn-send:active { transform: scale(0.95); background: var(--cream); }
+  .btn-send { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+
+  /* BUILD241 · calendario directo para registrar un movimiento en una fecha anterior */
+  .retro-date-calendar { margin-top: 12px; }
+  .retro-date-head {
+    display: grid;
+    grid-template-columns: 38px 1fr 38px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .retro-date-month {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 750;
+    text-transform: capitalize;
+    color: var(--ink);
+  }
+  .retro-date-nav {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--line-hi);
+    border-radius: 11px;
+    background: transparent;
+    color: var(--ink);
+    font: 700 17px/1 var(--font-ui);
+    cursor: pointer;
+  }
+  .retro-date-nav:disabled { opacity: .22; cursor: default; }
+  .retro-date-weekdays,
+  .retro-date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .retro-date-weekdays { margin-bottom: 5px; }
+  .retro-date-weekdays span {
+    text-align: center;
+    color: var(--ink-mute);
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .retro-date-day,
+  .retro-date-empty {
+    aspect-ratio: 1 / 1;
+    min-width: 0;
+  }
+  .retro-date-day {
+    border: 0;
+    border-radius: 11px;
+    background: var(--line);
+    color: var(--ink);
+    font: 700 11px/1 var(--font-num);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .retro-date-day:hover { background: var(--line-hi); }
+  .retro-date-day.today { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .retro-date-day:disabled {
+    opacity: .18;
+    cursor: default;
+  }
+  body.dark .retro-date-day { background: rgba(255,255,255,.055); }
+  body.dark .retro-date-day:hover { background: rgba(255,255,255,.09); }
+  .retro-date-note {
+    margin-top: 12px;
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
   
   /* Modal */
   .modal-overlay {
@@ -7386,7 +7457,15 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         <input type="number" id="inputAmount" class="input-amount with-currency" placeholder="0" inputmode="decimal" step="0.01" oninput="updateConversionPreview()">
       </div>
       <input type="text" id="inputDetalle" class="input-detalle" placeholder="Detalle (opcional)" autocomplete="off" autocapitalize="sentences">
-      <button class="btn-send" id="btnSend" onclick="processStructuredCommand()">→</button>
+      <button class="btn-send" id="btnSend"
+        onclick="handleSendClick(event)"
+        onpointerdown="startSendLongPress(event)"
+        onpointerup="cancelSendLongPress()"
+        onpointercancel="cancelSendLongPress()"
+        onpointerleave="cancelSendLongPress()"
+        oncontextmenu="return false"
+        aria-label="Registrar gasto. Mantén presionado para elegir una fecha anterior."
+        title="Mantén presionado para registrar en otra fecha">→</button>
     </div>
     <div class="conversion-preview" id="conversionPreview" style="display:none;"></div>
     <div class="chips-row">
@@ -7444,7 +7523,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '237';
+  const LEDGER_BUILD = '241';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -14461,6 +14540,125 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   let selectedMod = null;
   let selectedDSCovered = false;
   let selectedDSOwn = false;
+
+  // BUILD241 · mantener → abre directamente el calendario de fecha del gasto.
+  let sendLongPressTimer = null;
+  let sendLongPressTriggered = false;
+  let retroDateMonth = null;
+
+  function startSendLongPress(event) {
+    if (event?.pointerType === 'mouse' && event.button !== 0) return;
+    clearTimeout(sendLongPressTimer);
+    sendLongPressTriggered = false;
+    try { event?.currentTarget?.setPointerCapture?.(event.pointerId); } catch(e) {}
+    sendLongPressTimer = setTimeout(() => {
+      sendLongPressTriggered = true;
+      openRetroactiveDateCalendar();
+      try { navigator.vibrate?.(12); } catch(e) {}
+    }, 520);
+  }
+
+  function cancelSendLongPress() {
+    clearTimeout(sendLongPressTimer);
+    sendLongPressTimer = null;
+  }
+
+  function handleSendClick(event) {
+    cancelSendLongPress();
+    if (sendLongPressTriggered) {
+      sendLongPressTriggered = false;
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      return;
+    }
+    processStructuredCommand();
+  }
+
+  function rangoFechaRetroactiva() {
+    const hoy = inicioDelDia(new Date());
+    const inicioCiclo = state.fechaInicioCiclo ? inicioDelDia(new Date(state.fechaInicioCiclo)) : null;
+    return {
+      min: inicioCiclo && !Number.isNaN(inicioCiclo.getTime()) ? inicioCiclo : hoy,
+      max: hoy
+    };
+  }
+
+  function openRetroactiveDateCalendar() {
+    const rango = rangoFechaRetroactiva();
+    retroDateMonth = new Date(rango.max.getFullYear(), rango.max.getMonth(), 1, 12, 0, 0, 0);
+    openModal(`
+      <h2>Fecha del <span class="accent">gasto</span></h2>
+      <p class="modal-sub">El movimiento se recalculará como si lo hubieras registrado ese día.</p>
+      <div id="retroDateCalendar" class="retro-date-calendar"></div>
+      <div class="modal-buttons" style="margin-top:14px;">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      </div>
+    `);
+    renderRetroactiveDateCalendar();
+  }
+
+  function renderRetroactiveDateCalendar() {
+    const root = document.getElementById('retroDateCalendar');
+    if (!root || !retroDateMonth) return;
+    const rango = rangoFechaRetroactiva();
+    const y = retroDateMonth.getFullYear();
+    const m = retroDateMonth.getMonth();
+    const inicioMes = new Date(y, m, 1, 12, 0, 0, 0);
+    const finMes = new Date(y, m + 1, 0, 12, 0, 0, 0);
+    const diasMes = finMes.getDate();
+    const offsetLunes = (inicioMes.getDay() + 6) % 7;
+    const hoyKey = fechaParaInput(rango.max);
+
+    const anterior = new Date(y, m - 1, 1, 12, 0, 0, 0);
+    const siguiente = new Date(y, m + 1, 1, 12, 0, 0, 0);
+    const finAnterior = new Date(y, m, 0, 23, 59, 59, 999);
+    const puedeAnterior = finAnterior >= rango.min;
+    const puedeSiguiente = siguiente <= rango.max;
+
+    const celdas = [];
+    for (let i = 0; i < offsetLunes; i++) celdas.push('<span class="retro-date-empty"></span>');
+    for (let d = 1; d <= diasMes; d++) {
+      const fecha = new Date(y, m, d, 12, 0, 0, 0);
+      const habilitado = fecha >= rango.min && fecha <= rango.max;
+      const key = fechaParaInput(fecha);
+      celdas.push(`
+        <button class="retro-date-day${key === hoyKey ? ' today' : ''}"
+          ${habilitado ? `onclick="selectRetroactiveDate(${y},${m},${d})"` : 'disabled'}>${d}</button>
+      `);
+    }
+
+    const mesTexto = inicioMes.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    root.innerHTML = `
+      <div class="retro-date-head">
+        <button class="retro-date-nav" ${puedeAnterior ? `onclick="moveRetroactiveDateMonth(-1)"` : 'disabled'} aria-label="Mes anterior">‹</button>
+        <div class="retro-date-month">${escapeHtml(mesTexto)}</div>
+        <button class="retro-date-nav" ${puedeSiguiente ? `onclick="moveRetroactiveDateMonth(1)"` : 'disabled'} aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="retro-date-weekdays"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="retro-date-grid">${celdas.join('')}</div>
+      <div class="retro-date-note">Disponible desde ${formatFecha(rango.min)} hasta hoy. Al guardar, la fecha vuelve automáticamente a hoy.</div>
+    `;
+  }
+
+  function moveRetroactiveDateMonth(delta) {
+    if (!retroDateMonth) return;
+    retroDateMonth = new Date(retroDateMonth.getFullYear(), retroDateMonth.getMonth() + Number(delta || 0), 1, 12, 0, 0, 0);
+    renderRetroactiveDateCalendar();
+  }
+
+  function selectRetroactiveDate(year, month, day) {
+    const rango = rangoFechaRetroactiva();
+    const ahora = new Date();
+    const fecha = new Date(Number(year), Number(month), Number(day), ahora.getHours(), ahora.getMinutes(), ahora.getSeconds(), 0);
+    const soloDia = inicioDelDia(fecha);
+    if (soloDia < rango.min || soloDia > rango.max) {
+      toast('Esa fecha está fuera del ciclo actual', true);
+      return;
+    }
+    closeModal();
+    setTimeout(() => processStructuredCommand(fecha), 60);
+  }
+
   let dsLongPressTimer = null;
   let dsLongPressTriggered = false;
 
@@ -14867,28 +15065,38 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       cuotaPropia = false,
       monedaOriginal = 'PEN',
       montoOriginal = monto,
-      tipoCambio = null
+      tipoCambio = null,
+      fechaMovimiento = null
     } = datos;
+    const fechaReal = fechaMovimiento ? new Date(fechaMovimiento) : new Date();
+    if (Number.isNaN(fechaReal.getTime())) {
+      toast('Fecha inválida', true);
+      return;
+    }
+    const esRetroactivo = inicioDelDia(fechaReal) < inicioDelDia(new Date());
     const esDSP = normalizarTipoMovimiento(tipo) === 'DS' && cuotaPropia && !cubierto;
     const partesDSP = esDSP ? dividirCuotaPropia(monto) : null;
     const impactoActual = esDSP ? partesDSP.actual : monto;
 
-    if (afectaPresupuestoSalarial({ tipo, cubierto }) && etiqueta !== 'sem') {
-      const currentIdx = calcularSemanaActualIdx();
+    // El gasto retroactivo se reconstruye desde su fecha histórica. No usa el
+    // saldo ACTUAL del bloque para decidir rollover, porque eso falsearía el día elegido.
+    if (!esRetroactivo && afectaPresupuestoSalarial({ tipo, cubierto }) && etiqueta !== 'sem') {
+      const currentIdx = calcularSemanaIdxParaFecha(fechaReal);
       const semActual = currentIdx >= 0 && currentIdx < state.semanas.length
         ? state.semanas[currentIdx]
         : null;
       if (semActual && impactoActual > (Number(semActual.presupuesto) || 0)) {
-        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId, esDSP, monedaOriginal, montoOriginal, tipoCambio);
+        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId, esDSP, monedaOriginal, montoOriginal, tipoCambio, fechaReal);
         return;
       }
     }
 
     if (esDSP) {
-      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: new Date() });
+      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: fechaReal });
       if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
       state.planesCuotas.push(creado.plan);
-      const ok = aplicarMovimiento(monto, 'DS', etiqueta, detalle, {
+      const ok = aplicarMovimientoSegunFecha(monto, 'DS', etiqueta, detalle, {
+        fecha: fechaReal,
         renderizar: false,
         notificar: false,
         impactoPresupuesto: creado.actual,
@@ -14912,13 +15120,16 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         toast('No se pudo registrar DS+P', true);
         return;
       }
-      toast(`DS+P · S/ ${fmt(creado.actual)} ahora + S/ ${fmt(creado.siguiente)} próximo ciclo`);
+      toast(esRetroactivo
+        ? `DS+P registrado en ${formatFecha(fechaReal)} · historial recalculado`
+        : `DS+P · S/ ${fmt(creado.actual)} ahora + S/ ${fmt(creado.siguiente)} próximo ciclo`);
       render();
       resetInputs();
       return;
     }
 
-    const ok = aplicarMovimiento(monto, tipo, etiqueta, detalle, {
+    const ok = aplicarMovimientoSegunFecha(monto, tipo, etiqueta, detalle, {
+      fecha: fechaReal,
       metadata: {
         categoria,
         ...(tipo === 'DS' && cubierto ? { cubierto: true } : {}),
@@ -14933,7 +15144,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (ok) resetInputs();
   }
 
-  function processStructuredCommand() {
+  function processStructuredCommand(fechaMovimientoForzada = null) {
     const amountEl = document.getElementById('inputAmount');
     const detalleEl = document.getElementById('inputDetalle');
     const montoRaw = parseFloat(amountEl.value);
@@ -14966,6 +15177,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     }
     
     // La operación financiera ocurre recién después de elegir la categoría.
+    const fechaMovimiento = fechaMovimientoForzada ? new Date(fechaMovimientoForzada) : null;
     openQuickMovementCategory({
       monto,
       tipo: selectedType,
@@ -14975,7 +15187,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       cuotaPropia: selectedType === 'DS' && selectedDSOwn,
       monedaOriginal,
       montoOriginal,
-      tipoCambio: tipoCambioOriginal
+      tipoCambio: tipoCambioOriginal,
+      fechaMovimiento: fechaMovimiento && !Number.isNaN(fechaMovimiento.getTime()) ? fechaMovimiento.toISOString() : null
     });
   }
   
@@ -14986,6 +15199,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     selectedMod = null;
     selectedDSCovered = false;
     selectedDSOwn = false;
+    sendLongPressTriggered = false;
+    cancelSendLongPress();
     dsLongPressTriggered = false;
     cancelDSLongPress();
     closeDSVariantMenu();
@@ -14997,8 +15212,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     document.getElementById('inputAmount').focus();
   }
   
-  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null) {
-    const ahora = new Date();
+  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null, fechaMovimiento = new Date()) {
+    const ahora = new Date(fechaMovimiento);
     const impactoActual = cuotaPropia ? dividirCuotaPropia(monto).actual : monto;
     const semActualIdx = calcularSemanaIdxParaFecha(ahora);
     const semActual = semActualIdx >= 0 && semActualIdx < state.semanas.length ? state.semanas[semActualIdx] : null;
@@ -15064,18 +15279,20 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))}, ${cuotaPropia ? 'true' : 'false'}, ${JSON.stringify(monedaOriginal || 'PEN')}, ${Number.isFinite(Number(montoOriginal)) ? Number(montoOriginal) : monto}, ${Number.isFinite(Number(tipoCambio)) ? Number(tipoCambio) : 'null'})'>Confirmar gasto</button>
+        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))}, ${cuotaPropia ? 'true' : 'false'}, ${JSON.stringify(monedaOriginal || 'PEN')}, ${Number.isFinite(Number(montoOriginal)) ? Number(montoOriginal) : monto}, ${Number.isFinite(Number(tipoCambio)) ? Number(tipoCambio) : 'null'}, ${JSON.stringify(ahora.toISOString())})'>Confirmar gasto</button>
       </div>
     `);
   }
 
-  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null) {
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null, fechaMovimiento = null) {
     closeModal();
+    const fechaReal = fechaMovimiento ? new Date(fechaMovimiento) : new Date();
     if (cuotaPropia && normalizarTipoMovimiento(tipo) === 'DS') {
-      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: new Date() });
+      const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: fechaReal });
       if (!Array.isArray(state.planesCuotas)) state.planesCuotas = [];
       state.planesCuotas.push(creado.plan);
-      const ok = aplicarMovimiento(monto, 'DS', etiqueta === 'null' ? null : etiqueta, detalle, {
+      const ok = aplicarMovimientoSegunFecha(monto, 'DS', etiqueta === 'null' ? null : etiqueta, detalle, {
+        fecha: fechaReal,
         renderizar: false,
         notificar: false,
         impactoPresupuesto: creado.actual,
@@ -15105,12 +15322,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       return;
     }
 
-    const ok = aplicarMovimiento(
+    const ok = aplicarMovimientoSegunFecha(
       monto,
       tipo,
       etiqueta === 'null' ? null : etiqueta,
       detalle,
       {
+        fecha: fechaReal,
         metadata: {
           categoria: normalizarCategoriaMovimiento(categoria),
           ...(esMovimientoTarjeta(tipo) ? {
@@ -15123,6 +15341,216 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       }
     );
     if (ok) resetInputs();
+  }
+
+  // BUILD241 · registra un movimiento pasado y reconstruye los movimientos
+  // posteriores. Los cambios de bloque se simulan por su fecha real para que
+  // el gasto afecte exactamente al bloque que correspondía ese día.
+  function arrastrarSnapshotEntreFechas(snapshot, fechaDesde, fechaHasta) {
+    const next = cloneMovementSnapshot(snapshot);
+    if (!next) throw new Error('Snapshot inválido');
+    const desde = new Date(fechaDesde);
+    const hasta = new Date(fechaHasta);
+    if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime()) || hasta <= desde) return next;
+    const rangos = calcularRangoSemanas();
+    let desdeIdx = calcularSemanaIdxParaFecha(desde, rangos);
+    let hastaIdx = calcularSemanaIdxParaFecha(hasta, rangos);
+    if (hastaIdx < 0 || hastaIdx >= next.semanas.length) return next;
+    if (desdeIdx < 0) desdeIdx = 0;
+    if (hastaIdx <= desdeIdx) {
+      next.semanas.forEach((sem, i) => { sem.isCurrent = i === hastaIdx; });
+      return next;
+    }
+
+    for (let i = desdeIdx; i < hastaIdx; i++) {
+      const origen = next.semanas[i];
+      const destino = next.semanas[i + 1];
+      if (!origen || !destino) continue;
+      const saldo = redondearDinero(Number(origen.presupuesto) || 0);
+      origen.presupuesto = 0;
+      if (Math.abs(saldo) > 0.005) {
+        destino.presupuesto = redondearDinero((Number(destino.presupuesto) || 0) + saldo);
+      }
+    }
+
+    next.semanas.forEach((sem, i) => { sem.isCurrent = i === hastaIdx; });
+    const destino = next.semanas[hastaIdx];
+    const rango = rangos[hastaIdx] || null;
+    const dias = Math.max(1, rango ? diasRestantesParaBloque(rango, hasta) : (Number(destino?.diasRitmo) || 1));
+    if (destino) {
+      destino.presupuestoAsignado = Math.max(0, Number(destino.presupuesto) || 0);
+      destino.diasRitmo = dias;
+      destino.ritmoDiarioFijo = redondearDinero(Math.max(0, Number(destino.presupuesto) || 0) / dias);
+    }
+    return next;
+  }
+
+  function aplicarDeltaGlobalHistorico(rebuilt, esperado, real) {
+    const result = cloneMovementSnapshot(rebuilt);
+    const from = cloneMovementSnapshot(esperado);
+    const to = cloneMovementSnapshot(real);
+    if (!result || !from || !to) throw new Error('Historial incompatible');
+    ['totalDisponible', 'metaResidual', 'montoIntocable', 'deudaBaseCiclo', 'deudaActual', 'gastoNoAdeudado', 'gastoTotal'].forEach(key => {
+      result[key] += (Number(to[key]) || 0) - (Number(from[key]) || 0);
+    });
+    result.semanas = result.semanas.map((sem, i) => ({
+      ...sem,
+      label: to.semanas?.[i]?.label ?? sem.label,
+      fechaInicioManual: to.semanas?.[i]?.fechaInicioManual || null,
+      fechaFinManual: to.semanas?.[i]?.fechaFinManual || null
+    }));
+    return result;
+  }
+
+  function fechaRegistroMovimiento(mov, fallback = new Date()) {
+    if (mov?.fechaISO) {
+      const f = new Date(mov.fechaISO);
+      if (!Number.isNaN(f.getTime())) return f;
+    }
+    if (Number.isFinite(Number(mov?.timestamp))) {
+      const f = new Date(Number(mov.timestamp));
+      if (!Number.isNaN(f.getTime())) return f;
+    }
+    return new Date(fallback);
+  }
+
+  function construirMovimientoHistorico(monto, tipo, etiqueta, detalle, opciones, snapshot) {
+    const ahora = new Date(opciones.fecha);
+    const metadata = opciones.metadata || {};
+    tipo = normalizarTipoMovimiento(tipo);
+    const impactoPresupuesto = Number.isFinite(Number(opciones.impactoPresupuesto))
+      ? redondearDinero(Math.max(0, Math.min(monto, Number(opciones.impactoPresupuesto))))
+      : redondearDinero(monto);
+    const mov = {
+      id: 'mov-' + ahora.getTime() + '-' + Math.random().toString(36).slice(2, 7),
+      monto, tipo, etiqueta, detalle,
+      fecha: ahora.toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      fechaISO: ahora.toISOString(),
+      timestamp: ahora.getTime(),
+      ...(metadata.planCuotasId ? {
+        planCuotasId: metadata.planCuotasId,
+        cuotaNumero: Number(metadata.cuotaNumero) || 1,
+        cuotasTotal: Number(metadata.cuotasTotal) || 1,
+        cuotaMoneda: metadata.cuotaMoneda || 'PEN',
+        cuotaOriginal: Number(metadata.cuotaOriginal) || 0,
+        cuotaAutomatica: !!metadata.cuotaAutomatica
+      } : {}),
+      ...(normalizarCategoriaMovimiento(metadata.categoria) ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) } : {}),
+      ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) } : {}),
+      ...(metadata.monedaOriginal ? { monedaOriginal: String(metadata.monedaOriginal).toUpperCase() === 'USD' ? 'USD' : 'PEN' } : {}),
+      ...(Number.isFinite(Number(metadata.montoOriginal)) ? { montoOriginal: redondearDinero(Number(metadata.montoOriginal)) } : {}),
+      ...(Number.isFinite(Number(metadata.tipoCambio)) && Number(metadata.tipoCambio) > 0 ? { tipoCambio: Number(metadata.tipoCambio) } : {}),
+      ...(tipo === 'DS' && metadata.cubierto ? { cubierto: true } : {}),
+      ...(metadata.cuotaPropia ? { cuotaPropia: true } : {}),
+      ...(Math.abs(impactoPresupuesto - monto) > 0.0001 ? { impactoPresupuesto } : {}),
+      ...(opciones.redistribuirRestantes ? { redistribucionSimulador: true } : {}),
+      ...(opciones.soloBloqueActual ? { soloBloqueActualSimulador: true } : {}),
+      snapshot: cloneMovementSnapshot(snapshot)
+    };
+    return mov;
+  }
+
+  function aplicarMovimientoRetroactivo(monto, tipo, etiqueta, detalle, opciones = {}) {
+    const fecha = new Date(opciones.fecha);
+    if (Number.isNaN(fecha.getTime())) return false;
+    const rango = rangoFechaRetroactiva();
+    const dia = inicioDelDia(fecha);
+    if (dia < rango.min || dia > rango.max) {
+      toast('La fecha debe pertenecer al ciclo actual', true);
+      return false;
+    }
+
+    const originalLog = JSON.parse(JSON.stringify(state.log));
+    const originalCurrent = captureMovementState();
+    const t = fecha.getTime();
+    let insertionIdx = originalLog.findIndex(mov => fechaRegistroMovimiento(mov).getTime() > t);
+    if (insertionIdx < 0) insertionIdx = originalLog.length;
+
+    try {
+      let baseOriginal;
+      let fechaBase;
+      if (insertionIdx > 0) {
+        const prev = originalLog[insertionIdx - 1];
+        const prevBefore = cloneMovementSnapshot(prev.snapshot);
+        if (!prevBefore) throw new Error('El historial anterior no tiene snapshot');
+        const prevFecha = fechaRegistroMovimiento(prev, fecha);
+        baseOriginal = prev.etiqueta === 'recalcula'
+          ? applyRecalculationToSnapshot(prevBefore, prevFecha).snapshot
+          : applyMovementToSnapshot(prevBefore, prev);
+        fechaBase = prevFecha;
+      } else if (originalLog.length > 0 && originalLog[0]?.snapshot) {
+        baseOriginal = cloneMovementSnapshot(originalLog[0].snapshot);
+        fechaBase = state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo) : fecha;
+      } else {
+        baseOriginal = cloneMovementSnapshot(originalCurrent);
+        fechaBase = fecha;
+      }
+
+      const originalEnFecha = arrastrarSnapshotEntreFechas(baseOriginal, fechaBase, fecha);
+      const nuevoMov = construirMovimientoHistorico(monto, tipo, etiqueta, detalle, opciones, originalEnFecha);
+      let rebuiltState = applyMovementToSnapshot(originalEnFecha, nuevoMov);
+      const rebuiltLog = originalLog.slice(0, insertionIdx);
+      rebuiltLog.push(nuevoMov);
+
+      let originalPrevState = originalEnFecha;
+      let fechaPrev = fecha;
+
+      for (let i = insertionIdx; i < originalLog.length; i++) {
+        const originalMov = originalLog[i];
+        const originalBeforeReal = cloneMovementSnapshot(originalMov.snapshot);
+        if (!originalBeforeReal) throw new Error('Un movimiento posterior no tiene snapshot');
+        const fechaEvento = fechaRegistroMovimiento(originalMov, fechaPrev);
+
+        const originalEsperadoAntes = arrastrarSnapshotEntreFechas(originalPrevState, fechaPrev, fechaEvento);
+        rebuiltState = arrastrarSnapshotEntreFechas(rebuiltState, fechaPrev, fechaEvento);
+        rebuiltState = aplicarDeltaGlobalHistorico(rebuiltState, originalEsperadoAntes, originalBeforeReal);
+
+        const replayedMov = { ...originalMov, snapshot: cloneMovementSnapshot(rebuiltState) };
+        let originalAfter;
+        let rebuiltAfter;
+        if (originalMov.etiqueta === 'recalcula') {
+          const a = applyRecalculationToSnapshot(originalBeforeReal, fechaEvento);
+          const b = applyRecalculationToSnapshot(rebuiltState, fechaEvento);
+          originalAfter = a.snapshot;
+          rebuiltAfter = b.snapshot;
+          replayedMov.monto = b.monto;
+          replayedMov.detalle = rebuiltState.metaResidual > 0
+            ? `Redistribución proporcional (${b.restantes} bloques · meta S/ ${fmt(rebuiltState.metaResidual)} protegida)`
+            : `Redistribución proporcional en ${b.restantes} bloques restantes`;
+        } else {
+          originalAfter = applyMovementToSnapshot(originalBeforeReal, originalMov);
+          rebuiltAfter = applyMovementToSnapshot(rebuiltState, originalMov);
+        }
+        rebuiltLog.push(replayedMov);
+        originalPrevState = originalAfter;
+        rebuiltState = rebuiltAfter;
+        fechaPrev = fechaEvento;
+      }
+
+      const ahora = new Date();
+      const originalEsperadoAhora = arrastrarSnapshotEntreFechas(originalPrevState, fechaPrev, ahora);
+      rebuiltState = arrastrarSnapshotEntreFechas(rebuiltState, fechaPrev, ahora);
+      rebuiltState = aplicarDeltaGlobalHistorico(rebuiltState, originalEsperadoAhora, originalCurrent);
+
+      restoreMovementState(rebuiltState);
+      state.log = rebuiltLog;
+      state.redoMovement = null;
+      if (opciones.notificar !== false) toast(`Registrado en ${formatFecha(fecha)} · historial recalculado`);
+      if (opciones.renderizar !== false) render();
+      return true;
+    } catch (e) {
+      console.error('Retroactive movement error', e);
+      toast('No se pudo reconstruir ese gasto en la fecha elegida', true);
+      return false;
+    }
+  }
+
+  function aplicarMovimientoSegunFecha(monto, tipo, etiqueta, detalle, opciones = {}) {
+    const fecha = opciones.fecha ? new Date(opciones.fecha) : new Date();
+    const esRetroactivo = !Number.isNaN(fecha.getTime()) && inicioDelDia(fecha) < inicioDelDia(new Date());
+    return esRetroactivo
+      ? aplicarMovimientoRetroactivo(monto, tipo, etiqueta, detalle, { ...opciones, fecha })
+      : aplicarMovimiento(monto, tipo, etiqueta, detalle, { ...opciones, fecha });
   }
 
   function aplicarMovimiento(monto, tipo, etiqueta, detalle, opciones = {}) {
