@@ -3264,6 +3264,34 @@
     margin-left: 6px;
     letter-spacing: 0.03em;
   }
+  .bank-filter-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    padding: 4px;
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: var(--surface);
+  }
+  .bank-filter-tab {
+    min-height: 34px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 750;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .bank-filter-tab.active {
+    background: var(--ink);
+    color: var(--bg);
+  }
+  .bank-filter-tab.interbank.active { background: #05BE50; color: #fff; }
+  .bank-filter-tab.bcp.active { background: #0030B3; color: #fff; }
 
 
   /* BUILD233 · estados de cuenta vivos por banco.
@@ -3299,6 +3327,84 @@
   .card-bank-total.previous.payment-marked {
     opacity: .42;
     filter: saturate(.38);
+  }
+  .card-bank-total.current.bank-filter-clickable {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .card-bank-total.current.bank-filter-clickable:active {
+    transform: scale(.985);
+  }
+  .card-bank-total.current.bank-filter-muted {
+    opacity: .34;
+    filter: saturate(.48);
+  }
+  .card-bank-total.current.bank-filter-active {
+    opacity: 1;
+    filter: none;
+    box-shadow: 0 0 0 2px rgba(23,23,22,.18), 0 5px 14px rgba(0,0,0,.08);
+  }
+  body.dark .card-bank-total.current.bank-filter-active {
+    box-shadow: 0 0 0 2px rgba(255,255,255,.28), 0 5px 18px rgba(0,0,0,.28);
+  }
+  .card-bank-filter-status {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 24px;
+    margin-top: -2px;
+    color: var(--ink-dim);
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .card-bank-filter-clear {
+    border: 0;
+    background: var(--line);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 750;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .card-bank-previous-breakdown {
+    display: grid;
+    gap: 2px;
+    margin-top: 3px;
+  }
+  .card-bank-previous-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 8px;
+    line-height: 1.15;
+    font-weight: 650;
+    opacity: .94;
+  }
+  .card-bank-previous-row > span:first-child {
+    opacity: .78;
+  }
+  .card-bank-previous-row strong {
+    flex: 0 0 auto;
+    font-family: var(--font-num);
+    font-size: 9px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  .card-bank-previous-row.total {
+    margin-top: 2px;
+    padding-top: 3px;
+    border-top: 1px solid rgba(255,255,255,.28);
+    font-weight: 800;
+  }
+  .card-bank-previous-row.total strong {
+    font-size: 10px;
+    font-weight: 800;
   }
   .card-bank-totals.previous-bank-totals {
     margin-top: 14px;
@@ -6074,6 +6180,7 @@ body.dark.ledger-arc-ui .weeks-grid.collapsed .week-chip.current .wk-daily {
 #modalContent:has(.all-list) > h2,
 #modalContent:has(.all-list) > .modal-sub,
 #modalContent:has(.all-list) > .search-box,
+#modalContent:has(.all-list) > .bank-filter-tabs,
 #modalContent:has(.all-list) > .all-summary,
 #modalContent:has(.all-list) > .modal-buttons {
   flex: 0 0 auto;
@@ -9918,10 +10025,106 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       .sort((a,b) => (b.cierre?.getTime?.() || 0) - (a.cierre?.getTime?.() || 0))[0] || null;
   }
 
-  function gruposAnterioresResumenBancos(grupos = gruposPagoTarjetas()) {
-    return ['interbank', 'bcp']
+  function gruposAnterioresResumenBancos(grupos = gruposPagoTarjetas(), filtroBanco = 'all') {
+    const filtro = normalizarFiltroBancoMovimientos(filtroBanco);
+    const ids = filtro === 'all' ? ['interbank', 'bcp'] : [filtro];
+    return ids
       .map(id => grupoAnteriorResumenBanco(id, grupoVigenteResumenBanco(id, grupos), grupos))
       .filter(Boolean);
+  }
+
+  let movementBankFilter = 'all';
+
+  function normalizarFiltroBancoMovimientos(value) {
+    const id = String(value || '').toLowerCase();
+    return id === 'interbank' || id === 'bcp' ? id : 'all';
+  }
+
+  function movimientoCoincideFiltroBanco(mov, filtro = movementBankFilter) {
+    const id = normalizarFiltroBancoMovimientos(filtro);
+    if (id === 'all') return true;
+    return esMovimientoTarjeta(mov) && tarjetaIdMovimiento(mov) === id;
+  }
+
+  function setMovementBankFilter(value, { rerenderModal = false } = {}) {
+    movementBankFilter = normalizarFiltroBancoMovimientos(value);
+    renderLog();
+    if (rerenderModal) renderAllMovements({ preserveScroll: false });
+  }
+
+  function toggleMovementBankFilter(value) {
+    const id = normalizarFiltroBancoMovimientos(value);
+    movementBankFilter = movementBankFilter === id ? 'all' : id;
+    renderLog();
+  }
+
+  function numeroDesdeTextoMoneda(value) {
+    const limpio = String(value ?? '').trim().replace(/\s/g, '').replace(/,/g, '');
+    const numero = Number.parseFloat(limpio);
+    return Number.isFinite(numero) ? numero : null;
+  }
+
+  function infoMonedaOriginalMovimiento(mov) {
+    if (!mov) return { moneda: 'PEN', montoOriginal: 0, tipoCambio: null };
+    const monedaGuardada = String(mov.monedaOriginal || '').toUpperCase();
+    const montoGuardado = Number(mov.montoOriginal);
+    const tcGuardado = Number(mov.tipoCambio);
+    if (monedaGuardada === 'USD' && Number.isFinite(montoGuardado) && montoGuardado >= 0) {
+      return {
+        moneda: 'USD',
+        montoOriginal: redondearDinero(montoGuardado),
+        tipoCambio: Number.isFinite(tcGuardado) && tcGuardado > 0 ? tcGuardado : null
+      };
+    }
+
+    const monedaCuota = String(mov.cuotaMoneda || '').toUpperCase();
+    const cuotaOriginal = Number(mov.cuotaOriginal);
+    if (monedaCuota === 'USD' && Number.isFinite(cuotaOriginal) && cuotaOriginal >= 0) {
+      return {
+        moneda: 'USD',
+        montoOriginal: redondearDinero(cuotaOriginal),
+        tipoCambio: Number.isFinite(tcGuardado) && tcGuardado > 0 ? tcGuardado : null
+      };
+    }
+
+    // Compatibilidad con movimientos anteriores a BUILD240:
+    // el USD quedó guardado en el detalle como "USD 35.00 @ 3.380".
+    const detalle = String(mov.detalle || '');
+    const legacy = detalle.match(/(?:^|[·|]\s*)USD\s*([\d.,]+)\s*@\s*([\d.,]+)/i)
+      || detalle.match(/USD\s*([\d.,]+)\s*@\s*([\d.,]+)/i);
+    if (legacy) {
+      const original = numeroDesdeTextoMoneda(legacy[1]);
+      const tc = numeroDesdeTextoMoneda(legacy[2]);
+      if (Number.isFinite(original)) {
+        return {
+          moneda: 'USD',
+          montoOriginal: redondearDinero(original),
+          tipoCambio: Number.isFinite(tc) && tc > 0 ? tc : null
+        };
+      }
+    }
+
+    return {
+      moneda: 'PEN',
+      montoOriginal: redondearDinero(Number(mov.monto) || 0),
+      tipoCambio: null
+    };
+  }
+
+  function resumenMonedasGrupoTarjeta(grupo) {
+    let soles = 0;
+    let dolares = 0;
+    (Array.isArray(grupo?.movimientos) ? grupo.movimientos : []).forEach(entrada => {
+      const mov = entrada?.mov || entrada;
+      const info = infoMonedaOriginalMovimiento(mov);
+      if (info.moneda === 'USD') dolares += Number(info.montoOriginal) || 0;
+      else soles += Number(mov?.monto) || 0;
+    });
+    return {
+      soles: redondearDinero(soles),
+      dolares: redondearDinero(dolares),
+      totalSoles: redondearDinero(Number(grupo?.total) || 0)
+    };
   }
 
   function tarjetaResumenSuperiorElement(grupo, tarjetaId, estado = 'current') {
@@ -9953,8 +10156,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       : (estado === 'previous'
         ? `Paga el ${fechaPagoSinAnio(grupo.pago)}`
         : `Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(total)}</strong>`);
-    const montoLinea = (!grupo.pendiente && grupo.pago && estado === 'previous')
-      ? `<span class="card-bank-total-amount">S/ ${fmt(total)}</span>`
+    const resumenMonedas = estado === 'previous' ? resumenMonedasGrupoTarjeta(grupo) : null;
+    const montoLinea = (estado === 'previous' && resumenMonedas)
+      ? `<span class="card-bank-previous-breakdown">
+          <span class="card-bank-previous-row"><span>Soles</span><strong>S/ ${fmt(resumenMonedas.soles)}</strong></span>
+          <span class="card-bank-previous-row"><span>Dólares</span><strong>US$ ${fmt(resumenMonedas.dolares)}</strong></span>
+          <span class="card-bank-previous-row total"><span>Total</span><strong>S/ ${fmt(resumenMonedas.totalSoles)}</strong></span>
+        </span>`
       : '';
     const keySeguro = grupo.sintetico ? '' : encodeURIComponent(grupo.key || '');
     const accion = estado === 'previous' && grupo.cerrado && keySeguro
@@ -9993,9 +10201,36 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       const stack = document.createElement('div');
       stack.className = `card-bank-stack ${id}`;
       const actual = grupoVigenteResumenBanco(id, grupos);
-      stack.appendChild(tarjetaResumenSuperiorElement(actual, id, 'current'));
+      const card = tarjetaResumenSuperiorElement(actual, id, 'current');
+      card.classList.add('bank-filter-clickable');
+      const activo = movementBankFilter === id;
+      const otroActivo = movementBankFilter !== 'all' && !activo;
+      if (activo) card.classList.add('bank-filter-active');
+      if (otroActivo) card.classList.add('bank-filter-muted');
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-pressed', activo ? 'true' : 'false');
+      card.setAttribute('aria-label', `${activo ? 'Quitar filtro' : 'Mostrar solo'} ${nombreTarjeta(id)}`);
+      card.addEventListener('click', () => toggleMovementBankFilter(id));
+      card.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          toggleMovementBankFilter(id);
+        }
+      });
+      stack.appendChild(card);
       wrap.appendChild(stack);
     });
+    if (movementBankFilter !== 'all') {
+      const status = document.createElement('div');
+      status.className = 'card-bank-filter-status';
+      status.innerHTML = `Mostrando ${escapeHtml(nombreTarjeta(movementBankFilter))} <button class="card-bank-filter-clear" type="button">Ver todos ×</button>`;
+      status.querySelector('button')?.addEventListener('click', event => {
+        event.stopPropagation();
+        setMovementBankFilter('all');
+      });
+      wrap.appendChild(status);
+    }
     return wrap;
   }
 
@@ -10003,12 +10238,16 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   // BUILD237 · los dos estados vencidos se mueven como una sola pareja.
   // Su posición cronológica se decide por el cierre más reciente de ambos,
   // nunca por la fecha de la última compra visible de cada banco.
-  function resumenAnterioresBancosElement(grupos = gruposPagoTarjetas()) {
-    const anteriores = gruposAnterioresResumenBancos(grupos);
+  function resumenAnterioresBancosElement(grupos = gruposPagoTarjetas(), filtroBanco = movementBankFilter) {
+    const anteriores = gruposAnterioresResumenBancos(grupos, filtroBanco);
     if (anteriores.length === 0) return null;
     const wrap = document.createElement('div');
     wrap.className = 'card-bank-totals previous-bank-totals';
-    ['interbank', 'bcp'].forEach(id => {
+    const ids = normalizarFiltroBancoMovimientos(filtroBanco) === 'all'
+      ? ['interbank', 'bcp']
+      : [normalizarFiltroBancoMovimientos(filtroBanco)];
+    if (ids.length === 1) wrap.style.gridTemplateColumns = '1fr';
+    ids.forEach(id => {
       const stack = document.createElement('div');
       stack.className = `card-bank-stack ${id}`;
       const anterior = anteriores.find(grupo => normalizarTarjetaId(grupo?.tarjetaId) === id) || null;
@@ -10018,8 +10257,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     return wrap;
   }
 
-  function fechaCorteResumenAnteriorBancos(grupos = gruposPagoTarjetas()) {
-    const cierres = gruposAnterioresResumenBancos(grupos)
+  function fechaCorteResumenAnteriorBancos(grupos = gruposPagoTarjetas(), filtroBanco = movementBankFilter) {
+    const cierres = gruposAnterioresResumenBancos(grupos, filtroBanco)
       .map(grupo => grupo?.cierre ? new Date(grupo.cierre) : null)
       .filter(fecha => fecha && !Number.isNaN(fecha.getTime()))
       .map(fecha => {
@@ -10419,8 +10658,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     return activadas;
   }
 
-  function appendInstallmentPlansSummary(root) {
-    const planes = planesCuotasActivos();
+  function appendInstallmentPlansSummary(root, filtroBanco = movementBankFilter) {
+    let planes = planesCuotasActivos();
+    const filtro = normalizarFiltroBancoMovimientos(filtroBanco);
+    if (filtro !== 'all') {
+      planes = planes.filter(plan => normalizarTarjetaId(plan?.tarjetaId) === filtro);
+    }
     if (!root || planes.length === 0) return;
     const card = document.createElement('div');
     card.className = 'installment-plans-card';
@@ -10483,8 +10726,14 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   function renderLog() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
-    const recientesAnteriores = movimientosRecientesCicloAnterior();
-    document.getElementById('movCount').textContent = state.log.length > 0 ? '(' + state.log.length + ')' : '';
+    const recientesAnterioresBase = movimientosRecientesCicloAnterior();
+    const recientesAnteriores = movementBankFilter === 'all'
+      ? recientesAnterioresBase
+      : recientesAnterioresBase.filter(({ mov }) => movimientoCoincideFiltroBanco(mov));
+    const movimientosActualesFiltro = movementBankFilter === 'all'
+      ? state.log
+      : state.log.filter(mov => movimientoCoincideFiltroBanco(mov));
+    document.getElementById('movCount').textContent = movimientosActualesFiltro.length > 0 ? '(' + movimientosActualesFiltro.length + ')' : '';
     if (state.redoMovement) {
       if (!redoMovementIsValid()) state.redoMovement = null;
     }
@@ -10504,27 +10753,30 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     }
     
     logEl.innerHTML = '';
-    appendInstallmentPlansSummary(logEl);
+    appendInstallmentPlansSummary(logEl, movementBankFilter);
     // BUILD233: arriba solo los ciclos actuales. El anterior aparece más abajo,
     // en su posición cronológica, mediante divisorCicloTarjeta().
     logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
-    const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos);
+    const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
     let estadosAnterioresInsertados = false;
     const insertarEstadosAnterioresAntesDe = (fechaMovimiento) => {
       if (estadosAnterioresInsertados || !Number.isFinite(corteEstadosAnteriores)) return;
       const tiempo = new Date(fechaMovimiento).getTime();
       if (!Number.isFinite(tiempo) || tiempo > corteEstadosAnteriores) return;
-      const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos);
+      const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos, movementBankFilter);
       if (bloque) {
         logEl.appendChild(bloque);
         estadosAnterioresInsertados = true;
       }
     };
-    const recent = state.log.slice(-15).reverse();
-    recent.forEach((mov, i) => {
-      const idx = state.log.length - 1 - i;
+    const recentSource = movementBankFilter === 'all'
+      ? state.log
+      : state.log.filter(mov => movimientoCoincideFiltroBanco(mov));
+    const recent = recentSource.slice(-15).reverse();
+    recent.forEach((mov) => {
+      const idx = state.log.indexOf(mov);
       const fechaMovimiento = fechaDeMovimiento(mov, idx, state.fechaInicioCiclo);
       const grupoPago = esMovimientoTarjeta(mov)
         ? (pagosTarjeta.porIndice.get(idx) || grupoPagoParaMovimiento(mov, idx, state.fechaInicioCiclo, pagosTarjeta.grupos))
@@ -11443,13 +11695,14 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   
   function renderAllMovements({ preserveScroll = false } = {}) {
     const q = searchQuery.toLowerCase().trim();
+    const baseBanco = state.log.filter(m => movimientoCoincideFiltroBanco(m));
     const filtrados = q 
-      ? state.log.filter(m =>
+      ? baseBanco.filter(m =>
           (m.detalle || '').toLowerCase().includes(q) ||
           (m.categoria || '').toLowerCase().includes(q) ||
           (esMovimientoTarjeta(m) && nombreTarjeta(tarjetaIdMovimiento(m)).toLowerCase().includes(q))
         )
-      : state.log;
+      : baseBanco;
     const pagosTarjeta = contextoPagosTarjeta();
     
     // Calcular sumas (excluyendo recalcs) sobre los filtrados
@@ -11466,7 +11719,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     if (filtrados.length === 0) {
       listaHTML = `<div class="all-empty">${q ? 'Sin resultados para «' + escapeHtml(searchQuery) + '»' : 'Sin movimientos aún'}</div>`;
     } else {
-      const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos);
+      const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
       let estadosAnterioresInsertados = false;
       filtrados.slice().reverse().forEach((mov, i) => {
         const originalIdx = state.log.indexOf(mov);
@@ -11475,7 +11728,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         if (!estadosAnterioresInsertados && Number.isFinite(corteEstadosAnteriores)) {
           const tiempo = new Date(fechaMovimiento).getTime();
           if (Number.isFinite(tiempo) && tiempo <= corteEstadosAnteriores) {
-            const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos);
+            const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos, movementBankFilter);
             if (bloque) {
               listaHTML += bloque.outerHTML;
               estadosAnterioresInsertados = true;
@@ -11512,14 +11765,24 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       });
     }
     
-    const totalGeneral = state.log.filter(m => m.etiqueta !== 'recalcula').length;
-    const filtroActivo = q ? `<span class="filter-tag">${count} de ${totalGeneral}</span>` : '';
+    const totalCiclo = state.log.filter(m => m.etiqueta !== 'recalcula').length;
+    const totalGeneral = baseBanco.filter(m => m.etiqueta !== 'recalcula').length;
+    const nombreFiltroBanco = movementBankFilter === 'all' ? '' : nombreTarjeta(movementBankFilter);
+    const filtroActivo = (q || movementBankFilter !== 'all')
+      ? `<span class="filter-tag">${count} de ${movementBankFilter === 'all' ? totalCiclo : totalGeneral}</span>`
+      : '';
+    const tabsBanco = `
+      <div class="bank-filter-tabs" role="group" aria-label="Filtrar movimientos por banco">
+        <button class="bank-filter-tab${movementBankFilter === 'all' ? ' active' : ''}" onclick="setAllMovementsBankFilter('all')">Todos</button>
+        <button class="bank-filter-tab interbank${movementBankFilter === 'interbank' ? ' active' : ''}" onclick="setAllMovementsBankFilter('interbank')">Interbank</button>
+        <button class="bank-filter-tab bcp${movementBankFilter === 'bcp' ? ' active' : ''}" onclick="setAllMovementsBankFilter('bcp')">BCP</button>
+      </div>`;
     
     openModal(`
       <h2>Todos los <span class="accent">movimientos</span></h2>
-      <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'} en el ciclo ${filtroActivo}</p>
+      <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'}${nombreFiltroBanco ? ` · ${nombreFiltroBanco}` : ' en el ciclo'} ${filtroActivo}</p>
       <p class="modal-sub" style="font-size:11px;margin-top:-8px;">Categoría: editable en todo el ciclo · Monto/tipo/eliminar: últimos 10 movimientos.</p>
-      
+      ${tabsBanco}
       <div class="search-box">
         <span class="search-icon">⌕</span>
         <input 
@@ -11587,6 +11850,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   function clearSearch() {
     searchQuery = '';
     renderAllMovements();
+  }
+
+  function setAllMovementsBankFilter(value) {
+    movementBankFilter = normalizarFiltroBancoMovimientos(value);
+    renderLog();
+    renderAllMovements({ preserveScroll: false });
   }
 
 
@@ -13052,6 +13321,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       cuotasTotal: Number(mov.cuotasTotal) || null,
       cuotaMoneda: mov.cuotaMoneda || null,
       cuotaOriginal: Number(mov.cuotaOriginal) || null,
+      monedaOriginal: mov.monedaOriginal || null,
+      montoOriginal: Number.isFinite(Number(mov.montoOriginal)) ? Number(mov.montoOriginal) : null,
+      tipoCambio: Number.isFinite(Number(mov.tipoCambio)) ? Number(mov.tipoCambio) : null,
       cuotaPropia: !!mov.cuotaPropia,
       impactoPresupuesto: Number.isFinite(Number(mov.impactoPresupuesto)) ? Number(mov.impactoPresupuesto) : null,
       fechaInicioCiclo
@@ -13153,6 +13425,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         cuotasTotal: Number(m.cuotasTotal) || null,
         cuotaMoneda: m.cuotaMoneda || null,
         cuotaOriginal: Number(m.cuotaOriginal) || null,
+        monedaOriginal: m.monedaOriginal || null,
+        montoOriginal: Number.isFinite(Number(m.montoOriginal)) ? Number(m.montoOriginal) : null,
+        tipoCambio: Number.isFinite(Number(m.tipoCambio)) ? Number(m.tipoCambio) : null,
         cuotaPropia: !!m.cuotaPropia,
         impactoPresupuesto: Number.isFinite(Number(m.impactoPresupuesto)) ? Number(m.impactoPresupuesto) : null
       }))
@@ -14589,7 +14864,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       categoria,
       tarjetaId,
       cubierto = false,
-      cuotaPropia = false
+      cuotaPropia = false,
+      monedaOriginal = 'PEN',
+      montoOriginal = monto,
+      tipoCambio = null
     } = datos;
     const esDSP = normalizarTipoMovimiento(tipo) === 'DS' && cuotaPropia && !cubierto;
     const partesDSP = esDSP ? dividirCuotaPropia(monto) : null;
@@ -14601,7 +14879,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         ? state.semanas[currentIdx]
         : null;
       if (semActual && impactoActual > (Number(semActual.presupuesto) || 0)) {
-        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId, esDSP);
+        confirmarRollover(monto, tipo, etiqueta, detalle, categoria, tarjetaId, esDSP, monedaOriginal, montoOriginal, tipoCambio);
         return;
       }
     }
@@ -14623,7 +14901,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           cuotaOriginal: creado.actual,
           cuotaAutomatica: false,
           cuotaPropia: true,
-          tarjetaId: normalizarTarjetaId(tarjetaId)
+          tarjetaId: normalizarTarjetaId(tarjetaId),
+          monedaOriginal,
+          montoOriginal,
+          tipoCambio
         }
       });
       if (!ok) {
@@ -14641,7 +14922,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       metadata: {
         categoria,
         ...(tipo === 'DS' && cubierto ? { cubierto: true } : {}),
-        ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(tarjetaId) } : {})
+        ...(esMovimientoTarjeta(tipo) ? {
+          tarjetaId: normalizarTarjetaId(tarjetaId),
+          monedaOriginal,
+          montoOriginal,
+          tipoCambio
+        } : {})
       }
     });
     if (ok) resetInputs();
@@ -14656,6 +14942,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     
     let detalle = detalleEl.value.trim();
     let monto = montoRaw;
+    const monedaOriginal = currentCurrency === 'USD' ? 'USD' : 'PEN';
+    const montoOriginal = montoRaw;
+    let tipoCambioOriginal = null;
     
     // Si está en USD, convertir a PEN
     if (currentCurrency === 'USD') {
@@ -14665,6 +14954,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         return;
       }
       monto = montoRaw * rate;
+      tipoCambioOriginal = rate;
       // Agregar info de USD al detalle
       const usdInfo = `USD ${montoRaw.toFixed(2)} @ ${rate.toFixed(3)}`;
       detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
@@ -14682,7 +14972,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       etiqueta: selectedType === 'DS' && selectedDSCovered ? null : selectedMod,
       detalle,
       cubierto: selectedType === 'DS' && selectedDSCovered,
-      cuotaPropia: selectedType === 'DS' && selectedDSOwn
+      cuotaPropia: selectedType === 'DS' && selectedDSOwn,
+      monedaOriginal,
+      montoOriginal,
+      tipoCambio: tipoCambioOriginal
     });
   }
   
@@ -14704,7 +14997,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     document.getElementById('inputAmount').focus();
   }
   
-  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false) {
+  function confirmarRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null) {
     const ahora = new Date();
     const impactoActual = cuotaPropia ? dividirCuotaPropia(monto).actual : monto;
     const semActualIdx = calcularSemanaIdxParaFecha(ahora);
@@ -14771,12 +15064,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))}, ${cuotaPropia ? 'true' : 'false'})'>Confirmar gasto</button>
+        <button class="btn-primary" onclick='ejecutarConRollover(${monto}, ${JSON.stringify(tipo)}, ${etiqueta ? JSON.stringify(etiqueta) : "null"}, ${JSON.stringify(detalle)}, ${JSON.stringify(categoria)}, ${JSON.stringify(normalizarTarjetaId(tarjetaId))}, ${cuotaPropia ? 'true' : 'false'}, ${JSON.stringify(monedaOriginal || 'PEN')}, ${Number.isFinite(Number(montoOriginal)) ? Number(montoOriginal) : monto}, ${Number.isFinite(Number(tipoCambio)) ? Number(tipoCambio) : 'null'})'>Confirmar gasto</button>
       </div>
     `);
   }
 
-  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false) {
+  function ejecutarConRollover(monto, tipo, etiqueta, detalle, categoria = '', tarjetaId = 'interbank', cuotaPropia = false, monedaOriginal = 'PEN', montoOriginal = null, tipoCambio = null) {
     closeModal();
     if (cuotaPropia && normalizarTipoMovimiento(tipo) === 'DS') {
       const creado = crearPlanCuotaPropia({ monto, detalle, categoria, tarjetaId, fecha: new Date() });
@@ -14795,7 +15088,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
           cuotaOriginal: creado.actual,
           cuotaAutomatica: false,
           cuotaPropia: true,
-          tarjetaId: normalizarTarjetaId(tarjetaId)
+          tarjetaId: normalizarTarjetaId(tarjetaId),
+          monedaOriginal,
+          montoOriginal: Number.isFinite(Number(montoOriginal)) ? Number(montoOriginal) : monto,
+          tipoCambio: Number.isFinite(Number(tipoCambio)) ? Number(tipoCambio) : null
         }
       });
       if (!ok) {
@@ -14817,7 +15113,12 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       {
         metadata: {
           categoria: normalizarCategoriaMovimiento(categoria),
-          ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(tarjetaId) } : {})
+          ...(esMovimientoTarjeta(tipo) ? {
+            tarjetaId: normalizarTarjetaId(tarjetaId),
+            monedaOriginal,
+            montoOriginal: Number.isFinite(Number(montoOriginal)) ? Number(montoOriginal) : monto,
+            tipoCambio: Number.isFinite(Number(tipoCambio)) ? Number(tipoCambio) : null
+          } : {})
         }
       }
     );
@@ -14855,6 +15156,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       ...(esMovimientoTarjeta(tipo)
         ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) }
         : {}),
+      ...(metadata.monedaOriginal ? { monedaOriginal: String(metadata.monedaOriginal).toUpperCase() === 'USD' ? 'USD' : 'PEN' } : {}),
+      ...(Number.isFinite(Number(metadata.montoOriginal)) ? { montoOriginal: redondearDinero(Number(metadata.montoOriginal)) } : {}),
+      ...(Number.isFinite(Number(metadata.tipoCambio)) && Number(metadata.tipoCambio) > 0 ? { tipoCambio: Number(metadata.tipoCambio) } : {}),
       ...(tipo === 'DS' && metadata.cubierto ? { cubierto: true } : {}),
       ...(metadata.cuotaPropia ? { cuotaPropia: true } : {}),
       ...(Math.abs(impactoPresupuesto - monto) > 0.0001 ? { impactoPresupuesto } : {}),
