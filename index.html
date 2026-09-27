@@ -3780,6 +3780,16 @@
   }
   .log-item.previous-salary-movement { opacity: 0.66; }
   body.dark .log-item.previous-salary-movement { opacity: 0.72; }
+  /* BUILD243 · en isolate, lo que queda fuera del ciclo bancario visible
+     no conserva el color del banco: se vuelve completamente gris. */
+  .log-item.outside-bank-cycle {
+    opacity: 0.58;
+    filter: grayscale(1) saturate(0);
+  }
+  body.dark .log-item.outside-bank-cycle {
+    opacity: 0.62;
+    filter: grayscale(1) saturate(0);
+  }
   .log-swipe.swipe-enabled .log-item { cursor: grab; }
   .log-swipe.swipe-enabled .log-item {
     -webkit-user-select: none;
@@ -10932,9 +10942,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
         const div = document.createElement('div');
-        const atenuarPorCicloSueldo = movementBankFilter === 'all'
-          || !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagosTarjeta.grupos);
-        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${claseEspecialMovimiento(mov)}`;
+        const fueraCicloBancoVisible = movementBankFilter !== 'all'
+          && !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagosTarjeta.grupos);
+        const atenuarPorCicloSueldo = movementBankFilter === 'all';
+        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${fueraCicloBancoVisible ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
         div.innerHTML = `
           <div class="log-left">
             <div class="log-dot ${dotType}">${dotLabel}</div>
