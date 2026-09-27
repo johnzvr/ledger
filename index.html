@@ -3441,6 +3441,13 @@
     font-weight: 650;
   }
   .card-cycle-divider-date strong { font-weight: 800; }
+  .card-cycle-divider-amount {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.12;
+    margin-top: 1px;
+  }
   .card-cycle-divider-action {
     flex: 0 0 auto;
     border: 0;
@@ -10113,11 +10120,19 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const accionPago = grupo.cerrado
       ? `<button class="card-cycle-divider-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`
       : '';
+    const cuerpoCerrado = esAnterior
+      ? `
+          <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)}</span>
+          <span class="card-cycle-divider-amount">S/ ${fmt(grupo.total)}</span>
+        `
+      : `
+          <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
+        `;
     div.innerHTML = `
       <div class="card-cycle-divider-main">
         <span class="card-cycle-divider-text">
           <span class="card-cycle-divider-label">${escapeHtml(grupo.tarjetaNombre || nombreTarjeta(grupo.tarjetaId))} · ${etiquetaPagoCorta(grupo.inicio)}.–${etiquetaPagoCorta(grupo.cierre)}.</span>
-          <span class="card-cycle-divider-date">Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(grupo.total)}</strong></span>
+          ${cuerpoCerrado}
           ${pagoPendiente ? '<span class="card-cycle-divider-status">Pagado · pendiente de conciliar con Inicio</span>' : ''}
         </span>
         ${accionPago}
