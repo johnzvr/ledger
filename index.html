@@ -10125,6 +10125,19 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     return esMovimientoTarjeta(mov) && tarjetaIdMovimiento(mov) === id;
   }
 
+  // BUILD242 · cuando aislamos un banco, la referencia visual pasa a ser
+  // el ciclo de la tarjeta y no el ciclo de sueldo. Un movimiento archivado
+  // salarialmente se mantiene a plena opacidad si pertenece al ciclo actual
+  // o al ciclo anterior visible de la tarjeta seleccionada.
+  function movimientoPerteneceCicloTarjetaVisible(grupoPago, filtro = movementBankFilter, grupos = gruposPagoTarjetas()) {
+    const id = normalizarFiltroBancoMovimientos(filtro);
+    if (id === 'all' || !grupoPago) return false;
+    if (normalizarTarjetaId(grupoPago.tarjetaId) !== id) return false;
+    const actual = grupoVigenteResumenBanco(id, grupos);
+    const anterior = grupoAnteriorResumenBanco(id, actual, grupos);
+    return grupoPago.key === actual?.key || grupoPago.key === anterior?.key;
+  }
+
   function setMovementBankFilter(value, { rerenderModal = false } = {}) {
     movementBankFilter = normalizarFiltroBancoMovimientos(value);
     renderLog();
@@ -10919,7 +10932,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
         const div = document.createElement('div');
-        div.className = `log-item previous-salary-movement${claseEspecialMovimiento(mov)}`;
+        const atenuarPorCicloSueldo = movementBankFilter === 'all'
+          || !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagosTarjeta.grupos);
+        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${claseEspecialMovimiento(mov)}`;
         div.innerHTML = `
           <div class="log-left">
             <div class="log-dot ${dotType}">${dotLabel}</div>
