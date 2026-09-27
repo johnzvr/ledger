@@ -9662,7 +9662,19 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   }
 
   function logAmountText(mov) {
-    return mov?.etiqueta === 'recalcula' ? 'Presupuesto' : `S/ ${fmt(mov?.monto)}`;
+    if (mov?.etiqueta === 'recalcula') return 'Presupuesto';
+
+    // BUILD244 · en isolate bancario mostramos la moneda REAL de la compra.
+    // La vista general conserva PEN para mantener una lectura homogénea.
+    const filtroBanco = normalizarFiltroBancoMovimientos(movementBankFilter);
+    if (filtroBanco !== 'all' && movimientoCoincideFiltroBanco(mov, filtroBanco)) {
+      const infoMoneda = infoMonedaOriginalMovimiento(mov);
+      if (infoMoneda.moneda === 'USD') {
+        return `US$ ${fmt(infoMoneda.montoOriginal)}`;
+      }
+    }
+
+    return `S/ ${fmt(mov?.monto)}`;
   }
 
   function normalizarTipoMovimiento(tipo) {
