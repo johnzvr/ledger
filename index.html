@@ -13536,8 +13536,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </div>
       ${totalCuotasPropiasPendientes() > 0 ? `
         <div class="own-installment-cycle-note">
-          <div class="own-installment-cycle-title">DS+P pendientes · −S/ ${fmt(totalCuotasPropiasPendientes())}</div>
-          <div class="own-installment-cycle-copy">${cuotasPropiasPendientes().map(plan => `${escapeHtml(plan.detalle || 'Compra')}: S/ ${fmt(plan.cuotaPropiaSiguientePen)}`).join(' · ')}. Se descontarán de este nuevo sueldo sin crear deuda ni gasto personal otra vez.</div>
+          <div class="own-installment-cycle-title">DS+P por cerrar · S/ ${fmt(totalCuotasPropiasPendientes())}</div>
+          <div class="own-installment-cycle-copy">${cuotasPropiasPendientes().map(plan => `${escapeHtml(plan.detalle || 'Compra')}: S/ ${fmt(plan.cuotaPropiaSiguientePen)}`).join(' · ')}. Referencia interna: al iniciar el ciclo se cerrarán sin volver a descontar del Disponible, porque tus saldos ingresados ya son post-pago.</div>
         </div>
       ` : ''}
       <div class="rollover-breakdown new-cycle-derived">
@@ -13843,9 +13843,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const disponibleAntesCuotasPropias = redondearDinero(totalGeneral - fondo);
     const cuotasPropiasPendientesTotal = totalCuotasPropiasPendientes();
     const deudaPendiente = datosDeudaNuevoCiclo();
-    const disponibleAntesDeuda = redondearDinero(disponibleAntesCuotasPropias - cuotasPropiasPendientesTotal);
+    // BUILD271 · DS+P es una división interna del gasto, no una obligación nueva
+    // de caja al abrir el siguiente ciclo. El usuario ingresa saldos post-pago,
+    // por lo que volver a restar la cuota 2/2 duplicaría el descuento.
+    const disponibleAntesDeuda = disponibleAntesCuotasPropias;
     const disponible = redondearDinero(disponibleAntesDeuda - deudaPendiente.total);
-    const compromisosTotales = redondearDinero(cuotasPropiasPendientesTotal + deudaPendiente.total);
+    const compromisosTotales = redondearDinero(deudaPendiente.total);
 
     return {
       cuentaSoles,
@@ -13994,7 +13997,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       || (manual && (isNaN(numSem) || numSem < 1 || numSem > 6))) {
       preview.textContent = requiereTcFormulario && !tcFormulario
         ? 'Esperando TC'
-        : (cuentas.fondoExcedeTotal ? 'Fondo excede total' : (cuentas.compromisosExcedenDisponible ? 'DS+P excede disponible' : 'Revisa los datos'));
+        : (cuentas.fondoExcedeTotal ? 'Fondo excede total' : (cuentas.compromisosExcedenDisponible ? 'Deuda excede disponible' : 'Revisa los datos'));
       detalle.innerHTML = '';
       return;
     }
@@ -14045,7 +14048,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       } else if (cuentas.fondoExcedeTotal) {
         toast('El Fondo no puede superar el Total general', true);
       } else if (cuentas.compromisosExcedenDisponible) {
-        toast('La deuda pendiente y los compromisos DS+P superan el dinero disponible del ciclo', true);
+        toast('La deuda pendiente supera el dinero disponible del ciclo', true);
       } else {
         toast('Revisa los datos del nuevo ciclo', true);
       }
@@ -14092,7 +14095,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       totalGeneral: redondearDinero(cuentas.totalGeneral),
       fondo: redondearDinero(cuentas.fondo),
       disponibleAntesCuotasPropias: redondearDinero(Math.max(0, cuentas.disponibleAntesCuotasPropias)),
-      cuotasPropiasAplicadas: redondearDinero(cuentas.cuotasPropiasPendientesTotal),
+      // BUILD271: se conserva como referencia, pero no fue aplicada como descuento.
+      cuotasPropiasAplicadas: 0,
+      cuotasPropiasCerradasSinDescuento: redondearDinero(cuentas.cuotasPropiasPendientesTotal),
       deudaPendienteAplicada: redondearDinero(cuentas.deudaPendienteTotal),
       disponibleAntesDeuda: redondearDinero(Math.max(0, cuentas.disponibleAntesDeuda)),
       disponible: redondearDinero(Math.max(0, disponible)),
@@ -14443,8 +14448,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     state.ultimaSemanaVista = null;
     state.ultimoBloqueProcesado = 0;
 
-    // La cuota propia 2/2 ya fue descontada del Disponible calculado para este ciclo.
-    // Completar el compromiso no crea movimiento, deuda ni gasto personal adicional.
+    // BUILD271 · la cuota propia 2/2 NO se descuenta otra vez del Disponible.
+    // Los saldos ingresados al abrir el ciclo ya son post-pago. Aquí únicamente
+    // cerramos el compromiso interno para que no siga apareciendo como pendiente.
     const idsCuotasPropiasAplicadas = new Set(Array.isArray(datos.cuotasPropiasPendientesIds) ? datos.cuotasPropiasPendientesIds : []);
     (Array.isArray(state.planesCuotas) ? state.planesCuotas : []).forEach(plan => {
       if (!idsCuotasPropiasAplicadas.has(plan?.id) || !esPlanCuotasPropias(plan)) return;
