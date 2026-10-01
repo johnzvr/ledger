@@ -3501,6 +3501,8 @@
     white-space: nowrap;
     touch-action: manipulation;
   }
+
+  .card-bank-total-action.is-paid:disabled { opacity: .78; cursor: default; }
   .card-bank-total.empty .card-bank-total-date { opacity: .72; }
   body.dark .card-bank-total-action {
     background: rgba(255,255,255,.90);
@@ -10136,6 +10138,20 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     ) || null;
   }
 
+  function cicloTarjetaPagadoParaGrupo(grupo) {
+    if (!grupo) return null;
+    const tarjetaId = normalizarTarjetaId(grupo.tarjetaId);
+    const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
+    const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
+    return ciclosTarjetaPagados().find(item =>
+      normalizarTarjetaId(item?.tarjetaId) === tarjetaId
+      && (item?.key === grupo.key
+        || (inicio && cierre
+          && fechaParaInput(item?.inicio) === inicio
+          && fechaParaInput(item?.cierre) === cierre))
+    ) || null;
+  }
+
   function registrarPagoPendienteConciliar(grupo) {
     if (!grupo || grupo.pendiente || !grupo.cerrado) return false;
     const registro = {
@@ -10185,7 +10201,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   function gruposPagoTarjeta(
     tarjetaConfig = state.tarjeta,
     calendarios = state.tarjetaCalendarios,
-    tarjetaId = 'interbank'
+    tarjetaId = 'interbank',
+    incluirPagados = false
   ) {
     const id = normalizarTarjetaId(tarjetaId);
     const porFecha = new Map();
@@ -10193,7 +10210,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     movimientosTarjetaCombinados(id).forEach(entrada => {
       const { mov, origen, index, fechaInicioReferencia } = entrada;
       const fechaMovimiento = fechaDeMovimiento(mov, index, fechaInicioReferencia);
-      if (fechaPerteneceACicloPagado(fechaMovimiento, id)) return;
+      if (!incluirPagados && fechaPerteneceACicloPagado(fechaMovimiento, id)) return;
       const calendario = exactos.length > 0
         ? calendarioExactoParaFecha(fechaMovimiento, exactos)
         : {
@@ -10252,10 +10269,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       .sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
   }
 
-  function gruposPagoTarjetas() {
+  function gruposPagoTarjetas(incluirPagados = false) {
     return [
-      ...gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios, 'interbank'),
-      ...gruposPagoTarjeta(state.tarjetaBCP, state.tarjetaBCPCalendarios, 'bcp')
+      ...gruposPagoTarjeta(state.tarjeta, state.tarjetaCalendarios, 'interbank', incluirPagados),
+      ...gruposPagoTarjeta(state.tarjetaBCP, state.tarjetaBCPCalendarios, 'bcp', incluirPagados)
     ].sort((a, b) => (a.inicio?.getTime?.() || 0) - (b.inicio?.getTime?.() || 0));
   }
 
@@ -10333,8 +10350,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   function gruposAnterioresResumenBancos(grupos = gruposPagoTarjetas(), filtroBanco = 'all') {
     const filtro = normalizarFiltroBancoMovimientos(filtroBanco);
     const ids = filtro === 'all' ? ['interbank', 'bcp'] : [filtro];
+    const historicos = gruposPagoTarjetas(true);
     return ids
-      .map(id => grupoAnteriorResumenBanco(id, grupoVigenteResumenBanco(id, grupos), grupos))
+      .map(id => grupoAnteriorResumenBanco(id, grupoVigenteResumenBanco(id, grupos), historicos))
       .filter(Boolean);
   }
 
@@ -10456,8 +10474,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const id = normalizarTarjetaId(tarjetaId);
     const card = document.createElement('div');
     const pagoPendiente = grupo && !grupo.sintetico ? pagoPendienteParaGrupo(grupo) : null;
+    const pagadoConfirmado = grupo && !grupo.sintetico ? cicloTarjetaPagadoParaGrupo(grupo) : null;
     card.className = `card-bank-total ${id} ${estado}`
-      + (pagoPendiente ? ' payment-marked' : '')
+      + ((pagoPendiente || pagadoConfirmado) ? ' payment-marked' : '')
       + (!grupo ? ' empty' : '');
 
     if (!grupo) {
@@ -10491,11 +10510,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : '';
     const keySeguro = grupo.sintetico ? '' : encodeURIComponent(grupo.key || '');
     const accion = estado === 'previous' && grupo.cerrado && keySeguro
-      ? `<button class="card-bank-total-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`
+      ? (pagadoConfirmado
+        ? `<button class="card-bank-total-action is-paid" type="button" disabled>Pagado</button>`
+        : `<button class="card-bank-total-action" onclick="abrirEstadoPagoTarjeta('${keySeguro}')">${pagoPendiente ? 'Ver pago' : 'Marcar pagado'}</button>`)
       : '';
     const status = pagoPendiente
       ? '<span class="card-bank-total-status">Pagado · pendiente de conciliar con Inicio</span>'
-      : '';
+      : (pagadoConfirmado ? '<span class="card-bank-total-status">Pago conciliado</span>' : '');
 
     card.innerHTML = `
       <div class="card-bank-total-main">
@@ -10515,7 +10536,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (!grupo) return false;
     const id = normalizarTarjetaId(grupo.tarjetaId);
     const actual = grupoVigenteResumenBanco(id, grupos);
-    const anterior = grupoAnteriorResumenBanco(id, actual, grupos);
+    const anterior = grupoAnteriorResumenBanco(id, actual, gruposPagoTarjetas(true));
     return !!anterior && anterior.key === grupo.key;
   }
 
@@ -10560,6 +10581,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
 
+  // BUILD259 · la pareja histórica incluye también estados ya conciliados como pagados.
   // BUILD237 · los dos estados vencidos se mueven como una sola pareja.
   // Su posición cronológica se decide por el cierre más reciente de ambos,
   // nunca por la fecha de la última compra visible de cada banco.
