@@ -1502,6 +1502,23 @@
   .weeks-grid:not(.collapsed) .wk-daily {
     display: none;
   }
+
+  /* BUILD254 · bloques expandidos siempre en 3 líneas.
+     Si no caben, la fila conserva el ancho útil de cada tarjeta y hace scroll horizontal. */
+  .weeks-grid:not(.collapsed) .week-chip {
+    flex: 1 0 142px;
+    min-width: 142px;
+  }
+  .weeks-grid:not(.collapsed) .week-chip .wk-label,
+  .weeks-grid:not(.collapsed) .week-chip .wk-amount,
+  .weeks-grid:not(.collapsed) .week-chip .wk-range,
+  .weeks-grid:not(.collapsed) .week-chip .wk-closed-status {
+    white-space: nowrap;
+  }
+  .weeks-grid:not(.collapsed) .week-chip .wk-amount {
+    overflow: visible;
+    text-overflow: clip;
+  }
   .week-chip.current .wk-daily { color: rgba(250,248,243,0.78); }
   body.dark .week-chip.current .wk-daily { color: rgba(10,10,11,0.7); }
   .week-chip.current .wk-range { color: rgba(250,248,243,0.55); }
@@ -7216,6 +7233,41 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   }
 }
 </style>
+
+<style id="luki-255-cycle-start-snapshot">
+/* BUILD255 · fotografía de los datos usados al iniciar el ciclo. */
+.cycle-start-snapshot { display: grid; gap: 14px; }
+.cycle-start-snapshot .snapshot-kicker {
+  font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
+  color: var(--ink-mute); margin-bottom: 6px;
+}
+.cycle-start-snapshot .snapshot-card {
+  border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--panel, rgba(255,255,255,.35));
+}
+.cycle-start-snapshot .snapshot-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 11px 13px; border-bottom: 1px solid var(--line); font-size: 11px;
+}
+.cycle-start-snapshot .snapshot-row:last-child { border-bottom: 0; }
+.cycle-start-snapshot .snapshot-row span { color: var(--ink-dim); min-width: 0; }
+.cycle-start-snapshot .snapshot-row strong {
+  color: var(--ink); font-family: var(--font-num); font-size: 12px; font-weight: 760; text-align: right;
+}
+.cycle-start-snapshot .snapshot-row.emphasis { background: rgba(183, 167, 226, .12); }
+.cycle-start-snapshot .snapshot-row.emphasis strong { font-size: 15px; }
+.cycle-start-snapshot .snapshot-bank-list { display: grid; gap: 7px; padding: 10px 13px 12px; border-top: 1px solid var(--line); }
+.cycle-start-snapshot .snapshot-bank {
+  display:flex; justify-content:space-between; gap:12px; align-items:flex-start; font-size:9px; color:var(--ink-dim);
+}
+.cycle-start-snapshot .snapshot-bank b { color:var(--ink); font-size:10px; }
+.cycle-start-snapshot .snapshot-note { color: var(--ink-mute); font-size: 9px; line-height: 1.45; }
+body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.025); }
+@media (max-width: 430px) {
+  .ledger-arc-ui .hero-actions .hero-start-snapshot-btn span { display:none; }
+  .ledger-arc-ui .hero-actions .hero-start-snapshot-btn { width:40px; padding:0; }
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -7292,6 +7344,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       <div><h1 class="arc-heading">Tu ciclo</h1><div class="arc-period" id="arcPeriod">—</div></div>
       <div class="hero-actions">
         <button class="hero-pace-btn" onclick="openSpendingPace()" aria-label="Abrir Savings"><svg class="ui-icon"><use href="#icon-chart"></use></svg><span>Savings</span></button>
+        <button class="hero-pace-btn hero-start-snapshot-btn" onclick="openCycleStartSnapshot()" aria-label="Ver datos con los que inició este ciclo"><svg class="ui-icon"><use href="#icon-wallet"></use></svg><span>Ver inicio</span></button>
         <button class="hero-privacy" id="heroPrivacyBtn" onclick="toggleBalancePrivacy()" aria-label="Ocultar monto disponible"><svg class="ui-icon"><use id="heroPrivacyIcon" href="#icon-eye"></use></svg></button>
         <button class="hero-arrow" onclick="openSettings()" aria-label="Abrir ajustes"><svg class="ui-icon"><use href="#icon-settings"></use></svg></button>
       </div>
@@ -7662,7 +7715,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '248';
+  const LEDGER_BUILD = '255';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -7679,6 +7732,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     saldoInicialCiclo: null,
     // Foto de las cuentas usadas para construir el disponible al iniciar el ciclo.
     cuentasInicioCiclo: null,
+    deudaInicioCiclo: null,
     deudaBaseCiclo: 1756.94, // deuda con la que empezó el ciclo; los DS se suman encima
     fechaInicioCiclo: null, // se setea la primera vez
     fechaProximoSueldo: null, // límite proyectado del ciclo automático
@@ -12531,6 +12585,88 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     });
   }
 
+
+  function openCycleStartSnapshot() {
+    const cuentas = state.cuentasInicioCiclo && typeof state.cuentasInicioCiclo === 'object'
+      ? state.cuentasInicioCiclo
+      : null;
+    const deuda = state.deudaInicioCiclo && typeof state.deudaInicioCiclo === 'object'
+      ? state.deudaInicioCiclo
+      : null;
+
+    if (!cuentas) {
+      openModal(`
+        <h2>Inicio del <span class="accent">ciclo</span></h2>
+        <p class="modal-sub">Este ciclo fue creado antes de que Luki guardara la fotografía completa de Inicio.</p>
+        <div class="modal-buttons"><button class="btn-primary" onclick="closeModal()">Cerrar</button></div>
+      `);
+      return;
+    }
+
+    const money = value => Number.isFinite(Number(value)) ? `S/ ${fmt(Number(value))}` : '—';
+    const usd = value => Number.isFinite(Number(value)) ? `US$ ${fmt(Number(value))}` : '—';
+    const rate = value => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value).toFixed(3) : '—';
+    const fechaInicioGuardada = cuentas.fechaInicio || (state.fechaInicioCiclo ? fechaParaInput(new Date(state.fechaInicioCiclo)) : null);
+    const proximoGuardado = cuentas.fechaProximoSueldo || (state.fechaProximoSueldo ? fechaParaInput(new Date(state.fechaProximoSueldo)) : null);
+    const metaGuardada = Number.isFinite(Number(cuentas.metaAhorro)) ? Number(cuentas.metaAhorro) : Number(state.metaResidual || 0);
+    const deudaTotal = deuda && Number.isFinite(Number(deuda.totalSoles))
+      ? Number(deuda.totalSoles)
+      : Number(state.deudaBaseCiclo || 0);
+    const deudaSoles = deuda && Number.isFinite(Number(deuda.soles)) ? Number(deuda.soles) : deudaTotal;
+    const deudaDolares = deuda && Number.isFinite(Number(deuda.dolares)) ? Number(deuda.dolares) : 0;
+    const deudaTc = deuda?.tcUsdPen;
+    const fuenteDeuda = deuda?.fuente === 'heads-up' ? 'Jalada de tarjetas' : 'Ingresada manualmente';
+    const estados = Array.isArray(deuda?.estadosJalados) ? deuda.estadosJalados : [];
+    const bancosHtml = estados.length
+      ? `<div class="snapshot-bank-list">${estados.map(item => `
+          <div class="snapshot-bank">
+            <span><b>${escapeHtml(item.banco || nombreTarjeta(item.tarjetaId))}</b><br>${escapeHtml(item.inicio || '—')} → ${escapeHtml(item.cierre || '—')}</span>
+            <span><b>S/ ${fmt(Number(item.totalSolesReferencia) || 0)}</b>${Number(item.dolares) > .005 ? `<br>incluye US$ ${fmt(Number(item.dolares) || 0)}` : ''}</span>
+          </div>`).join('')}</div>`
+      : '';
+
+    openModal(`
+      <div class="cycle-start-snapshot">
+        <div>
+          <h2>Inicio del <span class="accent">ciclo</span></h2>
+          <p class="modal-sub">Fotografía de los datos usados cuando abriste este ciclo. Solo lectura.</p>
+        </div>
+
+        <div>
+          <div class="snapshot-kicker">Lo que ingresaste</div>
+          <div class="snapshot-card">
+            <div class="snapshot-row"><span>Cuenta soles</span><strong>${money(cuentas.cuentaSoles)}</strong></div>
+            <div class="snapshot-row"><span>Cuenta dólares</span><strong>${usd(cuentas.cuentaDolares)}</strong></div>
+            <div class="snapshot-row"><span>TC USD → PEN</span><strong>${rate(cuentas.tcUsdPen)}</strong></div>
+            <div class="snapshot-row"><span>Cuenta ahorros</span><strong>${money(cuentas.cuentaAhorros)}</strong></div>
+            <div class="snapshot-row"><span>Fondo reservado</span><strong>${money(cuentas.fondo)}</strong></div>
+            <div class="snapshot-row"><span>Meta de ahorro</span><strong>${money(metaGuardada)}</strong></div>
+            <div class="snapshot-row"><span>Deuda soles</span><strong>${money(deudaSoles)}</strong></div>
+            <div class="snapshot-row"><span>Deuda dólares</span><strong>${usd(deudaDolares)}</strong></div>
+            ${deudaDolares > .005 ? `<div class="snapshot-row"><span>TC deuda USD</span><strong>${rate(deudaTc)}</strong></div>` : ''}
+            <div class="snapshot-row"><span>Origen de deuda</span><strong style="font-family:var(--font-ui);font-size:10px;">${fuenteDeuda}</strong></div>
+            ${bancosHtml}
+            <div class="snapshot-row"><span>Fecha de inicio</span><strong>${escapeHtml(fechaInicioGuardada || '—')}</strong></div>
+            <div class="snapshot-row"><span>Próximo sueldo estimado</span><strong>${escapeHtml(proximoGuardado || '—')}</strong></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="snapshot-kicker">Resultado al iniciar</div>
+          <div class="snapshot-card">
+            <div class="snapshot-row"><span>Total de cuentas</span><strong>${money(cuentas.totalGeneral)}</strong></div>
+            <div class="snapshot-row"><span>Fondo reservado</span><strong>− ${money(cuentas.fondo)}</strong></div>
+            ${Number(cuentas.cuotasPropiasAplicadas) > .005 ? `<div class="snapshot-row"><span>DS+P pendientes</span><strong>− ${money(cuentas.cuotasPropiasAplicadas)}</strong></div>` : ''}
+            <div class="snapshot-row"><span>Deuda reservada</span><strong>− ${money(Number.isFinite(Number(cuentas.deudaPendienteAplicada)) ? cuentas.deudaPendienteAplicada : deudaTotal)}</strong></div>
+            <div class="snapshot-row emphasis"><span>Disponible inicial</span><strong>${money(cuentas.disponible)}</strong></div>
+          </div>
+        </div>
+        <div class="snapshot-note">Estos valores son la foto de Inicio. Los gastos, pagos y ajustes posteriores no cambian esta referencia.</div>
+        <div class="modal-buttons"><button class="btn-primary" onclick="closeModal()">Cerrar</button></div>
+      </div>
+    `);
+  }
+
   function openSpendingPace() {
     const m = modeloSavingsLimite();
     const savingsTarget = Math.max(0, Number(state.savingsTarget) || 0);
@@ -13629,6 +13765,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       deudaPendienteAplicada: redondearDinero(cuentas.deudaPendienteTotal),
       disponibleAntesDeuda: redondearDinero(Math.max(0, cuentas.disponibleAntesDeuda)),
       disponible: redondearDinero(Math.max(0, disponible)),
+      metaAhorro: redondearDinero(Math.max(0, meta)),
+      fechaInicio: fechaInicio || null,
+      fechaProximoSueldo: fechaProximoSueldo || null,
+      modoManualBloques: !!modoManual,
       capturadoEn: new Date().toISOString()
     };
 
