@@ -3804,10 +3804,16 @@
   .ledger-arc-ui .log-item.previous-bank-cycle-movement .log-amount {
     color: var(--ink-mute) !important;
   }
-  /* BUILD250 · en vista normal, una compra con tarjeta cuyo estado ya cerró
-     se atenúa aunque siga dentro del ciclo de sueldo actual. */
-  .log-item.previous-bank-cycle-movement { opacity: 0.66; }
-  body.dark .log-item.previous-bank-cycle-movement { opacity: 0.72; }
+  /* BUILD275 · fuera del ciclo actual de la tarjeta: gris neutro, sin dim.
+     Conserva opacidad completa para que el corte de ciclo sea fácil de leer. */
+  .log-item.previous-bank-cycle-movement {
+    opacity: 1;
+    filter: grayscale(1) saturate(0);
+  }
+  body.dark .log-item.previous-bank-cycle-movement {
+    opacity: 1;
+    filter: grayscale(1) saturate(0);
+  }
   /* BUILD243 · en isolate, lo que queda fuera del ciclo bancario visible
      no conserva el color del banco: se vuelve completamente gris. */
   .log-item.outside-bank-cycle {
