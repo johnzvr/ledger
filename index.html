@@ -7533,7 +7533,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '246';
+  const LEDGER_BUILD = '248';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -13511,6 +13511,11 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       presupuestoInicial: Number(state.presupuestoInicial) || 0,
       saldoInicialCiclo: Number.isFinite(Number(state.saldoInicialCiclo)) ? Number(state.saldoInicialCiclo) : null,
       cuentasInicioCiclo: state.cuentasInicioCiclo ? JSON.parse(JSON.stringify(state.cuentasInicioCiclo)) : null,
+      // BUILD248 · conservar el Fondo exacto del ciclo para reportes históricos.
+      fondoInicialCiclo: Number.isFinite(Number(state.cuentasInicioCiclo?.fondo))
+        ? redondearDinero(Number(state.cuentasInicioCiclo.fondo))
+        : redondearDinero((Number(state.montoIntocable) || 0) + totalF + totalFDS),
+      fondoFinalCiclo: redondearDinero(Number(state.montoIntocable) || 0),
       totalS,
       totalDS,
       totalDSCubierto,
@@ -13803,7 +13808,49 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     styleExcelRange(sheet, lr1, lc1, vr2, vc2, { fill: excelFill(fill), border: excelBorder(fill) });
   }
 
-  async function construirReporteExcel({ movimientos, periodo, nombreArchivo, saldoInicialCiclo = null }) {
+
+  function addExcelFundMetricCard(sheet, { gastado, inicio, restante }) {
+    const labelRange = 'A13:C13';
+    const spentRange = 'A14:C14';
+    const detailRange = 'A15:C15';
+    sheet.mergeCells(labelRange);
+    sheet.mergeCells(spentRange);
+    sheet.mergeCells(detailRange);
+
+    const labelCell = sheet.getCell('A13');
+    const spentCell = sheet.getCell('A14');
+    const detailCell = sheet.getCell('A15');
+
+    labelCell.value = 'GASTADO DEL FONDO';
+    spentCell.value = redondearDinero(Number(gastado) || 0);
+    spentCell.numFmt = '"S/" #,##0.00';
+
+    const inicioValido = Number.isFinite(Number(inicio));
+    const restanteValido = Number.isFinite(Number(restante));
+    const inicioTexto = inicioValido ? `S/ ${fmt(Number(inicio))}` : 'No registrado';
+    const restanteTexto = restanteValido ? `S/ ${fmt(Number(restante))}` : 'No registrado';
+    detailCell.value = `Inicio: ${inicioTexto}  ·  Quedó: ${restanteTexto}`;
+
+    labelCell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.muted } };
+    spentCell.font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    detailCell.font = { name: 'Aptos', size: 9, bold: true, color: { argb: EXCEL_PALETTE.muted } };
+    labelCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    spentCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    detailCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: false };
+    styleExcelRange(sheet, 13, 1, 15, 3, {
+      fill: excelFill(EXCEL_PALETTE.blue),
+      border: excelBorder(EXCEL_PALETTE.blue)
+    });
+  }
+
+  async function construirReporteExcel({
+    movimientos,
+    periodo,
+    nombreArchivo,
+    saldoInicialCiclo = null,
+    fondoInicialCiclo = null,
+    fondoFinalCiclo = null
+  }) {
     if (!window.ExcelJS?.Workbook) throw new Error('ExcelJS no disponible');
 
     const workbook = new window.ExcelJS.Workbook();
@@ -13818,6 +13865,14 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     const saldoInicialReporte = Number.isFinite(Number(saldoInicialCiclo))
       ? Number(saldoInicialCiclo)
       : null;
+    const fondoInicialReporte = Number.isFinite(Number(fondoInicialCiclo))
+      ? redondearDinero(Number(fondoInicialCiclo))
+      : null;
+    const fondoFinalReporte = Number.isFinite(Number(fondoFinalCiclo))
+      ? redondearDinero(Number(fondoFinalCiclo))
+      : (fondoInicialReporte === null
+        ? null
+        : redondearDinero(Math.max(0, fondoInicialReporte - resumen.fondoUtilizado)));
     // Hoja auxiliar oculta para validaciones de datos.
     // Usar un rango real es más robusto que incrustar todas las categorías
     // dentro de la regla del desplegable.
@@ -13859,7 +13914,11 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     );
     addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTADO', resumen.gastoDisponible, EXCEL_PALETTE.green);
     addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
-    addExcelMetricCard(summary, ['A13:C13', 'A14:C15'], 'GASTADO DEL FONDO', resumen.fondoUtilizado, EXCEL_PALETTE.blue);
+    addExcelFundMetricCard(summary, {
+      gastado: resumen.fondoUtilizado,
+      inicio: fondoInicialReporte,
+      restante: fondoFinalReporte
+    });
     addExcelMetricCard(summary, ['D13:F13', 'D14:F15'], 'MOVIMIENTOS', resumen.movimientos, EXCEL_PALETTE.cream, false);
 
     summary.mergeCells('A17:F17');
@@ -13916,7 +13975,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     });
 
     summary.mergeCells('A25:F27');
-    summary.getCell('A25').value = 'Cómo leer el reporte\nEl inicio del ciclo es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. Las redistribuciones son ajustes internos y no se suman como gasto.';
+    summary.getCell('A25').value = 'Cómo leer el reporte\nEl inicio del ciclo es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. La tarjeta de Fondo muestra cuánto había al inicio, cuánto se utilizó y cuánto quedó. Las redistribuciones son ajustes internos y no se suman como gasto.';
     summary.getCell('A25').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
     summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
@@ -13952,6 +14011,8 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 
     // Esta sección es dinámica. La categoría se puede cambiar directamente
     // en la hoja Movimientos y Excel recalcula automáticamente estos totales.
+    // BUILD247 · USD / TC ocupa H; el monto PEN está en I.
+    // Las fórmulas por categoría deben sumar I para no devolver S/ 0.00.
     const excelCategories = excelCategoryOptions;
     const excelDataStartRow = 5;
     const excelDataEndRow = 5000;
@@ -13969,26 +14030,26 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       };
       summary.getCell(`D${row}`).value = {
         formula:
-          `SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `SUMIFS(Movimientos!$I$${excelDataStartRow}:$I$${excelDataEndRow},` +
           `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"S")` +
-          `+SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `+SUMIFS(Movimientos!$I$${excelDataStartRow}:$I$${excelDataEndRow},` +
           `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"DS")`
       };
       summary.getCell(`E${row}`).value = {
         formula:
-          `SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `SUMIFS(Movimientos!$I$${excelDataStartRow}:$I$${excelDataEndRow},` +
           `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F")` +
-          `+SUMIFS(Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow},` +
+          `+SUMIFS(Movimientos!$I$${excelDataStartRow}:$I$${excelDataEndRow},` +
           `Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},A${row},` +
           `Movimientos!$B$${excelDataStartRow}:$B$${excelDataEndRow},"F+DS")`
       };
       summary.getCell(`F${row}`).value = {
         formula:
           `SUMIF(Movimientos!$E$${excelDataStartRow}:$E$${excelDataEndRow},` +
-          `A${row},Movimientos!$H$${excelDataStartRow}:$H$${excelDataEndRow})`
+          `A${row},Movimientos!$I$${excelDataStartRow}:$I$${excelDataEndRow})`
       };
 
       summary.getCell(`B${row}`).numFmt = '0.0%';
@@ -14538,7 +14599,11 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         movimientos: state.log,
         periodo,
         nombreArchivo: nombreArchivoCicloMesAnio(state.fechaInicioCiclo),
-        saldoInicialCiclo: state.saldoInicialCiclo
+        saldoInicialCiclo: state.saldoInicialCiclo,
+        fondoInicialCiclo: Number.isFinite(Number(state.cuentasInicioCiclo?.fondo))
+          ? Number(state.cuentasInicioCiclo.fondo)
+          : redondearDinero((Number(state.montoIntocable) || 0) + resumenReporteMovimientos(state.log).fondoUtilizado),
+        fondoFinalCiclo: Number(state.montoIntocable) || 0
       });
       toast('Excel descargado');
     } catch (error) {
@@ -14563,7 +14628,13 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
         nombreArchivo: nombreArchivoCicloMesAnio(ciclo.fechaInicio || ciclo.fechaFin),
         saldoInicialCiclo: Number.isFinite(Number(ciclo.saldoInicialCiclo))
           ? Number(ciclo.saldoInicialCiclo)
-          : (Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null)
+          : (Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null),
+        fondoInicialCiclo: Number.isFinite(Number(ciclo.fondoInicialCiclo))
+          ? Number(ciclo.fondoInicialCiclo)
+          : (Number.isFinite(Number(ciclo.cuentasInicioCiclo?.fondo)) ? Number(ciclo.cuentasInicioCiclo.fondo) : null),
+        fondoFinalCiclo: Number.isFinite(Number(ciclo.fondoFinalCiclo))
+          ? Number(ciclo.fondoFinalCiclo)
+          : null
       });
       toast('Ciclo descargado en Excel');
     } catch (error) {
@@ -16024,7 +16095,6 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-danger" onclick="resetAll()">Reset</button>
         <button class="btn-primary" onclick="saveSettings()">Guardar</button>
       </div>
     `);
@@ -16224,15 +16294,6 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
     closeModal();
     toast('Ajustes guardados');
     render();
-  }
-  
-  function resetAll() {
-    if (confirm('¿Borrar todo y volver al estado inicial?')) {
-      state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-      closeModal();
-      toast('Reseteado');
-      render();
-    }
   }
   
   // ============ RANGOS MANUALES DE SEMANAS ============
