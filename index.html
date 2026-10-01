@@ -14865,6 +14865,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const workbook = new window.ExcelJS.Workbook();
     workbook.calcProperties.fullCalcOnLoad = true;
     workbook.calcProperties.forceFullCalc = true;
+    workbook.calcProperties.calcMode = 'auto';
     workbook.creator = 'Luki';
     workbook.company = 'Luki';
     workbook.created = new Date();
@@ -14890,9 +14891,14 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     excelCategoryOptions.forEach((categoria, index) => {
       categoryListSheet.getCell(index + 1, 1).value = categoria;
     });
+    // BUILD274 · lista real para el selector de orden del Desglose.
+    // Un rango oculto es más robusto en Excel que una lista inline dependiente del locale.
+    categoryListSheet.getCell('B1').value = 'Monto';
+    categoryListSheet.getCell('B2').value = 'Fecha';
     categoryListSheet.state = 'veryHidden';
     const categoryValidationFormula =
       `'${categoryListSheet.name}'!$A$1:$A$${excelCategoryOptions.length}`;
+    const detailOrderValidationFormula = `'${categoryListSheet.name}'!$B$1:$B$2`;
 
     const summary = workbook.addWorksheet('Resumen', {
       views: [{ showGridLines: false }],
@@ -14900,7 +14906,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     });
     summary.columns = Array.from({ length: 6 }, () => ({ width: 17 }));
     summary.mergeCells('A1:F2');
-    summary.getCell('A1').value = 'LEDGER';
+    summary.getCell('A1').value = 'LUKI';
     summary.getCell('A1').font = { name: 'Aptos', size: 26, bold: true, color: { argb: EXCEL_PALETTE.white } };
     summary.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
     styleExcelRange(summary, 1, 1, 2, 6, { fill: excelFill(EXCEL_PALETTE.ink) });
@@ -15124,7 +15130,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       { key: 'impacto', width: 24 }, { key: 'original', width: 20 }, { key: 'monto', width: 18 }, { key: 'cuota', width: 18 }
     ];
     sheet.mergeCells('A1:J1');
-    sheet.getCell('A1').value = 'LEDGER · MOVIMIENTOS';
+    sheet.getCell('A1').value = 'LUKI · MOVIMIENTOS';
     sheet.getCell('A1').font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white } };
     sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
     styleExcelRange(sheet, 1, 1, 1, 10, { fill: excelFill(EXCEL_PALETTE.ink) });
@@ -15252,7 +15258,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     ];
 
     detailSheet.mergeCells('A1:H1');
-    detailSheet.getCell('A1').value = 'LEDGER · DESGLOSE POR CATEGORÍA';
+    detailSheet.getCell('A1').value = 'LUKI · DESGLOSE POR CATEGORÍA';
     detailSheet.getCell('A1').font = {
       name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.white }
     };
@@ -15283,11 +15289,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     detailSheet.getCell('H2').dataValidation = {
       type: 'list',
       allowBlank: false,
+      showDropDown: false,
       showErrorMessage: true,
       errorStyle: 'stop',
       errorTitle: 'Orden del desglose',
       error: 'Selecciona Fecha o Monto.',
-      formulae: ['"Monto,Fecha"']
+      formulae: [detailOrderValidationFormula]
     };
 
     styleExcelRange(detailSheet, 2, 1, 2, 8, { fill: excelFill(EXCEL_PALETTE.cream) });
