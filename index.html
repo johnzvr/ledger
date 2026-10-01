@@ -7334,6 +7334,21 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 }
 </style>
 
+
+<style>
+/* BUILD266 · dim visual definitivo: los movimientos atenuados no conservan colores activos. */
+.log-item.previous-salary-movement .log-amount,
+.log-item.previous-bank-cycle-movement .log-amount,
+.log-item.outside-bank-cycle .log-amount {
+  color: var(--ink-mute) !important;
+}
+.log-item.previous-salary-movement .log-dot,
+.log-item.previous-salary-movement .badge,
+.log-item.previous-salary-movement .bank-badge,
+.log-item.previous-salary-movement .payment-badge {
+  filter: grayscale(.75) saturate(.2);
+}
+</style>
 </head>
 <body class="ledger-arc-ui">
 
@@ -7671,13 +7686,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             <span class="cycle-recovery-copy">
               <span class="cycle-recovery-title">Versiones anteriores</span>
               <span class="cycle-recovery-sub">Recupera una de las 2 copias previas guardadas en Google Drive.</span>
-            </span>
-            <span class="cycle-recovery-arrow">›</span>
-          </button>
-          <button class="cycle-recovery-card" type="button" onclick="openRecoverMissingCyclesFromDrive()" style="margin-top:8px;">
-            <span class="cycle-recovery-copy">
-              <span class="cycle-recovery-title">Recuperar ciclos faltantes</span>
-              <span class="cycle-recovery-sub">Busca ciclos antiguos en las 2 copias de Drive y los agrega sin reemplazar tu ciclo actual.</span>
             </span>
             <span class="cycle-recovery-arrow">›</span>
           </button>
@@ -12912,7 +12920,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
 
-  // ============ HISTORIAL DE CICLOS (BUILD265 · hasta 24 ciclos) ============
+  // ============ HISTORIAL DE CICLOS (BUILD266 · hasta 24 ciclos + recuperación silenciosa) ============
   function getArchivedCycles() {
     const guardados = Array.isArray(state.historialCiclos) ? state.historialCiclos.slice(0, 24) : [];
     if (guardados.length > 0) return guardados;
@@ -12964,6 +12972,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     container.innerHTML = ciclos.length
       ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div>`
       : '<div class="view-empty">Cuando cierres tu primer ciclo, aparecerá aquí.</div>';
+    if (accessToken && !archivedCycleAutoRecoveryChecked && !archivedCycleAutoRecoveryInFlight) {
+      setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 80);
+    }
   }
 
   function formatNotaFecha(iso) {
@@ -18438,6 +18449,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   let lastFreshnessCheckAt = 0;
   let activeSyncAlertVersionId = null;
   let lastAnnouncedSyncVersionId = null;
+  let archivedCycleAutoRecoveryChecked = false;
+  let archivedCycleAutoRecoveryInFlight = false;
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -18462,6 +18475,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           updateSyncUI('syncing');
           scheduleTokenRefresh(expiresIn);
           setTimeout(() => checkDriveFreshness({ notify: true }), 80);
+          setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 180);
         }
       },
       error_callback: (err) => {
@@ -18485,6 +18499,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         const msRemaining = exp - Date.now();
         scheduleTokenRefresh(msRemaining / 1000);
         setTimeout(() => checkDriveFreshness({ notify: true }), 120);
+        setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 220);
       } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
         // Token expirado pero ya autorizó antes → intentar refresh silencioso
         setTimeout(silentRefresh, 500);
@@ -19077,6 +19092,63 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
 
   // BUILD265 · rescate no destructivo de ciclos históricos desde Backup 1/2.
+
+  // BUILD266 · recuperación silenciosa del historial. Las copias de Drive se usan
+  // únicamente para reincorporar ciclos cerrados que falten localmente; nunca
+  // reemplaza el ciclo vigente ni los movimientos actuales.
+  async function autoRecoverMissingArchivedCyclesFromDrive() {
+    if (!accessToken || archivedCycleAutoRecoveryChecked || archivedCycleAutoRecoveryInFlight) return;
+    archivedCycleAutoRecoveryInFlight = true;
+    try {
+      const [b1, b2] = await Promise.all([
+        readDriveNamedState(DRIVE_BACKUP_1_NAME),
+        readDriveNamedState(DRIVE_BACKUP_2_NAME)
+      ]);
+      const actuales = Array.isArray(state.historialCiclos) ? state.historialCiclos : [];
+      const vistos = new Set(actuales.map(archivedCycleKey).filter(Boolean));
+      const recuperados = [];
+      [b1?.snapshot, b2?.snapshot].filter(Boolean).forEach(snapshot => {
+        const ciclos = Array.isArray(snapshot?.historialCiclos) ? snapshot.historialCiclos : [];
+        ciclos.forEach(ciclo => {
+          const key = archivedCycleKey(ciclo);
+          if (!key || vistos.has(key)) return;
+          const movs = Array.isArray(ciclo?.movimientos) ? ciclo.movimientos.length : 0;
+          const count = Number(ciclo?.numMovimientos) || 0;
+          const total = Number(ciclo?.totalGastado) || 0;
+          // No reintroducir ciclos intermedios/vacíos que pudieron generarse por error.
+          if (movs <= 0 && count <= 0 && Math.abs(total) < .005) return;
+          vistos.add(key);
+          recuperados.push(JSON.parse(JSON.stringify(ciclo)));
+        });
+      });
+      if (recuperados.length) {
+        const combinados = [...actuales, ...recuperados];
+        const dedupe = new Set();
+        state.historialCiclos = combinados
+          .filter(ciclo => {
+            const key = archivedCycleKey(ciclo);
+            if (!key || dedupe.has(key)) return false;
+            dedupe.add(key);
+            return true;
+          })
+          .sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a))
+          .slice(0, 24);
+        // Guardar localmente primero; luego la sincronización normal propagará el historial corregido.
+        saveState({ markModified: true, sync: false });
+        renderCycleHistoryInline();
+        renderComparison();
+        requestAnimationFrame(updateViewHeight);
+      }
+      archivedCycleAutoRecoveryChecked = true;
+    } catch (e) {
+      console.warn('Auto archived-cycle recovery:', e);
+      // Permitir un nuevo intento posterior si Drive tuvo un fallo transitorio.
+      archivedCycleAutoRecoveryChecked = false;
+    } finally {
+      archivedCycleAutoRecoveryInFlight = false;
+    }
+  }
+
   let pendingRecoveredCycles = [];
 
   function archivedCycleKey(ciclo) {
