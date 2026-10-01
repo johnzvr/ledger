@@ -1206,43 +1206,6 @@
     font-size: 10px;
     color: var(--ink);
   }
-
-  /* BUILD262 · acceso a recuperación al final de Ciclos */
-  .cycle-recovery-section {
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px solid var(--line);
-  }
-  .cycle-recovery-kicker {
-    font-size: 8px;
-    font-weight: 800;
-    letter-spacing: .09em;
-    text-transform: uppercase;
-    color: var(--ink-mute);
-    margin-bottom: 8px;
-  }
-  .cycle-recovery-card {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    padding: 14px 15px;
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    background: rgba(255,255,255,.32);
-    color: var(--ink);
-    font-family: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-  .cycle-recovery-card:active { transform: scale(.99); }
-  .cycle-recovery-copy { min-width: 0; }
-  .cycle-recovery-title { font-size: 12px; font-weight: 800; }
-  .cycle-recovery-sub { margin-top: 3px; font-size: 9px; line-height: 1.35; color: var(--ink-dim); }
-  .cycle-recovery-arrow { flex: 0 0 auto; font-size: 18px; color: var(--ink-mute); }
-  body.dark .cycle-recovery-card { background: rgba(255,255,255,.035); }
-
   .cycle-summary-only {
     margin-top: 9px;
     font-size: 10px;
@@ -3836,7 +3799,7 @@
   }
   .log-item.previous-salary-movement { opacity: 0.66; }
   body.dark .log-item.previous-salary-movement { opacity: 0.72; }
-  /* BUILD260 · un movimiento atenuado no conserva un monto de estado activo (rojo/fondo). */
+  /* BUILD267 · un movimiento atenuado no conserva un monto de estado activo (rojo/fondo). */
   .ledger-arc-ui .log-item.previous-salary-movement .log-amount,
   .ledger-arc-ui .log-item.previous-bank-cycle-movement .log-amount {
     color: var(--ink-mute) !important;
@@ -7334,21 +7297,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 }
 </style>
 
-
-<style>
-/* BUILD266 · dim visual definitivo: los movimientos atenuados no conservan colores activos. */
-.log-item.previous-salary-movement .log-amount,
-.log-item.previous-bank-cycle-movement .log-amount,
-.log-item.outside-bank-cycle .log-amount {
-  color: var(--ink-mute) !important;
-}
-.log-item.previous-salary-movement .log-dot,
-.log-item.previous-salary-movement .badge,
-.log-item.previous-salary-movement .bank-badge,
-.log-item.previous-salary-movement .payment-badge {
-  filter: grayscale(.75) saturate(.2);
-}
-</style>
 </head>
 <body class="ledger-arc-ui">
 
@@ -7679,17 +7627,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             </div>
           </div>
         </div>
-
-        <div class="cycle-recovery-section">
-          <div class="cycle-recovery-kicker">Recuperación</div>
-          <button class="cycle-recovery-card" type="button" onclick="openDriveSafetyVersions()">
-            <span class="cycle-recovery-copy">
-              <span class="cycle-recovery-title">Versiones anteriores</span>
-              <span class="cycle-recovery-sub">Recupera una de las 2 copias previas guardadas en Google Drive.</span>
-            </span>
-            <span class="cycle-recovery-arrow">›</span>
-          </button>
-        </div>
       </section>
 
       <!-- Ventana Anotaciones -->
@@ -7832,7 +7769,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     modoManualSemanas: false, // true = el usuario define los rangos manualmente
     ultimoBloqueProcesado: null, // último bloque cuya transición automática ya fue procesada
     cicloAnterior: null,
-    historialCiclos: [], // máximo 2 ciclos cerrados, con movimientos compactos
+    historialCiclos: [], // historial de ciclos cerrados; conservar hasta 24
     darkMode: false,
     tcCache: { rate: null, fetchedAt: null }, // último USD→PEN conocido
     semanas: [
@@ -10743,9 +10680,38 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     return grupoPagoParaFecha(fechaMovimiento, grupos, tarjetaIdMovimiento(mov));
   }
 
-  // BUILD264 · Ver todos también incluye movimientos archivados que todavía
-  // pertenecen al ciclo bancario vigente de Interbank/BCP, aunque hayan quedado
-  // en el ciclo de sueldo anterior.
+  // BUILD267 · al abrir un nuevo ciclo, Movimientos no depende de un único
+  // slot histórico. Recorre todos los ciclos archivados y reconstruye los
+  // últimos 14 días anteriores al inicio actual, evitando duplicados.
+  function movimientosRecientesCicloAnterior() {
+    const ciclos = getArchivedCycles();
+    if (!ciclos.length) return [];
+    const inicioActual = new Date(state.fechaInicioCiclo);
+    if (Number.isNaN(inicioActual.getTime())) return [];
+    const corte = new Date(inicioActual);
+    corte.setDate(corte.getDate() - 14);
+
+    const entradas = [];
+    const vistos = new Set();
+    ciclos.forEach(ciclo => {
+      if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
+      ciclo.movimientos.forEach((mov, index) => {
+        if (!mov || mov.etiqueta === 'recalcula') return;
+        const fecha = fechaDeMovimiento(mov, index, ciclo.fechaInicio);
+        if (Number.isNaN(fecha.getTime()) || fecha < corte || fecha >= inicioActual) return;
+        const clave = mov.id
+          ? `id:${mov.id}`
+          : `${Number(mov.timestamp) || ''}|${mov.fecha || ''}|${normalizarTipoMovimiento(mov.tipo)}|${Number(mov.monto) || 0}|${mov.detalle || ''}`;
+        if (vistos.has(clave)) return;
+        vistos.add(clave);
+        entradas.push({ mov, index, fecha, ciclo });
+      });
+    });
+    return entradas.sort((a, b) => b.fecha - a.fecha);
+  }
+
+  // También conserva visibles en “Ver todos” las compras que ya quedaron
+  // archivadas por sueldo pero aún pertenecen al ciclo bancario vigente.
   function movimientosArchivadosCiclosTarjetaVigentes(grupos = gruposPagoTarjetas()) {
     const vigentes = new Map();
     ['interbank', 'bcp'].forEach(id => {
@@ -10773,37 +10739,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         if (vistos.has(clave)) return;
         vistos.add(clave);
         entradas.push({ mov, index, ciclo, fecha, origen: 'archived-card-current' });
-      });
-    });
-    return entradas.sort((a,b) => b.fecha - a.fecha);
-  }
-
-  function movimientosRecientesCicloAnterior() {
-    // BUILD264 · no asumir que historialCiclos[0] contiene movimientos.
-    // Un cierre intermedio/vacío puede ocupar el primer slot y dejar el ciclo real
-    // con movimientos en el segundo. Buscamos en los dos ciclos archivados y
-    // reconstruimos la ventana cronológica de 14 días de forma conjunta.
-    const ciclos = getArchivedCycles();
-    if (!ciclos.length) return [];
-    const inicioActual = new Date(state.fechaInicioCiclo);
-    if (Number.isNaN(inicioActual.getTime())) return [];
-    const corte = new Date(inicioActual);
-    corte.setDate(corte.getDate() - 14);
-
-    const entradas = [];
-    const vistos = new Set();
-    ciclos.forEach(ciclo => {
-      if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
-      ciclo.movimientos.forEach((mov, index) => {
-        if (!mov || mov.etiqueta === 'recalcula') return;
-        const fecha = fechaDeMovimiento(mov, index, ciclo.fechaInicio);
-        if (Number.isNaN(fecha.getTime()) || fecha < corte || fecha >= inicioActual) return;
-        const clave = mov.id
-          ? `id:${mov.id}`
-          : `${Number(mov.timestamp) || ''}|${mov.fecha || ''}|${normalizarTipoMovimiento(mov.tipo)}|${Number(mov.monto) || 0}|${mov.detalle || ''}`;
-        if (vistos.has(clave)) return;
-        vistos.add(clave);
-        entradas.push({ mov, index, fecha, ciclo });
       });
     });
     return entradas.sort((a, b) => b.fecha - a.fecha);
@@ -11200,7 +11135,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const movimientosActualesFiltro = movementBankFilter === 'all'
       ? state.log
       : state.log.filter(mov => movimientoCoincideFiltroBanco(mov));
-    document.getElementById('movCount').textContent = movimientosActualesFiltro.length > 0 ? '(' + movimientosActualesFiltro.length + ')' : '';
+    const totalVisibles = movimientosActualesFiltro.length + recientesAnteriores.length;
+    document.getElementById('movCount').textContent = totalVisibles > 0 ? '(' + totalVisibles + ')' : '';
     if (state.redoMovement) {
       if (!redoMovementIsValid()) state.redoMovement = null;
     }
@@ -11214,16 +11150,21 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (btnHistory) btnHistory.disabled = getArchivedCycles().length === 0;
     
     const planesActivos = planesCuotasActivos();
-    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
-      logEl.innerHTML = '<div class="empty">Sin movimientos aún</div>';
-      return;
-    }
-    
+
+    // BUILD267: aun con state.log vacío (normal justo después de abrir un ciclo),
+    // nunca ocultar los heads-up actuales ni el historial reciente.
     logEl.innerHTML = '';
     appendInstallmentPlansSummary(logEl, movementBankFilter);
     // BUILD233: arriba solo los ciclos actuales. El anterior aparece más abajo,
     // en su posición cronológica, mediante divisorCicloTarjeta().
     logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
+    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Sin movimientos aún';
+      logEl.appendChild(empty);
+      return;
+    }
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
     const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
@@ -12259,19 +12200,16 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx, { editable: esActual })}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${esActual ? chipCategoriaMovimiento(mov, originalIdx) : chipCategoriaMovimiento(mov, -1)}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
-            <div class="log-right">
-              <div class="log-amount">${logAmountText(mov)}</div>
-            </div>
+            <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
           </div>
           </div>
         `;
       });
     }
 
-    const totalCiclo = entradasBase.filter(({mov}) => mov.etiqueta !== 'recalcula').length;
     const totalGeneral = entradasBase.filter(({mov}) => mov.etiqueta !== 'recalcula').length;
     const nombreFiltroBanco = movementBankFilter === 'all' ? '' : nombreTarjeta(movementBankFilter);
     const filtroActivo = (q || movementBankFilter !== 'all')
@@ -12291,28 +12229,46 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       ${tabsBanco}
       <div class="search-box">
         <span class="search-icon">⌕</span>
-        <input
-          type="text"
-          id="searchInput"
-          class="search-input"
-          placeholder="Buscar por detalle..."
-          value="${escapeHtml(searchQuery)}"
-          oninput="handleSearchInput(this.value)"
-        >
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por detalle..." value="${escapeHtml(searchQuery)}" oninput="onSearchInput(this.value)">
+        ${q ? '<button class="search-clear" onclick="clearSearch()">×</button>' : ''}
       </div>
       <div class="all-summary">
-        <div class="all-sum-card"><span class="all-sum-label">No adeudado (S)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalS)}</div></div>
-        <div class="all-sum-card"><span class="all-sum-label">Deuda (DS)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div></div>
-        <div class="all-sum-card"><span class="all-sum-label">Fondo (F)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div></div>
-        <div class="all-sum-card"><span class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div></div>
+        <div class="all-sum-item S"><div class="all-sum-label">No adeudado (S)</div><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalS)}</div></div>
+        <div class="all-sum-item DS"><div class="all-sum-label">Deuda (DS)</div><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div></div>
+        ${totalF > 0 ? `<div class="all-sum-item F"><div class="all-sum-label">Retirado del fondo (F)</div><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div></div>` : ''}
+        ${totalFDS > 0 ? `<div class="all-sum-item FDS"><div class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</div><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div></div>` : ''}
       </div>
       <div class="all-list">${listaHTML}</div>
       <div class="modal-buttons modal-buttons-three">
-        <button class="btn-secondary" onclick="downloadCSV()">CSV</button>
+        <button class="btn-secondary" onclick="exportarCSV()">CSV</button>
         <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
-        <button class="btn-primary" onclick="downloadExcelReport()">Descargar Excel</button>
+        <button class="btn-primary" onclick="exportarExcel()">Descargar Excel</button>
       </div>
-    `, { preserveScroll });
+    `);
+
+    setTimeout(() => {
+      const modal = document.getElementById('modalContent');
+      const inp = document.getElementById('searchInput');
+      initSwipeRows(modal);
+      if (preserveScroll && modal) {
+        const maxScroll = Math.max(0, modal.scrollHeight - modal.clientHeight);
+        modal.scrollTop = Math.min(allMovementsScrollTop, maxScroll);
+      }
+      if (inp && q) {
+        inp.focus();
+        inp.setSelectionRange(inp.value.length, inp.value.length);
+      }
+    }, 30);
+  }
+
+  function onSearchInput(val) {
+    searchQuery = val;
+    renderAllMovements();
+  }
+  
+  function clearSearch() {
+    searchQuery = '';
+    renderAllMovements();
   }
 
   function setAllMovementsBankFilter(value) {
@@ -12920,7 +12876,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
 
-  // ============ HISTORIAL DE CICLOS (BUILD266 · hasta 24 ciclos + recuperación silenciosa) ============
+  // ============ HISTORIAL DE CICLOS ============
   function getArchivedCycles() {
     const guardados = Array.isArray(state.historialCiclos) ? state.historialCiclos.slice(0, 24) : [];
     if (guardados.length > 0) return guardados;
@@ -12972,9 +12928,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     container.innerHTML = ciclos.length
       ? `<div class="cycle-history-list">${ciclos.map(buildCycleHistoryCard).join('')}</div>`
       : '<div class="view-empty">Cuando cierres tu primer ciclo, aparecerá aquí.</div>';
-    if (accessToken && !archivedCycleAutoRecoveryChecked && !archivedCycleAutoRecoveryInFlight) {
-      setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 80);
-    }
   }
 
   function formatNotaFecha(iso) {
@@ -13140,7 +13093,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
     openModal(`
       <h2>Ciclos <span class="accent">anteriores</span></h2>
-      <p class="modal-sub">Luki conserva tu historial de ciclos cerrados.</p>
+      <p class="modal-sub">Luki conserva automáticamente los últimos 2 ciclos cerrados.</p>
       <div class="cycle-history-list">${cards}</div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Cerrar</button>
@@ -18429,11 +18382,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   // ============ GOOGLE DRIVE SYNC ============
   const GOOGLE_CLIENT_ID = '944900044688-t8qsle009qmfm0vck5o2otl9gij30pq4.apps.googleusercontent.com';
   const DRIVE_FILE_NAME = 'ledger-data.json';
-  // BUILD261 · dos snapshots de seguridad propios en Drive.
-  // Se rotan antes de sobrescribir el archivo principal: backup 1 = versión previa,
-  // backup 2 = versión anterior a esa.
-  const DRIVE_BACKUP_1_NAME = 'ledger-data-backup-1.json';
-  const DRIVE_BACKUP_2_NAME = 'ledger-data-backup-2.json';
   
   let tokenClient = null;
   let accessToken = null;
@@ -18449,8 +18397,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   let lastFreshnessCheckAt = 0;
   let activeSyncAlertVersionId = null;
   let lastAnnouncedSyncVersionId = null;
-  let archivedCycleAutoRecoveryChecked = false;
-  let archivedCycleAutoRecoveryInFlight = false;
   
   function initGoogleSync() {
     if (typeof google === 'undefined' || !google.accounts) {
@@ -18475,7 +18421,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           updateSyncUI('syncing');
           scheduleTokenRefresh(expiresIn);
           setTimeout(() => checkDriveFreshness({ notify: true }), 80);
-          setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 180);
         }
       },
       error_callback: (err) => {
@@ -18499,7 +18444,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         const msRemaining = exp - Date.now();
         scheduleTokenRefresh(msRemaining / 1000);
         setTimeout(() => checkDriveFreshness({ notify: true }), 120);
-        setTimeout(() => autoRecoverMissingArchivedCyclesFromDrive(), 220);
       } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
         // Token expirado pero ya autorizó antes → intentar refresh silencioso
         setTimeout(silentRefresh, 500);
@@ -18565,74 +18509,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (!res.ok) throw new Error('find ' + res.status);
     const data = await res.json();
     return (data.files && data.files[0]) || null;
-  }
-
-
-  async function findDriveNamedFile(name) {
-    const safeName = String(name || '').replace(/'/g, "\'");
-    const q = encodeURIComponent(`name='${safeName}' and trashed=false`);
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime,size)`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    if (res.status === 401) { handleTokenExpired(); return null; }
-    if (!res.ok) throw new Error('find named ' + res.status);
-    const data = await res.json();
-    return (data.files && data.files[0]) || null;
-  }
-
-  async function writeDriveNamedState(name, snapshot) {
-    if (!accessToken || !snapshot || typeof snapshot !== 'object') throw new Error('BACKUP_INVALID');
-    let file = await findDriveNamedFile(name);
-    let fileId = file?.id || null;
-    if (!fileId) {
-      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ name, mimeType: 'application/json' })
-      });
-      if (createRes.status === 401) { handleTokenExpired(); throw new Error('TOKEN_EXPIRED'); }
-      if (!createRes.ok) throw new Error('backup create ' + createRes.status);
-      fileId = (await createRes.json()).id;
-    }
-    const uploadRes = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(snapshot)
-      }
-    );
-    if (uploadRes.status === 401) { handleTokenExpired(); throw new Error('TOKEN_EXPIRED'); }
-    if (!uploadRes.ok) throw new Error('backup upload ' + uploadRes.status);
-    return fileId;
-  }
-
-  async function readDriveNamedState(name) {
-    const file = await findDriveNamedFile(name);
-    if (!file) return null;
-    const snapshot = await fetchDriveState(file.id);
-    return snapshot ? { file, snapshot } : null;
-  }
-
-  async function rotateDriveSafetyBackups(remoteState) {
-    if (!remoteState || typeof remoteState !== 'object') return;
-    const backup1 = await readDriveNamedState(DRIVE_BACKUP_1_NAME);
-    // Si un upload anterior alcanzó a crear el backup pero falló antes de sustituir
-    // ledger-data.json, no rotamos dos veces el mismo estado.
-    if (backup1?.snapshot && syncRelevantFingerprint(backup1.snapshot) === syncRelevantFingerprint(remoteState)) {
-      return;
-    }
-    if (backup1?.snapshot) {
-      await writeDriveNamedState(DRIVE_BACKUP_2_NAME, backup1.snapshot);
-    }
-    await writeDriveNamedState(DRIVE_BACKUP_1_NAME, remoteState);
   }
   
   async function syncFromDrive() {
@@ -18760,13 +18636,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         updateSyncUI(comparison.status);
         return { blocked: true, status: comparison.status, remoteState };
       }
-    }
-
-    // BUILD261 · antes de sobrescribir Drive, preservar dos estados anteriores.
-    // Si el backup falla, NO se pisa ledger-data.json: preferimos bloquear el sync
-    // antes que perder la posibilidad de volver atrás.
-    if (remoteState) {
-      await rotateDriveSafetyBackups(remoteState);
     }
 
     const content = JSON.stringify(state);
@@ -18992,355 +18861,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     `);
   }
   
-
-  // ============ DOS VERSIONES PREVIAS EN DRIVE · BUILD262 (acceso desde Ciclos) ============
-  let driveSafetySnapshots = [];
-  let selectedDriveSafetySnapshot = null;
-
-  function driveSafetyDate(value) {
-    if (!value) return 'Sin fecha interna';
-    const d = new Date(Number(value) || value);
-    if (Number.isNaN(d.getTime())) return 'Sin fecha interna';
-    return d.toLocaleString('es-PE', {
-      day: '2-digit', month: 'short', year: 'numeric',
-      hour: '2-digit', minute: '2-digit'
-    });
-  }
-
-  function driveSafetySummary(candidate) {
-    const logCount = Array.isArray(candidate?.log) ? candidate.log.length : 0;
-    const ciclos = Array.isArray(candidate?.historialCiclos) ? candidate.historialCiclos : [];
-    const archivedMovs = ciclos.reduce((sum, ciclo) => sum + (Array.isArray(ciclo?.movimientos) ? ciclo.movimientos.length : 0), 0);
-    return {
-      logCount,
-      archivedMovs,
-      ciclos: ciclos.length,
-      totalMovs: logCount + archivedMovs,
-      disponible: Number(candidate?.totalDisponible) || 0,
-      fondo: Number(candidate?.montoIntocable) || 0,
-      deuda: Number(candidate?.deudaActual) || 0,
-      modified: Number(candidate?.lastModified) || 0
-    };
-  }
-
-  function closeDriveSafetyVersions() {
-    pauseAutoUpload = false;
-    selectedDriveSafetySnapshot = null;
-    closeModal();
-    if (currentSyncStatus === 'local-newer') scheduleSyncUpload();
-  }
-
-  async function openDriveSafetyVersions() {
-    if (!accessToken) {
-      toast('Conecta Drive primero', true);
-      return;
-    }
-    pauseAutoUpload = true;
-    clearTimeout(syncTimer);
-    openModal(`
-      <h2>Versiones <span class="accent">anteriores</span></h2>
-      <p class="modal-sub">Leyendo las dos copias de seguridad guardadas en Drive…</p>
-    `);
-    try {
-      const b1 = await readDriveNamedState(DRIVE_BACKUP_1_NAME);
-      const b2 = await readDriveNamedState(DRIVE_BACKUP_2_NAME);
-      driveSafetySnapshots = [b1?.snapshot || null, b2?.snapshot || null];
-      const available = driveSafetySnapshots
-        .map((snapshot, index) => ({ snapshot, index }))
-        .filter(item => item.snapshot);
-
-      if (!available.length) {
-        openModal(`
-          <h2>Versiones <span class="accent">anteriores</span></h2>
-          <p class="modal-sub">Todavía no hay copias previas. Desde BUILD 261, cada vez que Luki sobrescriba Drive guardará automáticamente las dos versiones anteriores.</p>
-          <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
-        `);
-        return;
-      }
-
-      const rows = available.map(({ snapshot, index }) => {
-        const s = driveSafetySummary(snapshot);
-        return `
-          <button class="sync-action-btn download" style="width:100%;margin-bottom:8px;" onclick="previewDriveSafetyVersion(${index})">
-            <div class="sync-action-icon">${index === 0 ? '1' : '2'}</div>
-            <div class="sync-action-content">
-              <div class="sync-action-title">${index === 0 ? '1 versión atrás' : '2 versiones atrás'}</div>
-              <div class="sync-action-sub">${escapeHtml(driveSafetyDate(s.modified))} · ${s.totalMovs} movimientos</div>
-            </div>
-          </button>`;
-      }).join('');
-
-      openModal(`
-        <h2>Versiones <span class="accent">anteriores</span></h2>
-        <p class="modal-sub">Son snapshots de Drive tomados justo antes de los últimos reemplazos de ledger-data.json.</p>
-        <div>${rows}</div>
-        <div class="manual-ranges-box" style="margin-top:12px;">
-          <div class="manual-ranges-title">Protección automática</div>
-          <div class="manual-ranges-sub">Antes de cada subida, Luki rota estas dos copias. Restaurar una versión también conserva el estado actual como una versión anterior.</div>
-        </div>
-        <div class="modal-buttons"><button class="btn-secondary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
-      `);
-    } catch (e) {
-      console.error('Drive safety versions:', e);
-      openModal(`
-        <h2>No pude leer las versiones</h2>
-        <p class="modal-sub">No se pudieron abrir las copias de seguridad de Drive. El archivo principal no fue modificado.</p>
-        <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
-      `);
-    }
-  }
-
-
-  // BUILD265 · rescate no destructivo de ciclos históricos desde Backup 1/2.
-
-  // BUILD266 · recuperación silenciosa del historial. Las copias de Drive se usan
-  // únicamente para reincorporar ciclos cerrados que falten localmente; nunca
-  // reemplaza el ciclo vigente ni los movimientos actuales.
-  async function autoRecoverMissingArchivedCyclesFromDrive() {
-    if (!accessToken || archivedCycleAutoRecoveryChecked || archivedCycleAutoRecoveryInFlight) return;
-    archivedCycleAutoRecoveryInFlight = true;
-    try {
-      const [b1, b2] = await Promise.all([
-        readDriveNamedState(DRIVE_BACKUP_1_NAME),
-        readDriveNamedState(DRIVE_BACKUP_2_NAME)
-      ]);
-      const actuales = Array.isArray(state.historialCiclos) ? state.historialCiclos : [];
-      const vistos = new Set(actuales.map(archivedCycleKey).filter(Boolean));
-      const recuperados = [];
-      [b1?.snapshot, b2?.snapshot].filter(Boolean).forEach(snapshot => {
-        const ciclos = Array.isArray(snapshot?.historialCiclos) ? snapshot.historialCiclos : [];
-        ciclos.forEach(ciclo => {
-          const key = archivedCycleKey(ciclo);
-          if (!key || vistos.has(key)) return;
-          const movs = Array.isArray(ciclo?.movimientos) ? ciclo.movimientos.length : 0;
-          const count = Number(ciclo?.numMovimientos) || 0;
-          const total = Number(ciclo?.totalGastado) || 0;
-          // No reintroducir ciclos intermedios/vacíos que pudieron generarse por error.
-          if (movs <= 0 && count <= 0 && Math.abs(total) < .005) return;
-          vistos.add(key);
-          recuperados.push(JSON.parse(JSON.stringify(ciclo)));
-        });
-      });
-      if (recuperados.length) {
-        const combinados = [...actuales, ...recuperados];
-        const dedupe = new Set();
-        state.historialCiclos = combinados
-          .filter(ciclo => {
-            const key = archivedCycleKey(ciclo);
-            if (!key || dedupe.has(key)) return false;
-            dedupe.add(key);
-            return true;
-          })
-          .sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a))
-          .slice(0, 24);
-        // Guardar localmente primero; luego la sincronización normal propagará el historial corregido.
-        saveState({ markModified: true, sync: false });
-        renderCycleHistoryInline();
-        renderComparison();
-        requestAnimationFrame(updateViewHeight);
-      }
-      archivedCycleAutoRecoveryChecked = true;
-    } catch (e) {
-      console.warn('Auto archived-cycle recovery:', e);
-      // Permitir un nuevo intento posterior si Drive tuvo un fallo transitorio.
-      archivedCycleAutoRecoveryChecked = false;
-    } finally {
-      archivedCycleAutoRecoveryInFlight = false;
-    }
-  }
-
-  let pendingRecoveredCycles = [];
-
-  function archivedCycleKey(ciclo) {
-    if (!ciclo) return '';
-    const inicio = ciclo.fechaInicio || '';
-    const fin = ciclo.fechaFin || '';
-    return `${inicio}|${fin}`;
-  }
-
-  function archivedCycleSortValue(ciclo) {
-    const fin = new Date(ciclo?.fechaFin || 0).getTime();
-    const inicio = new Date(ciclo?.fechaInicio || 0).getTime();
-    return Number.isFinite(fin) && fin > 0 ? fin : (Number.isFinite(inicio) ? inicio : 0);
-  }
-
-  async function openRecoverMissingCyclesFromDrive() {
-    if (!accessToken) {
-      toast('Conecta Drive primero', true);
-      return;
-    }
-    pauseAutoUpload = true;
-    clearTimeout(syncTimer);
-    openModal(`
-      <h2>Recuperando <span class="accent">ciclos</span></h2>
-      <p class="modal-sub">Buscando ciclos que existían en las dos copias anteriores de Drive…</p>
-    `);
-    try {
-      const [b1, b2] = await Promise.all([
-        readDriveNamedState(DRIVE_BACKUP_1_NAME),
-        readDriveNamedState(DRIVE_BACKUP_2_NAME)
-      ]);
-      const actuales = Array.isArray(state.historialCiclos) ? state.historialCiclos : [];
-      const actualesKeys = new Set(actuales.map(archivedCycleKey).filter(Boolean));
-      const vistos = new Set(actualesKeys);
-      const encontrados = [];
-      [b1?.snapshot, b2?.snapshot].filter(Boolean).forEach(snapshot => {
-        const ciclos = Array.isArray(snapshot?.historialCiclos) ? snapshot.historialCiclos : [];
-        ciclos.forEach(ciclo => {
-          const key = archivedCycleKey(ciclo);
-          if (!key || vistos.has(key)) return;
-          vistos.add(key);
-          encontrados.push(JSON.parse(JSON.stringify(ciclo)));
-        });
-      });
-      encontrados.sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a));
-      pendingRecoveredCycles = encontrados;
-
-      if (!encontrados.length) {
-        openModal(`
-          <h2>No hay ciclos <span class="accent">faltantes</span></h2>
-          <p class="modal-sub">Las dos copias de Drive no contienen ciclos adicionales a los que ya tienes en este dispositivo.</p>
-          <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
-        `);
-        return;
-      }
-
-      const rows = encontrados.map(ciclo => `
-        <div class="rollover-row">
-          <span class="rollover-week">${escapeHtml(formatCycleRange(ciclo))}</span>
-          <span class="rollover-amount" style="font-size:10px;">${Number(ciclo.numMovimientos)||0} mov. · S/ ${fmt(Number(ciclo.totalGastado)||0)}</span>
-        </div>`).join('');
-      openModal(`
-        <h2>Ciclos <span class="accent">encontrados</span></h2>
-        <p class="modal-sub">Estos ciclos existen en una copia anterior de Drive y no están en tu historial actual. Recuperarlos no reemplaza el ciclo vigente ni tus movimientos actuales.</p>
-        <div class="rollover-breakdown">${rows}</div>
-        <div class="modal-buttons">
-          <button class="btn-secondary" onclick="closeDriveSafetyVersions()">Cancelar</button>
-          <button class="btn-primary" onclick="applyRecoveredCyclesFromDrive()">Recuperar ${encontrados.length}</button>
-        </div>
-      `);
-    } catch (e) {
-      console.error('Recover missing cycles:', e);
-      pendingRecoveredCycles = [];
-      openModal(`
-        <h2>No pude revisar <span class="accent">Drive</span></h2>
-        <p class="modal-sub">No se modificó ningún dato. Revisa la conexión e inténtalo nuevamente.</p>
-        <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
-      `);
-    }
-  }
-
-  function applyRecoveredCyclesFromDrive() {
-    if (!pendingRecoveredCycles.length) {
-      toast('No hay ciclos para recuperar', true);
-      return;
-    }
-    const combinados = [
-      ...(Array.isArray(state.historialCiclos) ? state.historialCiclos : []),
-      ...pendingRecoveredCycles
-    ];
-    const vistos = new Set();
-    state.historialCiclos = combinados
-      .filter(ciclo => {
-        const key = archivedCycleKey(ciclo);
-        if (!key || vistos.has(key)) return false;
-        vistos.add(key);
-        return true;
-      })
-      .sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a))
-      .slice(0, 24);
-    pendingRecoveredCycles = [];
-    pauseAutoUpload = false;
-    saveState({ markModified: true, sync: true });
-    closeModal();
-    renderCycleHistoryInline();
-    renderCycleComparison();
-    toast('Ciclos recuperados');
-  }
-
-  function previewDriveSafetyVersion(index) {
-    const candidate = driveSafetySnapshots[Number(index)] || null;
-    if (!candidate) {
-      toast('Esa versión ya no está disponible', true);
-      return;
-    }
-    selectedDriveSafetySnapshot = JSON.parse(JSON.stringify(candidate));
-    const s = driveSafetySummary(candidate);
-    openModal(`
-      <h2>${Number(index) === 0 ? '1 versión' : '2 versiones'} <span class="accent">atrás</span></h2>
-      <p class="modal-sub">Revísala antes de restaurar. Nada cambia hasta que confirmes.</p>
-      <div class="rollover-breakdown">
-        <div class="rollover-row"><span class="rollover-week">Última edición</span><span class="rollover-amount" style="font-size:11px;">${escapeHtml(driveSafetyDate(s.modified))}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Movimientos actuales</span><span class="rollover-amount">${s.logCount}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Movimientos archivados</span><span class="rollover-amount">${s.archivedMovs}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Ciclos archivados</span><span class="rollover-amount">${s.ciclos}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Disponible</span><span class="rollover-amount">S/ ${fmt(s.disponible)}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Fondo</span><span class="rollover-amount">S/ ${fmt(s.fondo)}</span></div>
-        <div class="rollover-row"><span class="rollover-week">Deuda</span><span class="rollover-amount">S/ ${fmt(s.deuda)}</span></div>
-      </div>
-      <div class="manual-ranges-box" style="margin-top:12px;">
-        <div class="manual-ranges-title">Restauración segura</div>
-        <div class="manual-ranges-sub">Antes de reemplazar el estado actual, este también quedará guardado en Drive como versión anterior.</div>
-      </div>
-      <div class="modal-buttons">
-        <button class="btn-secondary" onclick="openDriveSafetyVersions()">Atrás</button>
-        <button class="btn-primary" onclick="restoreDriveSafetyVersion()">Restaurar versión</button>
-      </div>
-    `);
-  }
-
-  async function restoreDriveSafetyVersion() {
-    if (!selectedDriveSafetySnapshot) {
-      toast('Selecciona una versión primero', true);
-      return;
-    }
-    const localBefore = getDataVersionInfo(state);
-    const localDarkMode = state.darkMode;
-    const recovered = JSON.parse(JSON.stringify(selectedDriveSafetySnapshot));
-    const recoveredInfo = getDataVersionInfo(recovered);
-    openModal(`
-      <h2>Restaurando…</h2>
-      <p class="modal-sub">No cierres Luki mientras se recuperan Local y Drive.</p>
-    `);
-    try {
-      try {
-        localStorage.setItem('ledger-emergency-before-drive-restore-v1', JSON.stringify(state));
-      } catch(e) {}
-
-      state = { ...recovered, darkMode: localDarkMode };
-      ensureSyncMetadata(state);
-      asegurarSaldoInicialCiclo(state);
-      asegurarRitmoDiarioBloques(state);
-      state.lastModified = Date.now();
-      state.dataRevision = Math.max(localBefore.revision, recoveredInfo.revision) + 1;
-      state.dataVersionId = createDataVersionId(state.dataRevision, syncRelevantFingerprint(state));
-      localStorage.setItem('ledger-state-v2', JSON.stringify(state));
-      lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
-
-      // force=true: el remoto actual se rota primero a los backups y luego se
-      // sustituye por la versión elegida.
-      const result = await uploadToDrive({ force: true });
-      if (result?.blocked) throw new Error('RESTORE_BLOCKED');
-      rememberSyncedVersion(state);
-      pauseAutoUpload = false;
-      selectedDriveSafetySnapshot = null;
-
-      openModal(`
-        <h2>Versión <span class="accent">restaurada</span></h2>
-        <p class="modal-sub">La copia elegida ya es la versión actual en este dispositivo y en Drive. El estado que reemplazaste quedó guardado como versión anterior.</p>
-        <div class="modal-buttons"><button class="btn-primary" onclick="location.reload()">Recargar Luki</button></div>
-      `);
-    } catch (e) {
-      console.error('Drive safety restore:', e);
-      pauseAutoUpload = true;
-      openModal(`
-        <h2>Revisa la recuperación</h2>
-        <p class="modal-sub">La copia quedó aplicada localmente, pero no pude confirmar el reemplazo en Drive. No pulses Subir. Recarga y verifica tus datos antes de continuar.</p>
-        <div class="modal-buttons"><button class="btn-primary" onclick="location.reload()">Recargar y revisar</button></div>
-      `);
-    }
-  }
-
   async function subirAhora() {
     if (!accessToken) {
       toast('Conecta Drive primero', true);
