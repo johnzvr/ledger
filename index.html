@@ -13809,6 +13809,48 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
   }
 
 
+  function addExcelSpentMetricCard(sheet, { gastado, inicio }) {
+    const labelRange = 'A9:C9';
+    const spentRange = 'A10:C10';
+    const detailRange = 'A11:C11';
+    sheet.mergeCells(labelRange);
+    sheet.mergeCells(spentRange);
+    sheet.mergeCells(detailRange);
+
+    const labelCell = sheet.getCell('A9');
+    const spentCell = sheet.getCell('A10');
+    const detailCell = sheet.getCell('A11');
+
+    const gastadoValor = redondearDinero(Number(gastado) || 0);
+    const inicioValido = Number.isFinite(Number(inicio));
+    const restante = inicioValido
+      ? redondearDinero(Number(inicio) - gastadoValor)
+      : null;
+
+    labelCell.value = 'GASTADO';
+    spentCell.value = gastadoValor;
+    spentCell.numFmt = '"S/" #,##0.00';
+
+    if (restante === null) {
+      detailCell.value = 'Quedó: No registrado';
+    } else if (restante >= 0) {
+      detailCell.value = `Quedó: S/ ${fmt(restante)}`;
+    } else {
+      detailCell.value = `Exceso: S/ ${fmt(Math.abs(restante))}`;
+    }
+
+    labelCell.font = { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.muted } };
+    spentCell.font = { name: 'Aptos', size: 20, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    detailCell.font = { name: 'Aptos', size: 9, bold: true, color: { argb: EXCEL_PALETTE.muted } };
+    labelCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    spentCell.alignment = { vertical: 'middle', horizontal: 'left' };
+    detailCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: false };
+    styleExcelRange(sheet, 9, 1, 11, 3, {
+      fill: excelFill(EXCEL_PALETTE.green),
+      border: excelBorder(EXCEL_PALETTE.green)
+    });
+  }
+
   function addExcelFundMetricCard(sheet, { gastado, inicio, restante }) {
     const labelRange = 'A13:C13';
     const spentRange = 'A14:C14';
@@ -13912,7 +13954,10 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       EXCEL_PALETTE.cream,
       saldoInicialReporte !== null
     );
-    addExcelMetricCard(summary, ['A9:C9', 'A10:C11'], 'GASTADO', resumen.gastoDisponible, EXCEL_PALETTE.green);
+    addExcelSpentMetricCard(summary, {
+      gastado: resumen.gastoDisponible,
+      inicio: saldoInicialReporte
+    });
     addExcelMetricCard(summary, ['D9:F9', 'D10:F11'], 'DEUDA GENERADA', resumen.deudaGenerada, EXCEL_PALETTE.coral);
     addExcelFundMetricCard(summary, {
       gastado: resumen.fondoUtilizado,
