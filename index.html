@@ -11125,7 +11125,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     root.appendChild(card);
   }
 
-  function renderLog() {
+  function renderLogCore() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
     const recientesAnterioresBase = movimientosRecientesCicloAnterior();
@@ -11151,13 +11151,24 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     
     const planesActivos = planesCuotasActivos();
 
-    // BUILD267: aun con state.log vacío (normal justo después de abrir un ciclo),
+    // BUILD268: aun con state.log vacío (normal justo después de abrir un ciclo),
     // nunca ocultar los heads-up actuales ni el historial reciente.
     logEl.innerHTML = '';
-    appendInstallmentPlansSummary(logEl, movementBankFilter);
-    // BUILD233: arriba solo los ciclos actuales. El anterior aparece más abajo,
-    // en su posición cronológica, mediante divisorCicloTarjeta().
-    logEl.appendChild(resumenTotalesBancosElement(pagosTarjeta.grupos));
+
+    // BUILD268 · un fallo en cuotas/heads-up jamás puede dejar Movimientos vacío.
+    // Esos componentes son auxiliares; la lista de movimientos tiene prioridad.
+    try {
+      appendInstallmentPlansSummary(logEl, movementBankFilter);
+    } catch (error) {
+      console.error('[Luki] No se pudo renderizar cuotas activas:', error);
+    }
+    try {
+      const resumenBancos = resumenTotalesBancosElement(pagosTarjeta.grupos);
+      if (resumenBancos) logEl.appendChild(resumenBancos);
+    } catch (error) {
+      console.error('[Luki] No se pudo renderizar heads-up de tarjetas:', error);
+    }
+
     if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
@@ -11165,17 +11176,33 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       logEl.appendChild(empty);
       return;
     }
-    const editableIndices = new Set(getEditableMovementIndices());
-    const deletableIndices = new Set(getDeletableMovementIndices());
-    const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
+
+    let editableIndices = new Set();
+    let deletableIndices = new Set();
+    try { editableIndices = new Set(getEditableMovementIndices()); }
+    catch (error) { console.error('[Luki] Índices editables:', error); }
+    try { deletableIndices = new Set(getDeletableMovementIndices()); }
+    catch (error) { console.error('[Luki] Índices eliminables:', error); }
+
+    let corteEstadosAnteriores = null;
+    try {
+      corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
+    } catch (error) {
+      console.error('[Luki] Corte de estados anteriores:', error);
+    }
     let estadosAnterioresInsertados = false;
     const insertarEstadosAnterioresAntesDe = (fechaMovimiento) => {
       if (estadosAnterioresInsertados || !Number.isFinite(corteEstadosAnteriores)) return;
       const tiempo = new Date(fechaMovimiento).getTime();
       if (!Number.isFinite(tiempo) || tiempo > corteEstadosAnteriores) return;
-      const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos, movementBankFilter);
-      if (bloque) {
-        logEl.appendChild(bloque);
+      try {
+        const bloque = resumenAnterioresBancosElement(pagosTarjeta.grupos, movementBankFilter);
+        if (bloque) {
+          logEl.appendChild(bloque);
+          estadosAnterioresInsertados = true;
+        }
+      } catch (error) {
+        console.error('[Luki] Heads-up histórico:', error);
         estadosAnterioresInsertados = true;
       }
     };
@@ -11184,6 +11211,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : state.log.filter(mov => movimientoCoincideFiltroBanco(mov));
     const recent = recentSource.slice(-15).reverse();
     recent.forEach((mov) => {
+      try {
       const idx = state.log.indexOf(mov);
       const fechaMovimiento = fechaDeMovimiento(mov, idx, state.fechaInicioCiclo);
       const grupoPago = esMovimientoTarjeta(mov)
@@ -11232,6 +11260,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         </div>
       `;
       logEl.appendChild(div);
+      } catch (error) {
+        console.error('[Luki] Movimiento actual no renderizado:', error, mov);
+      }
     });
     if (recientesAnteriores.length > 0) {
       const marker = document.createElement('div');
@@ -11240,6 +11271,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       logEl.appendChild(marker);
 
       recientesAnteriores.forEach(({ mov, index, ciclo, fecha }) => {
+        try {
         const fechaMovimiento = fecha || fechaDeMovimiento(mov, index, ciclo.fechaInicio);
         const grupoPago = esMovimientoTarjeta(mov)
           ? grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, pagosTarjeta.grupos)
@@ -11267,9 +11299,167 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
         `;
         logEl.appendChild(div);
+        } catch (error) {
+          console.error('[Luki] Movimiento archivado no renderizado:', error, mov);
+        }
       });
     }
-    initSwipeRows(logEl);
+    try { initSwipeRows(logEl); }
+    catch (error) { console.error('[Luki] Gestos de movimientos:', error); }
+  }
+
+
+  // BUILD269 · wrapper de seguridad para Movimientos.
+  // Si el renderer principal falla o deja la lista vacía aun habiendo data,
+  // reconstruimos desde la misma fuente combinada que usa "Ver todos".
+  function claveMovimientoVista(mov) {
+    return mov?.id
+      ? `id:${mov.id}`
+      : `${Number(mov?.timestamp) || ''}|${mov?.fecha || ''}|${normalizarTipoMovimiento(mov?.tipo)}|${Number(mov?.monto) || 0}|${mov?.detalle || ''}`;
+  }
+
+  function entradasVistaPrincipalSegura() {
+    const pagos = contextoPagosTarjeta();
+    const entradas = [];
+    const vistos = new Set();
+    const agregar = (entrada) => {
+      if (!entrada?.mov || entrada.mov.etiqueta === 'recalcula') return;
+      if (movementBankFilter !== 'all' && !movimientoCoincideFiltroBanco(entrada.mov)) return;
+      const key = claveMovimientoVista(entrada.mov);
+      if (vistos.has(key)) return;
+      vistos.add(key);
+      entradas.push(entrada);
+    };
+
+    state.log.forEach((mov, index) => agregar({
+      mov,
+      index,
+      origen: 'actual',
+      fechaInicioReferencia: state.fechaInicioCiclo,
+      fecha: fechaDeMovimiento(mov, index, state.fechaInicioCiclo)
+    }));
+
+    movimientosRecientesCicloAnterior().forEach(item => agregar({
+      ...item,
+      origen: 'archivado-reciente',
+      fechaInicioReferencia: item.ciclo?.fechaInicio || state.fechaInicioCiclo
+    }));
+
+    movimientosArchivadosCiclosTarjetaVigentes(pagos.grupos).forEach(item => agregar({
+      ...item,
+      origen: 'archivado-tarjeta',
+      fechaInicioReferencia: item.ciclo?.fechaInicio || state.fechaInicioCiclo
+    }));
+
+    return entradas.sort((a,b) => (b.fecha?.getTime?.() || 0) - (a.fecha?.getTime?.() || 0));
+  }
+
+  function renderLogFallbackSeguro(errorOriginal = null) {
+    const logEl = document.getElementById('logContainer');
+    if (!logEl) return;
+    const pagos = contextoPagosTarjeta();
+    const entradas = entradasVistaPrincipalSegura();
+    logEl.innerHTML = '';
+
+    try { appendInstallmentPlansSummary(logEl, movementBankFilter); } catch(e) {}
+    try {
+      const resumen = resumenTotalesBancosElement(pagos.grupos);
+      if (resumen) logEl.appendChild(resumen);
+    } catch(e) {}
+
+    if (!entradas.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Sin movimientos aún';
+      logEl.appendChild(empty);
+      return;
+    }
+
+    const tieneArchivados = entradas.some(e => e.origen !== 'actual');
+    let markerPuesto = false;
+    entradas.forEach((entrada) => {
+      const mov = entrada.mov;
+      const esActual = entrada.origen === 'actual';
+      if (!esActual && tieneArchivados && !markerPuesto) {
+        const marker = document.createElement('div');
+        marker.className = 'previous-cycle-marker';
+        marker.textContent = 'Ciclo de sueldo anterior · últimos 14 días';
+        logEl.appendChild(marker);
+        markerPuesto = true;
+      }
+
+      let grupoPago = null;
+      try {
+        if (esMovimientoTarjeta(mov)) {
+          grupoPago = grupoPagoParaMovimiento(
+            mov,
+            entrada.index,
+            entrada.fechaInicioReferencia,
+            pagos.grupos
+          );
+        }
+      } catch(e) {}
+
+      const esTarjetaVigenteArchivada = !esActual
+        && esMovimientoTarjeta(mov)
+        && (() => {
+          try {
+            const id = tarjetaIdMovimiento(mov);
+            const vigente = grupoVigenteResumenBanco(id, pagos.grupos);
+            return !!vigente && !!grupoPago && vigente.key === grupoPago.key;
+          } catch(e) { return false; }
+        })();
+      const tarjetaCerrada = esActual && movementBankFilter === 'all'
+        ? (() => { try { return esMovimientoTarjeta(mov) && movimientoPerteneceEstadoTarjetaCerrado(grupoPago, pagos.grupos); } catch(e) { return false; } })()
+        : false;
+      const dimSueldo = !esActual && !esTarjetaVigenteArchivada;
+      const fueraBanco = movementBankFilter !== 'all' && !esActual
+        ? (() => { try { return !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagos.grupos); } catch(e) { return false; } })()
+        : false;
+
+      let dotType = normalizarTipoMovimiento(mov.tipo);
+      let dotLabel = etiquetaTipoMovimiento(mov);
+      let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
+      try { badge += badgeCuotaMovimiento(mov); } catch(e) {}
+      let bankMeta = '';
+      try {
+        if (esMovimientoTarjeta(mov)) bankMeta = badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago);
+      } catch(e) {}
+
+      const div = document.createElement('div');
+      div.className = `log-item${dimSueldo ? ' previous-salary-movement' : ''}${tarjetaCerrada ? ' previous-bank-cycle-movement' : ''}${fueraBanco ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
+      div.innerHTML = `
+        <div class="log-left">
+          <div class="log-dot ${dotType}">${dotLabel}</div>
+          <div class="log-info">
+            <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+            <div class="log-meta">${badge}${bankMeta}<span>${escapeHtml(mov.fecha || '')}</span></div>
+          </div>
+        </div>
+        <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+      `;
+      logEl.appendChild(div);
+    });
+
+    if (errorOriginal) console.error('[Luki] renderLog fallback activado:', errorOriginal);
+  }
+
+  function renderLog() {
+    let error = null;
+    try {
+      renderLogCore();
+    } catch (e) {
+      error = e;
+      console.error('[Luki] renderLog principal falló:', e);
+    }
+
+    const logEl = document.getElementById('logContainer');
+    let esperados = 0;
+    try { esperados = entradasVistaPrincipalSegura().length; } catch(e) {}
+    const pintados = logEl ? logEl.querySelectorAll('.log-item').length : 0;
+    if (error || (esperados > 0 && pintados === 0)) {
+      renderLogFallbackSeguro(error || new Error('Había movimientos pero la lista principal quedó vacía'));
+    }
   }
 
   function runSwipeOnboarding(root) {
