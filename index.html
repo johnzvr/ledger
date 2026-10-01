@@ -8703,7 +8703,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function fechaParaInput(d = new Date()) {
-    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    // BUILD270 · los estados persistidos/Drive serializan fechas como texto.
+    // Aceptar Date, string o timestamp evita que los heads-up desaparezcan
+    // cuando existen ciclos de tarjeta pagados/conciliados.
+    const fecha = d instanceof Date ? new Date(d.getTime()) : new Date(d);
+    if (Number.isNaN(fecha.getTime())) return '';
+    const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
     return local.toISOString().slice(0, 10);
   }
 
@@ -10149,13 +10154,14 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const tarjetaId = normalizarTarjetaId(grupo.tarjetaId);
     const inicio = grupo.inicio ? fechaParaInput(grupo.inicio) : '';
     const cierre = grupo.cierre ? fechaParaInput(grupo.cierre) : '';
-    return ciclosTarjetaPagados().find(item =>
-      normalizarTarjetaId(item?.tarjetaId) === tarjetaId
-      && (item?.key === grupo.key
-        || (inicio && cierre
-          && fechaParaInput(item?.inicio) === inicio
-          && fechaParaInput(item?.cierre) === cierre))
-    ) || null;
+    return ciclosTarjetaPagados().find(item => {
+      if (normalizarTarjetaId(item?.tarjetaId) !== tarjetaId) return false;
+      if (item?.key === grupo.key) return true;
+      if (!inicio || !cierre) return false;
+      const inicioItem = item?.inicio ? fechaParaInput(item.inicio) : '';
+      const cierreItem = item?.cierre ? fechaParaInput(item.cierre) : '';
+      return !!inicioItem && !!cierreItem && inicioItem === inicio && cierreItem === cierre;
+    }) || null;
   }
 
   function registrarPagoPendienteConciliar(grupo) {
@@ -11309,6 +11315,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
 
+  // BUILD270 · heads-up robustos con fechas persistidas + fallback que conserva estados.
   // BUILD269 · wrapper de seguridad para Movimientos.
   // Si el renderer principal falla o deja la lista vacía aun habiendo data,
   // reconstruimos desde la misma fuente combinada que usa "Ver todos".
@@ -11377,7 +11384,29 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
     const tieneArchivados = entradas.some(e => e.origen !== 'actual');
     let markerPuesto = false;
+
+    // BUILD270 · el renderer de emergencia también conserva la pareja histórica
+    // de heads-up. Así un fallo en el renderer principal nunca elimina los estados.
+    let corteHeadsHistoricos = null;
+    try {
+      corteHeadsHistoricos = fechaCorteResumenAnteriorBancos(pagos.grupos, movementBankFilter);
+    } catch (e) {}
+    let headsHistoricosInsertados = false;
+    const insertarHeadsHistoricosFallback = (fechaMovimiento) => {
+      if (headsHistoricosInsertados || !Number.isFinite(corteHeadsHistoricos)) return;
+      const tiempo = new Date(fechaMovimiento).getTime();
+      if (!Number.isFinite(tiempo) || tiempo > corteHeadsHistoricos) return;
+      try {
+        const bloque = resumenAnterioresBancosElement(pagos.grupos, movementBankFilter);
+        if (bloque) {
+          logEl.appendChild(bloque);
+          headsHistoricosInsertados = true;
+        }
+      } catch (e) {}
+    };
+
     entradas.forEach((entrada) => {
+      insertarHeadsHistoricosFallback(entrada.fecha);
       const mov = entrada.mov;
       const esActual = entrada.origen === 'actual';
       if (!esActual && tieneArchivados && !markerPuesto) {
@@ -11440,6 +11469,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       `;
       logEl.appendChild(div);
     });
+
+    if (!headsHistoricosInsertados) {
+      try {
+        const bloque = resumenAnterioresBancosElement(pagos.grupos, movementBankFilter);
+        if (bloque && Number.isFinite(corteHeadsHistoricos)) logEl.appendChild(bloque);
+      } catch (e) {}
+    }
 
     if (errorOriginal) console.error('[Luki] renderLog fallback activado:', errorOriginal);
   }
