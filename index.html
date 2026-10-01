@@ -13665,6 +13665,16 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
       diferenciaTrasPago
     };
 
+    // BUILD253 · si la deuda del nuevo ciclo viene directamente de los heads-up
+    // bancarios actuales, esos saldos ya son la fuente oficial. No corresponde
+    // compararlos contra la deuda histórica previa ni mostrar el modal legacy de
+    // conciliación. Los estados anteriores marcados como pagados se concilian
+    // internamente al cerrar el ciclo.
+    if (deudaDetalle.fuente === 'heads-up') {
+      finalizarNuevoCiclo(pagoMarcadoVisual ? 'pago' : 'coincide');
+      return;
+    }
+
     if (pagoMarcadoCoincide) {
       finalizarNuevoCiclo('pago');
       return;
