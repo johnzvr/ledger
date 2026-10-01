@@ -1206,6 +1206,43 @@
     font-size: 10px;
     color: var(--ink);
   }
+
+  /* BUILD262 · acceso a recuperación al final de Ciclos */
+  .cycle-recovery-section {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+  .cycle-recovery-kicker {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 8px;
+  }
+  .cycle-recovery-card {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 15px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: rgba(255,255,255,.32);
+    color: var(--ink);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .cycle-recovery-card:active { transform: scale(.99); }
+  .cycle-recovery-copy { min-width: 0; }
+  .cycle-recovery-title { font-size: 12px; font-weight: 800; }
+  .cycle-recovery-sub { margin-top: 3px; font-size: 9px; line-height: 1.35; color: var(--ink-dim); }
+  .cycle-recovery-arrow { flex: 0 0 auto; font-size: 18px; color: var(--ink-mute); }
+  body.dark .cycle-recovery-card { background: rgba(255,255,255,.035); }
+
   .cycle-summary-only {
     margin-top: 9px;
     font-size: 10px;
@@ -3799,6 +3836,11 @@
   }
   .log-item.previous-salary-movement { opacity: 0.66; }
   body.dark .log-item.previous-salary-movement { opacity: 0.72; }
+  /* BUILD260 · un movimiento atenuado no conserva un monto de estado activo (rojo/fondo). */
+  .ledger-arc-ui .log-item.previous-salary-movement .log-amount,
+  .ledger-arc-ui .log-item.previous-bank-cycle-movement .log-amount {
+    color: var(--ink-mute) !important;
+  }
   /* BUILD250 · en vista normal, una compra con tarjeta cuyo estado ya cerró
      se atenúa aunque siga dentro del ciclo de sueldo actual. */
   .log-item.previous-bank-cycle-movement { opacity: 0.66; }
@@ -3868,6 +3910,7 @@
     font-weight: 600;
     letter-spacing: 0.02em;
   }
+  .swipe-hint { display: none !important; }
   @keyframes swipePeek {
     0%, 100% { transform: translateX(0); }
     20%, 38% { transform: translateX(-34px); }
@@ -7621,6 +7664,17 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             </div>
           </div>
         </div>
+
+        <div class="cycle-recovery-section">
+          <div class="cycle-recovery-kicker">Recuperación</div>
+          <button class="cycle-recovery-card" type="button" onclick="openDriveSafetyVersions()">
+            <span class="cycle-recovery-copy">
+              <span class="cycle-recovery-title">Versiones anteriores</span>
+              <span class="cycle-recovery-sub">Recupera una de las 2 copias previas guardadas en Google Drive.</span>
+            </span>
+            <span class="cycle-recovery-arrow">›</span>
+          </button>
+        </div>
       </section>
 
       <!-- Ventana Anotaciones -->
@@ -11166,7 +11220,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         </div>
         <div class="log-right">
           <div class="log-amount">${logAmountText(mov)}</div>
-          ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← deshacer · editar →' : 'mantén · ← deshacer'}</span>` : ''}
+          
         </div>
         </div>
       `;
@@ -12114,7 +12168,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             </div>
             <div class="log-right">
               <div class="log-amount">${logAmountText(mov)}</div>
-              ${canUndo && !swipeHintSeen ? `<span class="swipe-hint">${canEdit ? '← deshacer · editar →' : 'mantén · ← deshacer'}</span>` : ''}
+              
             </div>
           </div>
           </div>
@@ -18320,6 +18374,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   // ============ GOOGLE DRIVE SYNC ============
   const GOOGLE_CLIENT_ID = '944900044688-t8qsle009qmfm0vck5o2otl9gij30pq4.apps.googleusercontent.com';
   const DRIVE_FILE_NAME = 'ledger-data.json';
+  // BUILD261 · dos snapshots de seguridad propios en Drive.
+  // Se rotan antes de sobrescribir el archivo principal: backup 1 = versión previa,
+  // backup 2 = versión anterior a esa.
+  const DRIVE_BACKUP_1_NAME = 'ledger-data-backup-1.json';
+  const DRIVE_BACKUP_2_NAME = 'ledger-data-backup-2.json';
   
   let tokenClient = null;
   let accessToken = null;
@@ -18448,6 +18507,74 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const data = await res.json();
     return (data.files && data.files[0]) || null;
   }
+
+
+  async function findDriveNamedFile(name) {
+    const safeName = String(name || '').replace(/'/g, "\'");
+    const q = encodeURIComponent(`name='${safeName}' and trashed=false`);
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&spaces=drive&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime,size)`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (res.status === 401) { handleTokenExpired(); return null; }
+    if (!res.ok) throw new Error('find named ' + res.status);
+    const data = await res.json();
+    return (data.files && data.files[0]) || null;
+  }
+
+  async function writeDriveNamedState(name, snapshot) {
+    if (!accessToken || !snapshot || typeof snapshot !== 'object') throw new Error('BACKUP_INVALID');
+    let file = await findDriveNamedFile(name);
+    let fileId = file?.id || null;
+    if (!fileId) {
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, mimeType: 'application/json' })
+      });
+      if (createRes.status === 401) { handleTokenExpired(); throw new Error('TOKEN_EXPIRED'); }
+      if (!createRes.ok) throw new Error('backup create ' + createRes.status);
+      fileId = (await createRes.json()).id;
+    }
+    const uploadRes = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(snapshot)
+      }
+    );
+    if (uploadRes.status === 401) { handleTokenExpired(); throw new Error('TOKEN_EXPIRED'); }
+    if (!uploadRes.ok) throw new Error('backup upload ' + uploadRes.status);
+    return fileId;
+  }
+
+  async function readDriveNamedState(name) {
+    const file = await findDriveNamedFile(name);
+    if (!file) return null;
+    const snapshot = await fetchDriveState(file.id);
+    return snapshot ? { file, snapshot } : null;
+  }
+
+  async function rotateDriveSafetyBackups(remoteState) {
+    if (!remoteState || typeof remoteState !== 'object') return;
+    const backup1 = await readDriveNamedState(DRIVE_BACKUP_1_NAME);
+    // Si un upload anterior alcanzó a crear el backup pero falló antes de sustituir
+    // ledger-data.json, no rotamos dos veces el mismo estado.
+    if (backup1?.snapshot && syncRelevantFingerprint(backup1.snapshot) === syncRelevantFingerprint(remoteState)) {
+      return;
+    }
+    if (backup1?.snapshot) {
+      await writeDriveNamedState(DRIVE_BACKUP_2_NAME, backup1.snapshot);
+    }
+    await writeDriveNamedState(DRIVE_BACKUP_1_NAME, remoteState);
+  }
   
   async function syncFromDrive() {
     // Ya no se usa. La sincronización ahora es manual via subirAhora() y bajarAhora()
@@ -18574,6 +18701,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         updateSyncUI(comparison.status);
         return { blocked: true, status: comparison.status, remoteState };
       }
+    }
+
+    // BUILD261 · antes de sobrescribir Drive, preservar dos estados anteriores.
+    // Si el backup falla, NO se pisa ledger-data.json: preferimos bloquear el sync
+    // antes que perder la posibilidad de volver atrás.
+    if (remoteState) {
+      await rotateDriveSafetyBackups(remoteState);
     }
 
     const content = JSON.stringify(state);
@@ -18799,6 +18933,187 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     `);
   }
   
+
+  // ============ DOS VERSIONES PREVIAS EN DRIVE · BUILD262 (acceso desde Ciclos) ============
+  let driveSafetySnapshots = [];
+  let selectedDriveSafetySnapshot = null;
+
+  function driveSafetyDate(value) {
+    if (!value) return 'Sin fecha interna';
+    const d = new Date(Number(value) || value);
+    if (Number.isNaN(d.getTime())) return 'Sin fecha interna';
+    return d.toLocaleString('es-PE', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function driveSafetySummary(candidate) {
+    const logCount = Array.isArray(candidate?.log) ? candidate.log.length : 0;
+    const ciclos = Array.isArray(candidate?.historialCiclos) ? candidate.historialCiclos : [];
+    const archivedMovs = ciclos.reduce((sum, ciclo) => sum + (Array.isArray(ciclo?.movimientos) ? ciclo.movimientos.length : 0), 0);
+    return {
+      logCount,
+      archivedMovs,
+      ciclos: ciclos.length,
+      totalMovs: logCount + archivedMovs,
+      disponible: Number(candidate?.totalDisponible) || 0,
+      fondo: Number(candidate?.montoIntocable) || 0,
+      deuda: Number(candidate?.deudaActual) || 0,
+      modified: Number(candidate?.lastModified) || 0
+    };
+  }
+
+  function closeDriveSafetyVersions() {
+    pauseAutoUpload = false;
+    selectedDriveSafetySnapshot = null;
+    closeModal();
+    if (currentSyncStatus === 'local-newer') scheduleSyncUpload();
+  }
+
+  async function openDriveSafetyVersions() {
+    if (!accessToken) {
+      toast('Conecta Drive primero', true);
+      return;
+    }
+    pauseAutoUpload = true;
+    clearTimeout(syncTimer);
+    openModal(`
+      <h2>Versiones <span class="accent">anteriores</span></h2>
+      <p class="modal-sub">Leyendo las dos copias de seguridad guardadas en Drive…</p>
+    `);
+    try {
+      const b1 = await readDriveNamedState(DRIVE_BACKUP_1_NAME);
+      const b2 = await readDriveNamedState(DRIVE_BACKUP_2_NAME);
+      driveSafetySnapshots = [b1?.snapshot || null, b2?.snapshot || null];
+      const available = driveSafetySnapshots
+        .map((snapshot, index) => ({ snapshot, index }))
+        .filter(item => item.snapshot);
+
+      if (!available.length) {
+        openModal(`
+          <h2>Versiones <span class="accent">anteriores</span></h2>
+          <p class="modal-sub">Todavía no hay copias previas. Desde BUILD 261, cada vez que Luki sobrescriba Drive guardará automáticamente las dos versiones anteriores.</p>
+          <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
+        `);
+        return;
+      }
+
+      const rows = available.map(({ snapshot, index }) => {
+        const s = driveSafetySummary(snapshot);
+        return `
+          <button class="sync-action-btn download" style="width:100%;margin-bottom:8px;" onclick="previewDriveSafetyVersion(${index})">
+            <div class="sync-action-icon">${index === 0 ? '1' : '2'}</div>
+            <div class="sync-action-content">
+              <div class="sync-action-title">${index === 0 ? '1 versión atrás' : '2 versiones atrás'}</div>
+              <div class="sync-action-sub">${escapeHtml(driveSafetyDate(s.modified))} · ${s.totalMovs} movimientos</div>
+            </div>
+          </button>`;
+      }).join('');
+
+      openModal(`
+        <h2>Versiones <span class="accent">anteriores</span></h2>
+        <p class="modal-sub">Son snapshots de Drive tomados justo antes de los últimos reemplazos de ledger-data.json.</p>
+        <div>${rows}</div>
+        <div class="manual-ranges-box" style="margin-top:12px;">
+          <div class="manual-ranges-title">Protección automática</div>
+          <div class="manual-ranges-sub">Antes de cada subida, Luki rota estas dos copias. Restaurar una versión también conserva el estado actual como una versión anterior.</div>
+        </div>
+        <div class="modal-buttons"><button class="btn-secondary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
+      `);
+    } catch (e) {
+      console.error('Drive safety versions:', e);
+      openModal(`
+        <h2>No pude leer las versiones</h2>
+        <p class="modal-sub">No se pudieron abrir las copias de seguridad de Drive. El archivo principal no fue modificado.</p>
+        <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
+      `);
+    }
+  }
+
+  function previewDriveSafetyVersion(index) {
+    const candidate = driveSafetySnapshots[Number(index)] || null;
+    if (!candidate) {
+      toast('Esa versión ya no está disponible', true);
+      return;
+    }
+    selectedDriveSafetySnapshot = JSON.parse(JSON.stringify(candidate));
+    const s = driveSafetySummary(candidate);
+    openModal(`
+      <h2>${Number(index) === 0 ? '1 versión' : '2 versiones'} <span class="accent">atrás</span></h2>
+      <p class="modal-sub">Revísala antes de restaurar. Nada cambia hasta que confirmes.</p>
+      <div class="rollover-breakdown">
+        <div class="rollover-row"><span class="rollover-week">Última edición</span><span class="rollover-amount" style="font-size:11px;">${escapeHtml(driveSafetyDate(s.modified))}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Movimientos actuales</span><span class="rollover-amount">${s.logCount}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Movimientos archivados</span><span class="rollover-amount">${s.archivedMovs}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Ciclos archivados</span><span class="rollover-amount">${s.ciclos}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Disponible</span><span class="rollover-amount">S/ ${fmt(s.disponible)}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Fondo</span><span class="rollover-amount">S/ ${fmt(s.fondo)}</span></div>
+        <div class="rollover-row"><span class="rollover-week">Deuda</span><span class="rollover-amount">S/ ${fmt(s.deuda)}</span></div>
+      </div>
+      <div class="manual-ranges-box" style="margin-top:12px;">
+        <div class="manual-ranges-title">Restauración segura</div>
+        <div class="manual-ranges-sub">Antes de reemplazar el estado actual, este también quedará guardado en Drive como versión anterior.</div>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="openDriveSafetyVersions()">Atrás</button>
+        <button class="btn-primary" onclick="restoreDriveSafetyVersion()">Restaurar versión</button>
+      </div>
+    `);
+  }
+
+  async function restoreDriveSafetyVersion() {
+    if (!selectedDriveSafetySnapshot) {
+      toast('Selecciona una versión primero', true);
+      return;
+    }
+    const localBefore = getDataVersionInfo(state);
+    const localDarkMode = state.darkMode;
+    const recovered = JSON.parse(JSON.stringify(selectedDriveSafetySnapshot));
+    const recoveredInfo = getDataVersionInfo(recovered);
+    openModal(`
+      <h2>Restaurando…</h2>
+      <p class="modal-sub">No cierres Luki mientras se recuperan Local y Drive.</p>
+    `);
+    try {
+      try {
+        localStorage.setItem('ledger-emergency-before-drive-restore-v1', JSON.stringify(state));
+      } catch(e) {}
+
+      state = { ...recovered, darkMode: localDarkMode };
+      ensureSyncMetadata(state);
+      asegurarSaldoInicialCiclo(state);
+      asegurarRitmoDiarioBloques(state);
+      state.lastModified = Date.now();
+      state.dataRevision = Math.max(localBefore.revision, recoveredInfo.revision) + 1;
+      state.dataVersionId = createDataVersionId(state.dataRevision, syncRelevantFingerprint(state));
+      localStorage.setItem('ledger-state-v2', JSON.stringify(state));
+      lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
+
+      // force=true: el remoto actual se rota primero a los backups y luego se
+      // sustituye por la versión elegida.
+      const result = await uploadToDrive({ force: true });
+      if (result?.blocked) throw new Error('RESTORE_BLOCKED');
+      rememberSyncedVersion(state);
+      pauseAutoUpload = false;
+      selectedDriveSafetySnapshot = null;
+
+      openModal(`
+        <h2>Versión <span class="accent">restaurada</span></h2>
+        <p class="modal-sub">La copia elegida ya es la versión actual en este dispositivo y en Drive. El estado que reemplazaste quedó guardado como versión anterior.</p>
+        <div class="modal-buttons"><button class="btn-primary" onclick="location.reload()">Recargar Luki</button></div>
+      `);
+    } catch (e) {
+      console.error('Drive safety restore:', e);
+      pauseAutoUpload = true;
+      openModal(`
+        <h2>Revisa la recuperación</h2>
+        <p class="modal-sub">La copia quedó aplicada localmente, pero no pude confirmar el reemplazo en Drive. No pulses Subir. Recarga y verifica tus datos antes de continuar.</p>
+        <div class="modal-buttons"><button class="btn-primary" onclick="location.reload()">Recargar y revisar</button></div>
+      `);
+    }
+  }
+
   async function subirAhora() {
     if (!accessToken) {
       toast('Conecta Drive primero', true);
