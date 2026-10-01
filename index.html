@@ -3804,7 +3804,7 @@
   .ledger-arc-ui .log-item.previous-bank-cycle-movement .log-amount {
     color: var(--ink-mute) !important;
   }
-  /* BUILD275 · fuera del ciclo actual de la tarjeta: gris neutro, sin dim.
+  /* BUILD276 · fuera del ciclo actual de la tarjeta: gris neutro real, también en archivados.
      Conserva opacidad completa para que el corte de ciclo sea fácil de leer. */
   .log-item.previous-bank-cycle-movement {
     opacity: 1;
@@ -11321,8 +11321,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         const div = document.createElement('div');
         const fueraCicloBancoVisible = movementBankFilter !== 'all'
           && !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagosTarjeta.grupos);
-        const atenuarPorCicloSueldo = movementBankFilter === 'all';
-        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${fueraCicloBancoVisible ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
+        const fueraCicloTarjetaEnVistaGeneral = movementBankFilter === 'all'
+          && esMovimientoTarjeta(mov)
+          && movimientoPerteneceEstadoTarjetaCerrado(grupoPago, pagosTarjeta.grupos);
+        const atenuarPorCicloSueldo = movementBankFilter === 'all'
+          && !fueraCicloTarjetaEnVistaGeneral;
+        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${fueraCicloTarjetaEnVistaGeneral ? ' previous-bank-cycle-movement' : ''}${fueraCicloBancoVisible ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
         div.innerHTML = `
           <div class="log-left">
             <div class="log-dot ${dotType}">${dotLabel}</div>
@@ -11467,10 +11471,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             return !!vigente && !!grupoPago && vigente.key === grupoPago.key;
           } catch(e) { return false; }
         })();
-      const tarjetaCerrada = esActual && movementBankFilter === 'all'
+      const tarjetaCerrada = movementBankFilter === 'all'
         ? (() => { try { return esMovimientoTarjeta(mov) && movimientoPerteneceEstadoTarjetaCerrado(grupoPago, pagos.grupos); } catch(e) { return false; } })()
         : false;
-      const dimSueldo = !esActual && !esTarjetaVigenteArchivada;
+      const dimSueldo = !esActual && !esTarjetaVigenteArchivada && !tarjetaCerrada;
       const fueraBanco = movementBankFilter !== 'all' && !esActual
         ? (() => { try { return !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagos.grupos); } catch(e) { return false; } })()
         : false;
