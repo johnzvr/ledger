@@ -7674,6 +7674,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             </span>
             <span class="cycle-recovery-arrow">›</span>
           </button>
+          <button class="cycle-recovery-card" type="button" onclick="openRecoverMissingCyclesFromDrive()" style="margin-top:8px;">
+            <span class="cycle-recovery-copy">
+              <span class="cycle-recovery-title">Recuperar ciclos faltantes</span>
+              <span class="cycle-recovery-sub">Busca ciclos antiguos en las 2 copias de Drive y los agrega sin reemplazar tu ciclo actual.</span>
+            </span>
+            <span class="cycle-recovery-arrow">›</span>
+          </button>
         </div>
       </section>
 
@@ -9666,7 +9673,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     asegurarModeloMultiTarjeta();
     asegurarRitmoDiarioBloques(state);
     if (!Array.isArray(state.historialCiclos)) state.historialCiclos = [];
-    if (state.historialCiclos.length > 2) state.historialCiclos = state.historialCiclos.slice(0, 2);
+    if (state.historialCiclos.length > 24) state.historialCiclos = state.historialCiclos.slice(0, 24);
     if (!Array.isArray(state.tarjetaCiclosPagados)) state.tarjetaCiclosPagados = [];
     if (!Array.isArray(state.tarjetaPagosPendientesConciliar)) state.tarjetaPagosPendientesConciliar = [];
     if (!Array.isArray(state.tarjetaMovimientosArrastrados)) state.tarjetaMovimientosArrastrados = [];
@@ -12292,11 +12299,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <div class="all-sum-card"><span class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div></div>
       </div>
       <div class="all-list">${listaHTML}</div>
-      <div class="modal-actions split">
+      <div class="modal-buttons modal-buttons-three">
         <button class="btn-secondary" onclick="downloadCSV()">CSV</button>
         <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
+        <button class="btn-primary" onclick="downloadExcelReport()">Descargar Excel</button>
       </div>
-      <button class="btn-primary" onclick="downloadExcelReport()">Descargar Excel</button>
     `, { preserveScroll });
   }
 
@@ -12905,9 +12912,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
 
-  // ============ HISTORIAL DE CICLOS (MÁXIMO 2) ============
+  // ============ HISTORIAL DE CICLOS (BUILD265 · hasta 24 ciclos) ============
   function getArchivedCycles() {
-    const guardados = Array.isArray(state.historialCiclos) ? state.historialCiclos.slice(0, 2) : [];
+    const guardados = Array.isArray(state.historialCiclos) ? state.historialCiclos.slice(0, 24) : [];
     if (guardados.length > 0) return guardados;
 
     // Compatibilidad: versiones anteriores solo conservaban un resumen.
@@ -13122,7 +13129,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
     openModal(`
       <h2>Ciclos <span class="accent">anteriores</span></h2>
-      <p class="modal-sub">Luki conserva automáticamente los últimos 2 ciclos cerrados.</p>
+      <p class="modal-sub">Luki conserva tu historial de ciclos cerrados.</p>
       <div class="cycle-history-list">${cards}</div>
       <div class="modal-buttons">
         <button class="btn-primary" onclick="closeModal()">Cerrar</button>
@@ -14207,8 +14214,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       cicloCerrado,
       ...anteriores.filter(c => c.id !== cicloCerrado.id)
     ];
-    actualizarArrastreTarjeta(historialCompleto.slice(2));
-    state.historialCiclos = historialCompleto.slice(0, 2);
+    actualizarArrastreTarjeta(historialCompleto.slice(24));
+    state.historialCiclos = historialCompleto.slice(0, 24);
 
     // Resumen usado por la comparación del ciclo actual.
     state.cicloAnterior = {
@@ -19066,6 +19073,117 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
       `);
     }
+  }
+
+
+  // BUILD265 · rescate no destructivo de ciclos históricos desde Backup 1/2.
+  let pendingRecoveredCycles = [];
+
+  function archivedCycleKey(ciclo) {
+    if (!ciclo) return '';
+    const inicio = ciclo.fechaInicio || '';
+    const fin = ciclo.fechaFin || '';
+    return `${inicio}|${fin}`;
+  }
+
+  function archivedCycleSortValue(ciclo) {
+    const fin = new Date(ciclo?.fechaFin || 0).getTime();
+    const inicio = new Date(ciclo?.fechaInicio || 0).getTime();
+    return Number.isFinite(fin) && fin > 0 ? fin : (Number.isFinite(inicio) ? inicio : 0);
+  }
+
+  async function openRecoverMissingCyclesFromDrive() {
+    if (!accessToken) {
+      toast('Conecta Drive primero', true);
+      return;
+    }
+    pauseAutoUpload = true;
+    clearTimeout(syncTimer);
+    openModal(`
+      <h2>Recuperando <span class="accent">ciclos</span></h2>
+      <p class="modal-sub">Buscando ciclos que existían en las dos copias anteriores de Drive…</p>
+    `);
+    try {
+      const [b1, b2] = await Promise.all([
+        readDriveNamedState(DRIVE_BACKUP_1_NAME),
+        readDriveNamedState(DRIVE_BACKUP_2_NAME)
+      ]);
+      const actuales = Array.isArray(state.historialCiclos) ? state.historialCiclos : [];
+      const actualesKeys = new Set(actuales.map(archivedCycleKey).filter(Boolean));
+      const vistos = new Set(actualesKeys);
+      const encontrados = [];
+      [b1?.snapshot, b2?.snapshot].filter(Boolean).forEach(snapshot => {
+        const ciclos = Array.isArray(snapshot?.historialCiclos) ? snapshot.historialCiclos : [];
+        ciclos.forEach(ciclo => {
+          const key = archivedCycleKey(ciclo);
+          if (!key || vistos.has(key)) return;
+          vistos.add(key);
+          encontrados.push(JSON.parse(JSON.stringify(ciclo)));
+        });
+      });
+      encontrados.sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a));
+      pendingRecoveredCycles = encontrados;
+
+      if (!encontrados.length) {
+        openModal(`
+          <h2>No hay ciclos <span class="accent">faltantes</span></h2>
+          <p class="modal-sub">Las dos copias de Drive no contienen ciclos adicionales a los que ya tienes en este dispositivo.</p>
+          <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
+        `);
+        return;
+      }
+
+      const rows = encontrados.map(ciclo => `
+        <div class="rollover-row">
+          <span class="rollover-week">${escapeHtml(formatCycleRange(ciclo))}</span>
+          <span class="rollover-amount" style="font-size:10px;">${Number(ciclo.numMovimientos)||0} mov. · S/ ${fmt(Number(ciclo.totalGastado)||0)}</span>
+        </div>`).join('');
+      openModal(`
+        <h2>Ciclos <span class="accent">encontrados</span></h2>
+        <p class="modal-sub">Estos ciclos existen en una copia anterior de Drive y no están en tu historial actual. Recuperarlos no reemplaza el ciclo vigente ni tus movimientos actuales.</p>
+        <div class="rollover-breakdown">${rows}</div>
+        <div class="modal-buttons">
+          <button class="btn-secondary" onclick="closeDriveSafetyVersions()">Cancelar</button>
+          <button class="btn-primary" onclick="applyRecoveredCyclesFromDrive()">Recuperar ${encontrados.length}</button>
+        </div>
+      `);
+    } catch (e) {
+      console.error('Recover missing cycles:', e);
+      pendingRecoveredCycles = [];
+      openModal(`
+        <h2>No pude revisar <span class="accent">Drive</span></h2>
+        <p class="modal-sub">No se modificó ningún dato. Revisa la conexión e inténtalo nuevamente.</p>
+        <div class="modal-buttons"><button class="btn-primary" onclick="closeDriveSafetyVersions()">Cerrar</button></div>
+      `);
+    }
+  }
+
+  function applyRecoveredCyclesFromDrive() {
+    if (!pendingRecoveredCycles.length) {
+      toast('No hay ciclos para recuperar', true);
+      return;
+    }
+    const combinados = [
+      ...(Array.isArray(state.historialCiclos) ? state.historialCiclos : []),
+      ...pendingRecoveredCycles
+    ];
+    const vistos = new Set();
+    state.historialCiclos = combinados
+      .filter(ciclo => {
+        const key = archivedCycleKey(ciclo);
+        if (!key || vistos.has(key)) return false;
+        vistos.add(key);
+        return true;
+      })
+      .sort((a,b) => archivedCycleSortValue(b) - archivedCycleSortValue(a))
+      .slice(0, 24);
+    pendingRecoveredCycles = [];
+    pauseAutoUpload = false;
+    saveState({ markModified: true, sync: true });
+    closeModal();
+    renderCycleHistoryInline();
+    renderCycleComparison();
+    toast('Ciclos recuperados');
   }
 
   function previewDriveSafetyVersion(index) {
