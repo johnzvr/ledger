@@ -7235,7 +7235,7 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 </style>
 
 <style id="luki-255-cycle-start-snapshot">
-/* BUILD255 · fotografía de los datos usados al iniciar el ciclo. */
+/* BUILD256 · en Inicio del ciclo, Cuenta dólares muestra también su equivalente en soles. */
 .cycle-start-snapshot { display: grid; gap: 14px; }
 .cycle-start-snapshot .snapshot-kicker {
   font-size: 8px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase;
@@ -7252,6 +7252,9 @@ body.dark .pace-detail-toggle { background: #F5F5F7; color: #0A0A0B; }
 .cycle-start-snapshot .snapshot-row span { color: var(--ink-dim); min-width: 0; }
 .cycle-start-snapshot .snapshot-row strong {
   color: var(--ink); font-family: var(--font-num); font-size: 12px; font-weight: 760; text-align: right;
+}
+.cycle-start-snapshot .snapshot-row strong small {
+  display:block; margin-top:2px; color:var(--ink-mute); font-family:var(--font-ui); font-size:9px; font-weight:700;
 }
 .cycle-start-snapshot .snapshot-row.emphasis { background: rgba(183, 167, 226, .12); }
 .cycle-start-snapshot .snapshot-row.emphasis strong { font-size: 15px; }
@@ -12636,7 +12639,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <div class="snapshot-kicker">Lo que ingresaste</div>
           <div class="snapshot-card">
             <div class="snapshot-row"><span>Cuenta soles</span><strong>${money(cuentas.cuentaSoles)}</strong></div>
-            <div class="snapshot-row"><span>Cuenta dólares</span><strong>${usd(cuentas.cuentaDolares)}</strong></div>
+            <div class="snapshot-row"><span>Cuenta dólares</span><strong>${usd(cuentas.cuentaDolares)}${Number(cuentas.cuentaDolares) > .005 && Number(cuentas.tcUsdPen) > .005 ? `<small>≈ ${money((Number(cuentas.cuentaDolares) || 0) * (Number(cuentas.tcUsdPen) || 0))}</small>` : ""}</strong></div>
             <div class="snapshot-row"><span>TC USD → PEN</span><strong>${rate(cuentas.tcUsdPen)}</strong></div>
             <div class="snapshot-row"><span>Cuenta ahorros</span><strong>${money(cuentas.cuentaAhorros)}</strong></div>
             <div class="snapshot-row"><span>Fondo reservado</span><strong>${money(cuentas.fondo)}</strong></div>
