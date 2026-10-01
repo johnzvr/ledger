@@ -10728,19 +10728,70 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     return grupoPagoParaFecha(fechaMovimiento, grupos, tarjetaIdMovimiento(mov));
   }
 
+  // BUILD264 · Ver todos también incluye movimientos archivados que todavía
+  // pertenecen al ciclo bancario vigente de Interbank/BCP, aunque hayan quedado
+  // en el ciclo de sueldo anterior.
+  function movimientosArchivadosCiclosTarjetaVigentes(grupos = gruposPagoTarjetas()) {
+    const vigentes = new Map();
+    ['interbank', 'bcp'].forEach(id => {
+      const grupo = grupoVigenteResumenBanco(id, grupos);
+      if (grupo?.key) vigentes.set(id, grupo);
+    });
+    if (vigentes.size === 0) return [];
+
+    const entradas = [];
+    const vistos = new Set();
+    getArchivedCycles().forEach(ciclo => {
+      if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
+      ciclo.movimientos.forEach((mov, index) => {
+        if (!mov || mov.etiqueta === 'recalcula' || !esMovimientoTarjeta(mov)) return;
+        const id = tarjetaIdMovimiento(mov);
+        const vigente = vigentes.get(id);
+        if (!vigente) return;
+        const grupo = grupoPagoParaMovimiento(mov, index, ciclo.fechaInicio, grupos);
+        if (!grupo || grupo.key !== vigente.key) return;
+        const fecha = fechaDeMovimiento(mov, index, ciclo.fechaInicio);
+        if (Number.isNaN(fecha.getTime())) return;
+        const clave = mov.id
+          ? `id:${mov.id}`
+          : `${Number(mov.timestamp) || ''}|${mov.fecha || ''}|${normalizarTipoMovimiento(mov.tipo)}|${Number(mov.monto) || 0}|${mov.detalle || ''}`;
+        if (vistos.has(clave)) return;
+        vistos.add(clave);
+        entradas.push({ mov, index, ciclo, fecha, origen: 'archived-card-current' });
+      });
+    });
+    return entradas.sort((a,b) => b.fecha - a.fecha);
+  }
+
   function movimientosRecientesCicloAnterior() {
-    const ciclo = getArchivedCycles()[0];
-    if (!ciclo || !Array.isArray(ciclo.movimientos) || ciclo.movimientos.length === 0) return [];
+    // BUILD264 · no asumir que historialCiclos[0] contiene movimientos.
+    // Un cierre intermedio/vacío puede ocupar el primer slot y dejar el ciclo real
+    // con movimientos en el segundo. Buscamos en los dos ciclos archivados y
+    // reconstruimos la ventana cronológica de 14 días de forma conjunta.
+    const ciclos = getArchivedCycles();
+    if (!ciclos.length) return [];
     const inicioActual = new Date(state.fechaInicioCiclo);
     if (Number.isNaN(inicioActual.getTime())) return [];
     const corte = new Date(inicioActual);
     corte.setDate(corte.getDate() - 14);
-    return ciclo.movimientos
-      .map((mov, index) => ({ mov, index, fecha: fechaDeMovimiento(mov, index, ciclo.fechaInicio), ciclo }))
-      .filter(entrada => entrada.mov?.etiqueta !== 'recalcula'
-        && entrada.fecha >= corte
-        && entrada.fecha < inicioActual)
-      .sort((a, b) => b.fecha - a.fecha);
+
+    const entradas = [];
+    const vistos = new Set();
+    ciclos.forEach(ciclo => {
+      if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
+      ciclo.movimientos.forEach((mov, index) => {
+        if (!mov || mov.etiqueta === 'recalcula') return;
+        const fecha = fechaDeMovimiento(mov, index, ciclo.fechaInicio);
+        if (Number.isNaN(fecha.getTime()) || fecha < corte || fecha >= inicioActual) return;
+        const clave = mov.id
+          ? `id:${mov.id}`
+          : `${Number(mov.timestamp) || ''}|${mov.fecha || ''}|${normalizarTipoMovimiento(mov.tipo)}|${Number(mov.monto) || 0}|${mov.detalle || ''}`;
+        if (vistos.has(clave)) return;
+        vistos.add(clave);
+        entradas.push({ mov, index, fecha, ciclo });
+      });
+    });
+    return entradas.sort((a, b) => b.fecha - a.fecha);
   }
 
   function etiquetaPagoCorta(fecha) {
@@ -12103,24 +12154,48 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   
   function renderAllMovements({ preserveScroll = false } = {}) {
     const q = searchQuery.toLowerCase().trim();
-    const baseBanco = state.log.filter(m => movimientoCoincideFiltroBanco(m));
-    const filtrados = q 
-      ? baseBanco.filter(m =>
-          (m.detalle || '').toLowerCase().includes(q) ||
-          (m.categoria || '').toLowerCase().includes(q) ||
-          (esMovimientoTarjeta(m) && nombreTarjeta(tarjetaIdMovimiento(m)).toLowerCase().includes(q))
-        )
-      : baseBanco;
     const pagosTarjeta = contextoPagosTarjeta();
-    
-    // Calcular sumas (excluyendo recalcs) sobre los filtrados
-    const soloGastos = filtrados.filter(m => m.etiqueta !== 'recalcula');
+
+    const entradasActuales = state.log.map((mov, index) => ({
+      mov,
+      index,
+      origen: 'actual',
+      fechaInicioReferencia: state.fechaInicioCiclo,
+      fecha: fechaDeMovimiento(mov, index, state.fechaInicioCiclo)
+    }));
+    const clavesActuales = new Set(entradasActuales.map(({mov}) => mov?.id
+      ? `id:${mov.id}`
+      : `${Number(mov?.timestamp) || ''}|${mov?.fecha || ''}|${normalizarTipoMovimiento(mov?.tipo)}|${Number(mov?.monto) || 0}|${mov?.detalle || ''}`));
+    const entradasTarjetaArchivadas = movimientosArchivadosCiclosTarjetaVigentes(pagosTarjeta.grupos)
+      .filter(({mov}) => {
+        const clave = mov?.id
+          ? `id:${mov.id}`
+          : `${Number(mov?.timestamp) || ''}|${mov?.fecha || ''}|${normalizarTipoMovimiento(mov?.tipo)}|${Number(mov?.monto) || 0}|${mov?.detalle || ''}`;
+        return !clavesActuales.has(clave);
+      })
+      .map(item => ({
+        ...item,
+        fechaInicioReferencia: item.ciclo?.fechaInicio || state.fechaInicioCiclo
+      }));
+
+    const entradasBase = [...entradasActuales, ...entradasTarjetaArchivadas]
+      .filter(({mov}) => movimientoCoincideFiltroBanco(mov))
+      .sort((a,b) => (b.fecha?.getTime?.() || 0) - (a.fecha?.getTime?.() || 0));
+    const filtrados = q
+      ? entradasBase.filter(({mov}) =>
+          (mov.detalle || '').toLowerCase().includes(q) ||
+          (mov.categoria || '').toLowerCase().includes(q) ||
+          (esMovimientoTarjeta(mov) && nombreTarjeta(tarjetaIdMovimiento(mov)).toLowerCase().includes(q))
+        )
+      : entradasBase;
+
+    const soloGastos = filtrados.map(item => item.mov).filter(m => m.etiqueta !== 'recalcula');
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
     const count = soloGastos.length;
-    
+
     const editableIndices = new Set(getEditableMovementIndices());
     const deletableIndices = new Set(getDeletableMovementIndices());
     let listaHTML = '';
@@ -12129,10 +12204,16 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     } else {
       const corteEstadosAnteriores = fechaCorteResumenAnteriorBancos(pagosTarjeta.grupos, movementBankFilter);
       let estadosAnterioresInsertados = false;
-      filtrados.slice().reverse().forEach((mov, i) => {
-        const originalIdx = state.log.indexOf(mov);
-        const grupoPago = pagosTarjeta.porIndice.get(originalIdx);
-        const fechaMovimiento = fechaDeMovimiento(mov, originalIdx, state.fechaInicioCiclo);
+      filtrados.forEach((entrada) => {
+        const mov = entrada.mov;
+        const esActual = entrada.origen === 'actual';
+        const originalIdx = esActual ? entrada.index : -1;
+        const grupoPago = esMovimientoTarjeta(mov)
+          ? (esActual
+              ? (pagosTarjeta.porIndice.get(originalIdx) || grupoPagoParaMovimiento(mov, originalIdx, state.fechaInicioCiclo, pagosTarjeta.grupos))
+              : grupoPagoParaMovimiento(mov, entrada.index, entrada.fechaInicioReferencia, pagosTarjeta.grupos))
+          : null;
+        const fechaMovimiento = entrada.fecha || fechaDeMovimiento(mov, entrada.index, entrada.fechaInicioReferencia);
         if (!estadosAnterioresInsertados && Number.isFinite(corteEstadosAnteriores)) {
           const tiempo = new Date(fechaMovimiento).getTime();
           if (Number.isFinite(tiempo) && tiempo <= corteEstadosAnteriores) {
@@ -12143,8 +12224,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             }
           }
         }
-        const canUndo = deletableIndices.has(originalIdx);
-        const canEdit = editableIndices.has(originalIdx);
+        const canUndo = esActual && deletableIndices.has(originalIdx);
+        const canEdit = esActual && editableIndices.has(originalIdx);
         const canSwipe = canUndo || canEdit;
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov);
@@ -12163,24 +12244,23 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx)}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${chipCategoriaMovimiento(mov, originalIdx, { editable: esActual })}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
               </div>
             </div>
             <div class="log-right">
               <div class="log-amount">${logAmountText(mov)}</div>
-              
             </div>
           </div>
           </div>
         `;
       });
     }
-    
-    const totalCiclo = state.log.filter(m => m.etiqueta !== 'recalcula').length;
-    const totalGeneral = baseBanco.filter(m => m.etiqueta !== 'recalcula').length;
+
+    const totalCiclo = entradasBase.filter(({mov}) => mov.etiqueta !== 'recalcula').length;
+    const totalGeneral = entradasBase.filter(({mov}) => mov.etiqueta !== 'recalcula').length;
     const nombreFiltroBanco = movementBankFilter === 'all' ? '' : nombreTarjeta(movementBankFilter);
     const filtroActivo = (q || movementBankFilter !== 'all')
-      ? `<span class="filter-tag">${count} de ${movementBankFilter === 'all' ? totalCiclo : totalGeneral}</span>`
+      ? `<span class="filter-tag">${count} de ${totalGeneral}</span>`
       : '';
     const tabsBanco = `
       <div class="bank-filter-tabs" role="group" aria-label="Filtrar movimientos por banco">
@@ -12188,79 +12268,36 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <button class="bank-filter-tab interbank${movementBankFilter === 'interbank' ? ' active' : ''}" onclick="setAllMovementsBankFilter('interbank')">Interbank</button>
         <button class="bank-filter-tab bcp${movementBankFilter === 'bcp' ? ' active' : ''}" onclick="setAllMovementsBankFilter('bcp')">BCP</button>
       </div>`;
-    
+
     openModal(`
       <h2>Todos los <span class="accent">movimientos</span></h2>
-      <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'}${nombreFiltroBanco ? ` · ${nombreFiltroBanco}` : ' en el ciclo'} ${filtroActivo}</p>
-      <p class="modal-sub" style="font-size:11px;margin-top:-8px;">Categoría: editable en todo el ciclo · Monto/tipo/eliminar: últimos 10 movimientos.</p>
+      <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'}${nombreFiltroBanco ? ` · ${nombreFiltroBanco}` : ' relevantes'} ${filtroActivo}</p>
+      <p class="modal-sub" style="font-size:11px;margin-top:-8px;">Incluye el ciclo salarial actual y compras archivadas que aún pertenecen al ciclo vigente de tarjeta.</p>
       ${tabsBanco}
       <div class="search-box">
         <span class="search-icon">⌕</span>
-        <input 
-          type="text" 
-          id="searchInput" 
-          class="search-input" 
-          placeholder="Buscar por detalle..." 
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Buscar por detalle..."
           value="${escapeHtml(searchQuery)}"
-          oninput="onSearchInput(this.value)"
+          oninput="handleSearchInput(this.value)"
         >
-        ${q ? '<button class="search-clear" onclick="clearSearch()">×</button>' : ''}
       </div>
-      
       <div class="all-summary">
-        <div class="all-sum-item S">
-          <div class="all-sum-label">No adeudado (S)</div>
-          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalS)}</div>
-        </div>
-        <div class="all-sum-item DS">
-          <div class="all-sum-label">Deuda (DS)</div>
-          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div>
-        </div>
-        ${totalF > 0 ? `<div class="all-sum-item F">
-          <div class="all-sum-label">Retirado del fondo (F)</div>
-          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div>
-        </div>` : ''}
-        ${totalFDS > 0 ? `<div class="all-sum-item FDS">
-          <div class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</div>
-          <div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div>
-        </div>` : ''}
+        <div class="all-sum-card"><span class="all-sum-label">No adeudado (S)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalS)}</div></div>
+        <div class="all-sum-card"><span class="all-sum-label">Deuda (DS)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalDS)}</div></div>
+        <div class="all-sum-card"><span class="all-sum-label">Fondo (F)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalF)}</div></div>
+        <div class="all-sum-card"><span class="all-sum-label">Tarjeta cubierta por fondo (F+DS)</span><div class="all-sum-value"><span class="cur">S/</span>${fmt(totalFDS)}</div></div>
       </div>
-      
       <div class="all-list">${listaHTML}</div>
-      
-      <div class="modal-buttons modal-buttons-three">
-        <button class="btn-secondary" onclick="exportarCSV()">CSV</button>
+      <div class="modal-actions split">
+        <button class="btn-secondary" onclick="downloadCSV()">CSV</button>
         <button class="btn-secondary" onclick="closeModal()">Cerrar</button>
-        <button class="btn-primary" onclick="exportarExcel()">Descargar Excel</button>
       </div>
-    `);
-    
-    // Foco no destructivo
-    setTimeout(() => {
-      const modal = document.getElementById('modalContent');
-      const inp = document.getElementById('searchInput');
-      initSwipeRows(modal);
-
-      if (preserveScroll && modal) {
-        const maxScroll = Math.max(0, modal.scrollHeight - modal.clientHeight);
-        modal.scrollTop = Math.min(allMovementsScrollTop, maxScroll);
-      }
-
-      if (inp && q) {
-        inp.focus();
-        inp.setSelectionRange(inp.value.length, inp.value.length);
-      }
-    }, 30);
-  }
-  
-  function onSearchInput(val) {
-    searchQuery = val;
-    renderAllMovements();
-  }
-  
-  function clearSearch() {
-    searchQuery = '';
-    renderAllMovements();
+      <button class="btn-primary" onclick="downloadExcelReport()">Descargar Excel</button>
+    `, { preserveScroll });
   }
 
   function setAllMovementsBankFilter(value) {
