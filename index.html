@@ -15588,14 +15588,23 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     );
   }
 
-  function nombreArchivoCicloMesAnio(fechaReferencia) {
-    const fecha = fechaReferencia ? new Date(fechaReferencia) : new Date();
-    const segura = Number.isNaN(fecha.getTime()) ? new Date() : fecha;
-    const mes = segura.toLocaleDateString('es-PE', { month: 'long' })
+  function nombreArchivoCicloMesAnio(fechaInicio, fechaFin = null) {
+    const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
+    const fin = fechaFin ? new Date(fechaFin) : null;
+    let referencia = Number.isNaN(inicio.getTime()) ? new Date() : inicio;
+
+    // BUILD273: el archivo debe llamarse por el mes al que realmente corresponde
+    // el ciclo, no necesariamente por el mes de su primer día. Usamos el punto
+    // medio del rango para ciclos que cruzan de un mes a otro.
+    if (fin && !Number.isNaN(fin.getTime())) {
+      referencia = new Date((referencia.getTime() + fin.getTime()) / 2);
+    }
+
+    const mes = referencia.toLocaleDateString('es-PE', { month: 'long' })
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
-    const anio = segura.getFullYear();
+    const anio = referencia.getFullYear();
     return `${mes}-${anio}.xlsx`;
   }
 
@@ -15610,7 +15619,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       await construirReporteExcel({
         movimientos: state.log,
         periodo,
-        nombreArchivo: nombreArchivoCicloMesAnio(state.fechaInicioCiclo),
+        nombreArchivo: nombreArchivoCicloMesAnio(state.fechaInicioCiclo, diaAnterior(proximoSueldoDelCiclo())),
         saldoInicialCiclo: state.saldoInicialCiclo,
         fondoInicialCiclo: Number.isFinite(Number(state.cuentasInicioCiclo?.fondo))
           ? Number(state.cuentasInicioCiclo.fondo)
@@ -15637,7 +15646,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       await construirReporteExcel({
         movimientos,
         periodo: formatCycleRange(ciclo),
-        nombreArchivo: nombreArchivoCicloMesAnio(ciclo.fechaInicio || ciclo.fechaFin),
+        nombreArchivo: nombreArchivoCicloMesAnio(ciclo.fechaInicio || ciclo.fechaFin, ciclo.fechaFin || ciclo.fechaInicio),
         saldoInicialCiclo: Number.isFinite(Number(ciclo.saldoInicialCiclo))
           ? Number(ciclo.saldoInicialCiclo)
           : (Number.isFinite(Number(ciclo.presupuestoInicial)) ? Number(ciclo.presupuestoInicial) : null),
