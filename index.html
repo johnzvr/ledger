@@ -4927,6 +4927,29 @@
     color: var(--ink-dim);
     line-height: 1.4;
   }
+
+  /* BUILD272 · reinicio seguro únicamente del ciclo actual */
+  .cycle-restart-box {
+    margin: 18px 0 0;
+    padding: 14px;
+    border: 1px solid rgba(210, 70, 54, .18);
+    border-radius: 14px;
+    background: rgba(210, 70, 54, .055);
+  }
+  .cycle-restart-box .manual-ranges-title { color: var(--ink); }
+  .cycle-restart-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: 1px solid rgba(210, 70, 54, .28);
+    border-radius: 11px;
+    background: transparent;
+    color: var(--danger);
+    font: 700 11px var(--font-ui);
+    cursor: pointer;
+  }
+  .cycle-restart-btn:active { transform: translateY(1px); }
+  body.dark .cycle-restart-box { background: rgba(210, 70, 54, .08); border-color: rgba(255,255,255,.10); }
   
   /* Rangos list (modal dedicado) */
   .rangos-list {
@@ -13432,6 +13455,88 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     toast('Ciclo exportado en CSV');
   }
   
+  // ============ REINICIAR SOLO CICLO ACTUAL (BUILD272) ============
+  let restartCurrentCycleMode = false;
+  let restartCurrentCycleSnapshot = null;
+  let restartCurrentCycleFinalizing = false;
+
+  function requestRestartCurrentCycle() {
+    const movimientos = (Array.isArray(state.log) ? state.log : []).filter(m => m?.etiqueta !== 'recalcula').length;
+    openModal(`
+      <h2>Reiniciar <span class="accent">este ciclo</span></h2>
+      <p class="modal-sub">Luki ignorará por completo el ciclo actual y volverá a pedirte los datos de inicio.</p>
+      <div class="manual-ranges-box" style="margin-top:14px;">
+        <div class="manual-ranges-title">Solo afecta al ciclo actual</div>
+        <div class="manual-ranges-sub">${movimientos > 0 ? `Se descartarán ${movimientos} movimiento${movimientos === 1 ? '' : 's'} del ciclo actual y no se archivarán.` : 'Este ciclo no se guardará en el historial.'} Los ciclos anteriores, anotaciones y configuración general permanecen intactos.</div>
+      </div>
+      <p class="modal-sub" style="font-size:10px;margin-top:12px;">Si cancelas el formulario siguiente, Luki restaurará este ciclo exactamente como estaba.</p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="openSettings()">Volver</button>
+        <button class="btn-primary" onclick="beginRestartCurrentCycle()">Continuar</button>
+      </div>
+    `);
+  }
+
+  function beginRestartCurrentCycle() {
+    if (restartCurrentCycleMode) return;
+    restartCurrentCycleSnapshot = JSON.parse(JSON.stringify(state));
+    restartCurrentCycleMode = true;
+    restartCurrentCycleFinalizing = false;
+    pendingNewCycleData = null;
+    pendingBankDebtPullKeys = new Set();
+
+    // El ciclo actual deja de existir temporalmente mientras se completa el nuevo inicio.
+    // Si el usuario cancela, el snapshot anterior se restaura íntegramente.
+    const movimientosActuales = Array.isArray(state.log) ? state.log : [];
+    const movimientosPorPlan = new Map();
+    movimientosActuales.forEach(mov => {
+      if (!mov?.planCuotasId) return;
+      movimientosPorPlan.set(mov.planCuotasId, (movimientosPorPlan.get(mov.planCuotasId) || 0) + 1);
+    });
+    const inicioActualMs = state.fechaInicioCiclo ? new Date(state.fechaInicioCiclo).getTime() : NaN;
+    if (movimientosPorPlan.size && Array.isArray(state.planesCuotas)) {
+      state.planesCuotas = state.planesCuotas.filter(plan => {
+        const activadasEnEsteCiclo = movimientosPorPlan.get(plan?.id) || 0;
+        if (!activadasEnEsteCiclo) return true;
+        const fechaCompraMs = plan?.fechaCompra ? new Date(plan.fechaCompra).getTime() : NaN;
+        const creadoEnEsteCiclo = Number.isFinite(inicioActualMs) && Number.isFinite(fechaCompraMs) && fechaCompraMs >= inicioActualMs;
+        if (creadoEnEsteCiclo) return false;
+        // Plan previo: solo deshacemos las cuotas activadas dentro del ciclo descartado.
+        plan.cuotasRegistradas = Math.max(0, (Number(plan.cuotasRegistradas) || 0) - activadasEnEsteCiclo);
+        plan.estado = plan.cuotasRegistradas >= (Number(plan.cuotas) || 1) ? 'completado' : 'activo';
+        plan.ultimaActivacion = null;
+        plan.mensajeEstado = '';
+        return true;
+      });
+    }
+    state.log = [];
+    state.redoMovement = null;
+    state.gastoNoAdeudado = 0;
+    state.gastoTotal = 0;
+
+    // Evita que una deuda derivada del ciclo descartado contamine el formulario.
+    const deudaDesdeMovimientosPersistentes = gruposPagoTarjetas()
+      .reduce((total, grupo) => total + (Number(grupo?.total) || 0), 0);
+    state.deudaActual = redondearDinero(deudaDesdeMovimientosPersistentes);
+    state.tarjetaAjusteDeuda = 0;
+
+    openNewCycleSetup();
+  }
+
+  function cancelRestartCurrentCycle() {
+    if (restartCurrentCycleMode && restartCurrentCycleSnapshot) {
+      state = restartCurrentCycleSnapshot;
+    }
+    restartCurrentCycleMode = false;
+    restartCurrentCycleSnapshot = null;
+    restartCurrentCycleFinalizing = false;
+    pendingNewCycleData = null;
+    pendingBankDebtPullKeys = new Set();
+    document.getElementById('modalOverlay')?.classList.remove('active');
+    render({ markModified: false, sync: false });
+    toast('Reinicio cancelado · ciclo restaurado');
+  }
+
   // ============ NUEVO CICLO ============
   function confirmarNuevoCiclo() {
     const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
@@ -13493,8 +13598,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const inicioSugerido = inicioDelDia(new Date());
     const proximoSueldoSugerido = fechaSueldoEstimadaDesde(inicioSugerido);
     openModal(`
-      <h2>Preparar <span class="accent">nuevo ciclo</span></h2>
-      <p class="modal-sub">Paso 2 de 2 · La fecha real en que recibes el sueldo inicia el nuevo ciclo.</p>
+      <h2>${restartCurrentCycleMode ? 'Reiniciar' : 'Preparar'} <span class="accent">${restartCurrentCycleMode ? 'este ciclo' : 'nuevo ciclo'}</span></h2>
+      <p class="modal-sub">${restartCurrentCycleMode ? 'Completa nuevamente los datos de inicio. El ciclo actual será reemplazado, no archivado.' : 'Paso 2 de 2 · La fecha real en que recibes el sueldo inicia el nuevo ciclo.'}</p>
 
       <div class="new-cycle-accounts">
         <div class="modal-field">
@@ -13621,8 +13726,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </p>
 
       <div class="modal-buttons">
-        <button class="btn-secondary" onclick="confirmarNuevoCiclo()">← Volver</button>
-        <button class="btn-primary" onclick="ejecutarNuevoCiclo()">Cerrar e iniciar</button>
+        <button class="btn-secondary" onclick="${restartCurrentCycleMode ? 'cancelRestartCurrentCycle()' : 'confirmarNuevoCiclo()'}">${restartCurrentCycleMode ? 'Cancelar' : '← Volver'}</button>
+        <button class="btn-primary" onclick="ejecutarNuevoCiclo()">${restartCurrentCycleMode ? 'Reiniciar ciclo' : 'Cerrar e iniciar'}</button>
       </div>
     `);
     previewNuevoCiclo();
@@ -14348,9 +14453,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const totalDSCubierto = soloGastos.filter(m => esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
     const totalFDS = soloGastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + m.monto, 0);
-    const rangosAnteriores = calcularRangoSemanas();
+    const rangosAnteriores = restartCurrentCycleMode ? [] : calcularRangoSemanas();
     const fechaFinCiclo = new Date().toISOString();
 
+    // En un reinicio el ciclo actual se DESCARTA: no se archiva ni reemplaza cicloAnterior.
+    if (!restartCurrentCycleMode) {
     // Archivar el ciclo completo sin snapshots de Deshacer.
     const cicloCerrado = {
       id: 'ciclo-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
@@ -14422,6 +14529,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       numMovimientos: cicloCerrado.numMovimientos,
       dias: cicloCerrado.dias
     };
+    }
     
     // Valores del nuevo ciclo
     state.totalDisponible = disponible;
@@ -14473,12 +14581,19 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     uiSections.comparison = false;
     saveUiSections();
     
+    const fueReinicio = restartCurrentCycleMode;
+    restartCurrentCycleFinalizing = fueReinicio;
     closeModal();
     pendingNewCycleData = null;
     pendingBankDebtPullKeys = new Set();
-    toast(modoConciliacion === 'pago'
-      ? `Nuevo ciclo · pago anterior conciliado`
-      : `Nuevo ciclo · ${state.semanas.length} bloques según sus días`);
+    restartCurrentCycleMode = false;
+    restartCurrentCycleSnapshot = null;
+    restartCurrentCycleFinalizing = false;
+    toast(fueReinicio
+      ? `Ciclo reiniciado · ${state.semanas.length} bloques según sus días`
+      : (modoConciliacion === 'pago'
+        ? `Nuevo ciclo · pago anterior conciliado`
+        : `Nuevo ciclo · ${state.semanas.length} bloques según sus días`));
     render();
   }
   
@@ -16990,6 +17105,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         </button>
       </div>
       
+      <div class="cycle-restart-box">
+        <div class="manual-ranges-title">Reiniciar solo este ciclo</div>
+        <div class="manual-ranges-sub">Descarta el ciclo actual sin archivarlo y vuelve a “Preparar nuevo ciclo”. Los ciclos anteriores permanecen intactos.</div>
+        <button class="cycle-restart-btn" type="button" onclick="requestRestartCurrentCycle()">Reiniciar ciclo</button>
+      </div>
+
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveSettings()">Guardar</button>
@@ -18517,6 +18638,15 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
   function closeModal() {
     closeNestedModal();
+    if (restartCurrentCycleMode && !restartCurrentCycleFinalizing && restartCurrentCycleSnapshot) {
+      state = restartCurrentCycleSnapshot;
+      restartCurrentCycleMode = false;
+      restartCurrentCycleSnapshot = null;
+      pendingNewCycleData = null;
+      pendingBankDebtPullKeys = new Set();
+      // No guardar ni sincronizar: solo restauramos el estado temporal que nunca se persistió.
+      requestAnimationFrame(() => render({ markModified: false, sync: false }));
+    }
     if (activeSyncAlertVersionId) {
       lastAnnouncedSyncVersionId = activeSyncAlertVersionId;
       activeSyncAlertVersionId = null;
