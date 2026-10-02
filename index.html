@@ -3470,6 +3470,19 @@
     font-family: var(--font-num);
     font-weight: 750;
   }
+  .card-bank-current-breakdown {
+    display: block;
+    margin-top: 3px;
+    font-size: 8px;
+    line-height: 1.2;
+    font-weight: 700;
+    opacity: .82;
+    white-space: normal;
+  }
+  .card-bank-current-breakdown strong {
+    font-family: var(--font-num);
+    font-weight: 750;
+  }
   .card-bank-total-amount {
     display: block;
     font-size: 10px;
@@ -10619,14 +10632,14 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : (estado === 'previous'
         ? `Paga el ${fechaPagoSinAnio(grupo.pago)}`
         : `Paga el ${fechaPagoSinAnio(grupo.pago)} · <strong>S/ ${fmt(total)}</strong>`);
-    const resumenMonedas = estado === 'previous' ? resumenMonedasGrupoTarjeta(grupo) : null;
-    const montoLinea = (estado === 'previous' && resumenMonedas)
+    const resumenMonedas = resumenMonedasGrupoTarjeta(grupo);
+    const montoLinea = estado === 'previous'
       ? `<span class="card-bank-previous-breakdown">
           <span class="card-bank-previous-row"><span>Soles</span><strong>S/ ${fmt(resumenMonedas.soles)}</strong></span>
           <span class="card-bank-previous-row"><span>Dólares</span><strong>US$ ${fmt(resumenMonedas.dolares)}</strong></span>
           <span class="card-bank-previous-row total"><span>Total</span><strong>S/ ${fmt(resumenMonedas.totalSoles)}</strong></span>
         </span>`
-      : '';
+      : `<span class="card-bank-current-breakdown">Soles <strong>S/ ${fmt(resumenMonedas.soles)}</strong> · Dólares <strong>US$ ${fmt(resumenMonedas.dolares)}</strong></span>`;
     const keySeguro = grupo.sintetico ? '' : encodeURIComponent(grupo.key || '');
     const accion = estado === 'previous' && grupo.cerrado && keySeguro
       ? (pagadoConfirmado
