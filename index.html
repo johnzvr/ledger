@@ -3804,7 +3804,7 @@
   .ledger-arc-ui .log-item.previous-bank-cycle-movement .log-amount {
     color: var(--ink-mute) !important;
   }
-  /* BUILD276 · fuera del ciclo actual de la tarjeta: gris neutro real, también en archivados.
+  /* BUILD278 · fuera del ciclo actual de la tarjeta: gris neutro real, también en archivados.
      Conserva opacidad completa para que el corte de ciclo sea fácil de leer. */
   .log-item.previous-bank-cycle-movement {
     opacity: 1;
@@ -9936,14 +9936,33 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   })();
 
   function getEditableMovementIndices() {
-    const indices = [];
-    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
+    const indices = new Set();
+    let pagos = null;
+    try { pagos = contextoPagosTarjeta(); } catch(e) {}
+
+    // BUILD278: cualquier movimiento del ciclo bancario VIGENTE es editable,
+    // sin importar su antigüedad dentro del ciclo salarial actual.
+    if (pagos) {
+      state.log.forEach((mov, i) => {
+        if (!mov || mov.etiqueta === 'recalcula' || !mov.snapshot || !esMovimientoTarjeta(mov)) return;
+        if (mov.planCuotasId && !esMovimientoCuotasPropias(mov)) return;
+        try {
+          const grupo = pagos.porIndice.get(i) || grupoPagoParaMovimiento(mov, i, state.fechaInicioCiclo, pagos.grupos);
+          if (movimientoPerteneceCicloTarjetaActual(grupo, pagos.grupos)) indices.add(i);
+        } catch(e) {}
+      });
+    }
+
+    // Se mantiene la regla histórica de los últimos 10 para el resto.
+    let recientes = 0;
+    for (let i = state.log.length - 1; i >= 0 && recientes < 10; i--) {
       const mov = state.log[i];
       if (mov?.etiqueta !== 'recalcula' && mov?.snapshot && (!mov?.planCuotasId || esMovimientoCuotasPropias(mov))) {
-        indices.unshift(i);
+        indices.add(i);
+        recientes++;
       }
     }
-    return indices;
+    return [...indices].sort((a,b) => a-b);
   }
 
   function getDeletableMovementIndices() {
@@ -10471,6 +10490,15 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const actual = grupoVigenteResumenBanco(id, grupos);
     const anterior = grupoAnteriorResumenBanco(id, actual, grupos);
     return grupoPago.key === actual?.key || grupoPago.key === anterior?.key;
+  }
+
+  // BUILD278 · una compra archivada por sueldo sigue siendo ACTUAL visualmente
+  // mientras pertenezca al ciclo bancario vigente de su tarjeta.
+  function movimientoPerteneceCicloTarjetaActual(grupoPago, grupos = gruposPagoTarjetas()) {
+    if (!grupoPago) return false;
+    const id = normalizarTarjetaId(grupoPago.tarjetaId);
+    const actual = grupoVigenteResumenBanco(id, grupos);
+    return !!actual && grupoPago.key === actual.key;
   }
 
   function movimientoPerteneceEstadoTarjetaCerrado(grupoPago, grupos = gruposPagoTarjetas()) {
@@ -11369,25 +11397,53 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         let badge = mov.etiqueta === 'sem' ? '<span class="badge">SEM</span>' : '';
         badge += badgeCuotaMovimiento(mov);
         const div = document.createElement('div');
+        const enCicloTarjetaActual = esMovimientoTarjeta(mov)
+          && movimientoPerteneceCicloTarjetaActual(grupoPago, pagosTarjeta.grupos);
         const fueraCicloBancoVisible = movementBankFilter !== 'all'
           && !movimientoPerteneceCicloTarjetaVisible(grupoPago, movementBankFilter, pagosTarjeta.grupos);
         const fueraCicloTarjetaEnVistaGeneral = movementBankFilter === 'all'
           && esMovimientoTarjeta(mov)
+          && !enCicloTarjetaActual
           && movimientoPerteneceEstadoTarjetaCerrado(grupoPago, pagosTarjeta.grupos);
+        // BUILD278: el separador salarial permanece, pero una compra del ciclo
+        // bancario actual NO se atenúa por pertenecer al sueldo anterior.
         const atenuarPorCicloSueldo = movementBankFilter === 'all'
-          && !fueraCicloTarjetaEnVistaGeneral;
-        div.className = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${fueraCicloTarjetaEnVistaGeneral ? ' previous-bank-cycle-movement' : ''}${fueraCicloBancoVisible ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
-        div.innerHTML = `
-          <div class="log-left">
-            <div class="log-dot ${dotType}">${dotLabel}</div>
-            <div class="log-info">
-              <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-              <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha || '')}</span></div>
+          && !esMovimientoTarjeta(mov);
+        const puedeEditarArchivado = enCicloTarjetaActual;
+        const refCiclo = referenciaCicloArchivado(ciclo);
+        const itemClass = `log-item${atenuarPorCicloSueldo ? ' previous-salary-movement' : ''}${fueraCicloTarjetaEnVistaGeneral ? ' previous-bank-cycle-movement' : ''}${fueraCicloBancoVisible ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
+        if (puedeEditarArchivado) {
+          const row = document.createElement('div');
+          row.className = 'log-swipe swipe-enabled';
+          row.dataset.canUndo = '0';
+          row.dataset.canEdit = '1';
+          row.innerHTML = `
+            <button class="swipe-action edit" onclick="openEditArchivedCardMovement('${refCiclo}', ${index})">Editar</button>
+            <div class="${itemClass}" data-swipe-index="${index}">
+              <div class="log-left">
+                <div class="log-dot ${dotType}">${dotLabel}</div>
+                <div class="log-info">
+                  <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+                  <div class="log-meta">${badge}${badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago)}<span>${escapeHtml(mov.fecha || '')}</span></div>
+                </div>
+              </div>
+              <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+            </div>`;
+          logEl.appendChild(row);
+        } else {
+          div.className = itemClass;
+          div.innerHTML = `
+            <div class="log-left">
+              <div class="log-dot ${dotType}">${dotLabel}</div>
+              <div class="log-info">
+                <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}<span>${escapeHtml(mov.fecha || '')}</span></div>
+              </div>
             </div>
-          </div>
-          <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
-        `;
-        logEl.appendChild(div);
+            <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+          `;
+          logEl.appendChild(div);
+        }
         } catch (error) {
           console.error('[Luki] Movimiento archivado no renderizado:', error, mov);
         }
@@ -11539,17 +11595,37 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       } catch(e) {}
 
       const div = document.createElement('div');
-      div.className = `log-item${dimSueldo ? ' previous-salary-movement' : ''}${tarjetaCerrada ? ' previous-bank-cycle-movement' : ''}${fueraBanco ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
-      div.innerHTML = `
-        <div class="log-left">
-          <div class="log-dot ${dotType}">${dotLabel}</div>
-          <div class="log-info">
-            <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-            <div class="log-meta">${badge}${bankMeta}<span>${escapeHtml(mov.fecha || '')}</span></div>
+      const itemClass = `log-item${dimSueldo ? ' previous-salary-movement' : ''}${tarjetaCerrada ? ' previous-bank-cycle-movement' : ''}${fueraBanco ? ' outside-bank-cycle' : ''}${claseEspecialMovimiento(mov)}`;
+      if (esTarjetaVigenteArchivada && entrada.ciclo) {
+        const refCiclo = referenciaCicloArchivado(entrada.ciclo);
+        div.className = 'log-swipe swipe-enabled';
+        div.dataset.canUndo = '0';
+        div.dataset.canEdit = '1';
+        div.innerHTML = `
+          <button class="swipe-action edit" onclick="openEditArchivedCardMovement('${refCiclo}', ${entrada.index})">Editar</button>
+          <div class="${itemClass}" data-swipe-index="${entrada.index}">
+            <div class="log-left">
+              <div class="log-dot ${dotType}">${dotLabel}</div>
+              <div class="log-info">
+                <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+                <div class="log-meta">${badge}${bankMeta}<span>${escapeHtml(mov.fecha || '')}</span></div>
+              </div>
+            </div>
+            <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+          </div>`;
+      } else {
+        div.className = itemClass;
+        div.innerHTML = `
+          <div class="log-left">
+            <div class="log-dot ${dotType}">${dotLabel}</div>
+            <div class="log-info">
+              <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+              <div class="log-meta">${badge}${bankMeta}<span>${escapeHtml(mov.fecha || '')}</span></div>
+            </div>
           </div>
-        </div>
-        <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
-      `;
+          <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
+        `;
+      }
       logEl.appendChild(div);
     });
 
@@ -11560,6 +11636,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       } catch (e) {}
     }
 
+    try { initSwipeRows(logEl); } catch(e) {}
     if (errorOriginal) console.error('[Luki] renderLog fallback activado:', errorOriginal);
   }
 
@@ -12017,6 +12094,109 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         : Math.max(0, Number(sem.ritmoDiarioFijo) || 0)
     }));
     return result;
+  }
+
+  function cicloArchivadoPorReferencia(refCodificada) {
+    let ref = '';
+    try { ref = decodeURIComponent(refCodificada || ''); } catch(e) { ref = String(refCodificada || ''); }
+    return getArchivedCycles().find(ciclo => String(ciclo?.id || '') === ref || String(ciclo?.fechaInicio || '') === ref) || null;
+  }
+
+  function referenciaCicloArchivado(ciclo) {
+    return encodeURIComponent(String(ciclo?.id || ciclo?.fechaInicio || ''));
+  }
+
+  function recalcularResumenCicloArchivado(ciclo) {
+    if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
+    const gastos = ciclo.movimientos.filter(m => m && m.etiqueta !== 'recalcula');
+    ciclo.totalS = redondearDinero(gastos.filter(m => m.tipo === 'S').reduce((s,m) => s + (Number(m.monto) || 0), 0));
+    ciclo.totalDS = redondearDinero(gastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + (Number(m.monto) || 0), 0));
+    ciclo.totalDSCubierto = redondearDinero(gastos.filter(m => esMovimientoDSCubierto(m)).reduce((s,m) => s + (Number(m.monto) || 0), 0));
+    ciclo.totalF = redondearDinero(gastos.filter(m => m.tipo === 'F').reduce((s,m) => s + (Number(m.monto) || 0), 0));
+    ciclo.totalFDS = redondearDinero(gastos.filter(m => normalizarTipoMovimiento(m.tipo) === 'FDS').reduce((s,m) => s + (Number(m.monto) || 0), 0));
+    ciclo.totalGastado = redondearDinero(ciclo.totalS + ciclo.totalDS);
+    ciclo.numMovimientos = gastos.length;
+  }
+
+  function openEditArchivedCardMovement(refCodificada, idx) {
+    const ciclo = cicloArchivadoPorReferencia(refCodificada);
+    const mov = ciclo?.movimientos?.[Number(idx)];
+    if (!ciclo || !mov || !esMovimientoTarjeta(mov)) {
+      toast('No se encontró el movimiento', true);
+      return;
+    }
+    const pagos = contextoPagosTarjeta();
+    const grupo = grupoPagoParaMovimiento(mov, Number(idx), ciclo.fechaInicio, pagos.grupos);
+    if (!movimientoPerteneceCicloTarjetaActual(grupo, pagos.grupos)) {
+      toast('Solo se editan aquí compras del ciclo bancario actual', true);
+      return;
+    }
+    const info = infoMonedaOriginalMovimiento(mov);
+    const esUsd = info.moneda === 'USD' && Number(info.tipoCambio) > 0;
+    const valor = esUsd ? info.montoOriginal : Number(mov.monto || 0);
+    openModal(`
+      <h2>Editar <span class="accent">movimiento</span></h2>
+      <p class="modal-sub">Compra del ciclo bancario actual · ${escapeHtml(mov.fecha || '')}</p>
+      <div class="modal-field">
+        <label>${esUsd ? 'Monto original en dólares' : 'Monto en soles'}</label>
+        <input type="number" id="editArchivedCardAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(valor).toFixed(2)}">
+      </div>
+      ${esUsd ? `<p class="modal-sub" style="font-size:11px;margin-top:-8px;">TC guardado: ${Number(info.tipoCambio).toFixed(3)} · Luki recalculará el equivalente en soles.</p>` : ''}
+      <div class="modal-field">
+        <label>Detalle</label>
+        <input type="text" id="editArchivedCardDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Categoría</label>
+        <select id="editArchivedCardCategory">${opcionesCategoriaMovimiento(mov.categoria)}</select>
+      </div>
+      <div class="modal-field">
+        <label>Tarjeta</label>
+        <select id="editArchivedCardBank">
+          <option value="interbank" ${tarjetaIdMovimiento(mov) !== 'bcp' ? 'selected' : ''}>Interbank</option>
+          <option value="bcp" ${tarjetaIdMovimiento(mov) === 'bcp' ? 'selected' : ''}>BCP</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveArchivedCardMovementEdit('${refCodificada}', ${Number(idx)})">Guardar cambios</button>
+      </div>
+    `);
+  }
+
+  function saveArchivedCardMovementEdit(refCodificada, idx) {
+    const ciclo = cicloArchivadoPorReferencia(refCodificada);
+    const mov = ciclo?.movimientos?.[Number(idx)];
+    if (!ciclo || !mov || !esMovimientoTarjeta(mov)) {
+      closeModal();
+      toast('No se encontró el movimiento', true);
+      return;
+    }
+    const valor = Number(document.getElementById('editArchivedCardAmount')?.value);
+    if (!Number.isFinite(valor) || valor <= 0) {
+      toast('Ingresa un monto válido', true);
+      return;
+    }
+    const info = infoMonedaOriginalMovimiento(mov);
+    if (info.moneda === 'USD' && Number(info.tipoCambio) > 0) {
+      mov.monedaOriginal = 'USD';
+      mov.montoOriginal = redondearDinero(valor);
+      mov.tipoCambio = Number(info.tipoCambio);
+      mov.monto = redondearDinero(valor * Number(info.tipoCambio));
+    } else {
+      mov.monedaOriginal = 'PEN';
+      mov.montoOriginal = redondearDinero(valor);
+      mov.monto = redondearDinero(valor);
+    }
+    mov.detalle = String(document.getElementById('editArchivedCardDetail')?.value || '').trim();
+    const categoria = normalizarCategoriaMovimiento(document.getElementById('editArchivedCardCategory')?.value);
+    if (categoria) mov.categoria = categoria; else delete mov.categoria;
+    mov.tarjetaId = normalizarTarjetaId(document.getElementById('editArchivedCardBank')?.value || tarjetaIdMovimiento(mov));
+    recalcularResumenCicloArchivado(ciclo);
+    saveState({ markModified: true, sync: true });
+    closeModal();
+    toast('Movimiento actualizado');
+    render();
   }
 
   function openEditMovement(idx) {
@@ -12489,9 +12669,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             }
           }
         }
+        const esArchivadoTarjetaActual = !esActual
+          && esMovimientoTarjeta(mov)
+          && movimientoPerteneceCicloTarjetaActual(grupoPago, pagosTarjeta.grupos);
         const canUndo = esActual && deletableIndices.has(originalIdx);
-        const canEdit = esActual && editableIndices.has(originalIdx);
+        const canEdit = (esActual && editableIndices.has(originalIdx)) || esArchivadoTarjetaActual;
         const canSwipe = canUndo || canEdit;
+        const refCicloArchivado = esArchivadoTarjetaActual && entrada.ciclo ? referenciaCicloArchivado(entrada.ciclo) : '';
         let dotType = normalizarTipoMovimiento(mov.tipo);
         let dotLabel = etiquetaTipoMovimiento(mov);
         if (mov.etiqueta === 'recalcula') { dotType = 'RC'; dotLabel = 'RC'; }
@@ -12503,8 +12687,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
           ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
-          ${canEdit ? `<button class="swipe-action edit" onclick="openEditMovement(${originalIdx})">Editar</button>` : ''}
-          <div class="log-item${atenuarPorEstadoTarjetaCerrado ? ' previous-bank-cycle-movement' : ''}${claseEspecialMovimiento(mov)}" ${canSwipe ? `data-swipe-index="${originalIdx}"` : ''}>
+          ${canEdit ? `<button class="swipe-action edit" onclick="${esArchivadoTarjetaActual ? `openEditArchivedCardMovement('${refCicloArchivado}', ${entrada.index})` : `openEditMovement(${originalIdx})`}">Editar</button>` : ''}
+          <div class="log-item${atenuarPorEstadoTarjetaCerrado ? ' previous-bank-cycle-movement' : ''}${claseEspecialMovimiento(mov)}" ${canSwipe ? `data-swipe-index="${esActual ? originalIdx : entrada.index}"` : ''}>
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
