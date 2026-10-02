@@ -3808,11 +3808,61 @@
      Conserva opacidad completa para que el corte de ciclo sea fácil de leer. */
   .log-item.previous-bank-cycle-movement {
     opacity: 1;
-    filter: grayscale(1) saturate(0);
+    filter: none;
+  }
+  .log-item.previous-bank-cycle-movement .log-detail,
+  .log-item.previous-bank-cycle-movement .log-amount {
+    color: #8F9398 !important;
+  }
+  .log-item.previous-bank-cycle-movement .log-meta,
+  .log-item.previous-bank-cycle-movement .log-meta > span:not(.card-bank-badge):not(.payment-badge):not(.badge) {
+    color: #A7AAAE !important;
+  }
+  .log-item.previous-bank-cycle-movement .log-dot {
+    background: #F1F2F3 !important;
+    color: #A7AAAE !important;
+    border-color: #E4E6E8 !important;
+  }
+  .log-item.previous-bank-cycle-movement .card-bank-badge,
+  .log-item.previous-bank-cycle-movement .card-bank-badge.bank-interbank,
+  .log-item.previous-bank-cycle-movement .card-bank-badge.bank-bcp,
+  .log-item.previous-bank-cycle-movement .payment-badge,
+  .log-item.previous-bank-cycle-movement .payment-badge.paid,
+  .log-item.previous-bank-cycle-movement .badge {
+    background: #E2E4E6 !important;
+    border-color: #E2E4E6 !important;
+    color: #8D9196 !important;
+  }
+  .log-item.previous-bank-cycle-movement[class*="special"],
+  .log-item.previous-bank-cycle-movement {
+    box-shadow: none;
   }
   body.dark .log-item.previous-bank-cycle-movement {
     opacity: 1;
-    filter: grayscale(1) saturate(0);
+    filter: none;
+  }
+  body.dark .log-item.previous-bank-cycle-movement .log-detail,
+  body.dark .log-item.previous-bank-cycle-movement .log-amount {
+    color: #85858B !important;
+  }
+  body.dark .log-item.previous-bank-cycle-movement .log-meta,
+  body.dark .log-item.previous-bank-cycle-movement .log-meta > span:not(.card-bank-badge):not(.payment-badge):not(.badge) {
+    color: #6F7076 !important;
+  }
+  body.dark .log-item.previous-bank-cycle-movement .log-dot {
+    background: rgba(255,255,255,.035) !important;
+    color: #6F7076 !important;
+    border-color: rgba(255,255,255,.06) !important;
+  }
+  body.dark .log-item.previous-bank-cycle-movement .card-bank-badge,
+  body.dark .log-item.previous-bank-cycle-movement .card-bank-badge.bank-interbank,
+  body.dark .log-item.previous-bank-cycle-movement .card-bank-badge.bank-bcp,
+  body.dark .log-item.previous-bank-cycle-movement .payment-badge,
+  body.dark .log-item.previous-bank-cycle-movement .payment-badge.paid,
+  body.dark .log-item.previous-bank-cycle-movement .badge {
+    background: rgba(255,255,255,.07) !important;
+    border-color: rgba(255,255,255,.07) !important;
+    color: #74757B !important;
   }
   /* BUILD243 · en isolate, lo que queda fuera del ciclo bancario visible
      no conserva el color del banco: se vuelve completamente gris. */
