@@ -7443,7 +7443,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 }
 
 
-  /* BUILD281 · Acciones de movimientos por pulsación larga.
+  /* BUILD283 · Popover Luki para acciones por doble click / doble tap.
      El swipe deja de ser una interacción visible; las acciones siguen usando
      las mismas funciones internas de edición y eliminación. */
   .log-swipe.swipe-enabled .log-item {
@@ -7465,41 +7465,73 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     align-items: center;
     justify-content: center;
     padding: 24px;
-    background: rgba(26,26,26,.30);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
+    background: rgba(26,26,26,.12);
   }
   .movement-action-overlay.active { display: flex; }
   .movement-action-menu {
-    width: min(100%, 310px);
-    padding: 10px;
-    border: 1px solid var(--line-hi);
-    border-radius: 18px;
+    width: min(100%, 340px);
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
     background: var(--bg);
-    box-shadow: 0 22px 64px rgba(0,0,0,.24);
+    box-shadow: 0 14px 38px rgba(0,0,0,.16);
   }
+  .movement-action-context {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+    padding: 2px 2px 12px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .movement-action-detail {
+    min-width: 0;
+    color: var(--ink);
+    font: 600 14px/1.2 var(--font-ui);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .movement-action-amount {
+    flex: 0 0 auto;
+    color: var(--ink-dim);
+    font: 700 13px/1 var(--font-num);
+    white-space: nowrap;
+  }
+  .movement-action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .movement-action-buttons.one-action { grid-template-columns: 1fr; }
   .movement-action-menu button {
     width: 100%;
-    min-height: 48px;
-    border: 0;
-    border-radius: 12px;
+    min-height: 42px;
+    border: 1px solid var(--line-hi);
+    border-radius: 11px;
     background: transparent;
     color: var(--ink);
-    font: 700 14px var(--font-ui);
+    font: 650 13px var(--font-ui);
     cursor: pointer;
   }
-  .movement-action-menu button:active { background: var(--surface-soft); }
-  .movement-action-menu .movement-action-delete { color: var(--danger); }
-  .movement-action-menu .movement-action-cancel {
-    margin-top: 4px;
-    border-top: 1px solid var(--line);
-    border-radius: 0 0 12px 12px;
-    color: var(--ink-dim);
-    font-weight: 600;
+  .movement-action-menu button:active { background: var(--cream); }
+  .movement-action-menu .movement-action-delete {
+    border-color: color-mix(in srgb, var(--danger) 24%, var(--line));
+    background: color-mix(in srgb, var(--danger) 6%, transparent);
+    color: var(--danger);
   }
+  body.dark .movement-action-overlay { background: rgba(0,0,0,.18); }
   body.dark .movement-action-menu {
-    border-color: rgba(255,255,255,.12);
-    box-shadow: 0 22px 64px rgba(0,0,0,.55);
+    background: #131316;
+    border-color: var(--line-hi);
+    box-shadow: 0 16px 42px rgba(0,0,0,.40);
+  }
+  body.dark .movement-action-menu button:active { background: #1A1A1E; }
+  body.dark .movement-action-menu .movement-action-delete {
+    border-color: rgba(255,107,74,.20);
+    background: rgba(255,107,74,.055);
   }
 </style>
 
@@ -7593,7 +7625,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       <div class="arc-center">
         <div class="hero-label" id="heroLabel">Total disponible</div>
         <div class="hero-amount"><span class="currency">S/</span><span id="totalDisponible">0.00</span></div>
-        <div class="arc-caption">para lo que queda del ciclo</div>
       </div>
     </div>
     <div class="arc-ledger">
@@ -11852,7 +11883,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function runSwipeOnboarding(root) {
-    // BUILD281: el swipe fue reemplazado por pulsación larga; no mostrar onboarding antiguo.
+    // BUILD283: el swipe fue reemplazado por doble click / doble tap; no mostrar onboarding antiguo.
     return;
   }
 
@@ -11898,87 +11929,85 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
     const overlay = ensureMovementActionOverlay();
     const menu = overlay.querySelector('.movement-action-menu');
+    const detail = row.querySelector('.log-detail')?.textContent?.trim() || 'Movimiento';
+    const amount = row.querySelector('.log-amount')?.textContent?.trim() || '';
+    const actionsCount = Number(canEdit) + Number(canDelete);
     movementActionSourceRow = row;
     menu.innerHTML = `
-      ${canEdit ? '<button type="button" onclick="runMovementAction(\'edit\')">Editar</button>' : ''}
-      ${canDelete ? '<button type="button" class="movement-action-delete" onclick="runMovementAction(\'delete\')">Eliminar</button>' : ''}
-      <button type="button" class="movement-action-cancel" onclick="closeMovementActionMenu()">Cancelar</button>
+      <div class="movement-action-context">
+        <div class="movement-action-detail">${escapeHtml(detail)}</div>
+        ${amount ? `<div class="movement-action-amount">${escapeHtml(amount)}</div>` : ''}
+      </div>
+      <div class="movement-action-buttons ${actionsCount === 1 ? 'one-action' : ''}">
+        ${canEdit ? '<button type="button" onclick="runMovementAction(\'edit\')">Editar</button>' : ''}
+        ${canDelete ? '<button type="button" class="movement-action-delete" onclick="runMovementAction(\'delete\')">Eliminar</button>' : ''}
+      </div>
     `;
     overlay.classList.add('active');
     overlay.setAttribute('aria-hidden', 'false');
   }
 
   function initSwipeRows(root = document) {
-    // Conservamos el nombre para no tocar los renderers existentes; desde BUILD281
-    // esta función inicializa HOLD, no swipe.
+    // Conservamos el nombre para no tocar los renderers existentes; desde BUILD283
+    // esta función abre el menú con doble click / doble tap, no swipe ni hold.
     root.querySelectorAll('.swipe-enabled .log-item[data-swipe-index]').forEach(item => {
-      if (item.dataset.holdActionReady === '1') return;
-      item.dataset.holdActionReady = '1';
+      if (item.dataset.doubleActionReady === '1') return;
+      item.dataset.doubleActionReady = '1';
       const row = item.closest('.log-swipe');
       if (!row) return;
-      let startX = 0;
-      let startY = 0;
-      let pressing = false;
-      let triggered = false;
-      let holdTimer = null;
 
-      const clearHold = () => {
-        clearTimeout(holdTimer);
-        holdTimer = null;
-        row.classList.remove('hold-pending');
-      };
+      let lastTapAt = 0;
+      let lastTapX = 0;
+      let lastTapY = 0;
+      let pointerStartX = 0;
+      let pointerStartY = 0;
+      let pointerMoved = false;
 
       item.addEventListener('pointerdown', e => {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        if (e.pointerType === 'mouse') return;
         if (e.target.closest('button')) return;
-        startX = e.clientX;
-        startY = e.clientY;
-        pressing = true;
-        triggered = false;
-        clearHold();
-        row.classList.add('hold-pending');
-        holdTimer = setTimeout(() => {
-          if (!pressing) return;
-          triggered = true;
-          undoGestureActive = true;
-          row.classList.remove('hold-pending');
-          const track = document.getElementById('viewsTrack');
-          if (track) {
-            track.classList.remove('dragging');
-            track.style.transform = `translateX(-${currentView * 100}%)`;
-          }
-          if (navigator.vibrate) {
-            try { navigator.vibrate(18); } catch(err) {}
-          }
-          openMovementActionMenu(row);
-        }, 430);
+        pointerStartX = e.clientX;
+        pointerStartY = e.clientY;
+        pointerMoved = false;
       });
 
       item.addEventListener('pointermove', e => {
-        if (!pressing || triggered) return;
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) {
-          pressing = false;
-          clearHold();
+        if (e.pointerType === 'mouse') return;
+        if (Math.hypot(e.clientX - pointerStartX, e.clientY - pointerStartY) > 8) {
+          pointerMoved = true;
         }
       });
 
-      const finishHold = () => {
-        clearHold();
-        pressing = false;
-        if (triggered) {
-          triggered = false;
-          setTimeout(() => { undoGestureActive = false; }, 0);
+      item.addEventListener('pointerup', e => {
+        if (e.pointerType === 'mouse') return;
+        if (e.target.closest('button') || pointerMoved) {
+          lastTapAt = 0;
+          return;
         }
-      };
-
-      item.addEventListener('pointerup', finishHold);
-      item.addEventListener('pointercancel', finishHold);
-      item.addEventListener('pointerleave', e => {
-        if (e.pointerType === 'mouse' && !triggered) {
-          pressing = false;
-          clearHold();
+        const now = Date.now();
+        const isDoubleTap = lastTapAt && (now - lastTapAt) <= 330 && Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) <= 24;
+        if (isDoubleTap) {
+          e.preventDefault();
+          lastTapAt = 0;
+          openMovementActionMenu(row);
+        } else {
+          lastTapAt = now;
+          lastTapX = e.clientX;
+          lastTapY = e.clientY;
         }
       });
+
+      item.addEventListener('pointercancel', () => {
+        pointerMoved = false;
+        lastTapAt = 0;
+      });
+
+      item.addEventListener('dblclick', e => {
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        openMovementActionMenu(row);
+      });
+
       item.addEventListener('contextmenu', e => e.preventDefault());
     });
   }
