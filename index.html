@@ -7535,6 +7535,57 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 </style>
 
+
+<style id="luki-287-projected-currency">
+/* BUILD287 · Realizar proyectado: selector PEN/USD integrado + TC automático por API */
+.projected-final-amount-wrap { position: relative; }
+.projected-final-amount-wrap #projectedFinalAmount {
+  padding-left: 68px;
+  font-family: var(--font-num) !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.projected-final-currency-toggle {
+  position: absolute;
+  left: 5px;
+  top: 5px;
+  bottom: 5px;
+  width: 54px;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(127,127,127,.13);
+  color: var(--ink-dim);
+  font-family: var(--font-num);
+  font-size: 13px;
+  font-weight: 760;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s ease, background .12s ease, color .12s ease;
+  z-index: 2;
+  padding: 0;
+}
+.projected-final-currency-toggle:active { transform: scale(.96); }
+.projected-final-currency-toggle.usd {
+  background: rgba(145,184,121,.16);
+  color: var(--accent, #8fb879);
+}
+.projected-final-tc-preview {
+  display: none;
+  margin: 7px 2px 0;
+  color: var(--ink-mute);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.projected-final-tc-preview.visible { display: block; }
+.projected-final-tc-preview strong {
+  color: var(--ink-dim);
+  font-family: var(--font-num);
+  font-weight: 760;
+}
+</style>
+
 </head>
 <body class="ledger-arc-ui">
 
@@ -12441,6 +12492,73 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     render();
   }
 
+  let projectedFinalCurrency = 'PEN';
+  let projectedFinalTcRefreshing = false;
+
+  function projectedApiExchangeRate() {
+    const cache = state.tcCache || {};
+    const rate = Number(cache.rate);
+    if (!Number.isFinite(rate) || rate <= 0) return null;
+    if (String(cache.source || '').toLowerCase() === 'manual') return null;
+    return rate;
+  }
+
+  function updateProjectedFinalCurrencyUI() {
+    const input = document.getElementById('projectedFinalAmount');
+    const toggle = document.getElementById('projectedFinalCurrencyToggle');
+    const label = document.getElementById('projectedFinalCurrencyLabel');
+    const preview = document.getElementById('projectedFinalTcPreview');
+    if (!input || !toggle || !label || !preview) return;
+
+    const esUSD = projectedFinalCurrency === 'USD';
+    label.textContent = esUSD ? 'US$' : 'S/';
+    toggle.classList.toggle('usd', esUSD);
+    input.setAttribute('aria-label', esUSD ? 'Monto final en dólares' : 'Monto final en soles');
+
+    if (!esUSD) {
+      preview.classList.remove('visible');
+      preview.innerHTML = '';
+      return;
+    }
+
+    preview.classList.add('visible');
+    const rate = projectedApiExchangeRate();
+    if (!rate) {
+      preview.innerHTML = projectedFinalTcRefreshing
+        ? 'Consultando tipo de cambio…'
+        : 'Sin tipo de cambio disponible';
+      return;
+    }
+
+    const amount = Number(input.value) || 0;
+    const converted = redondearDinero(amount * rate);
+    preview.innerHTML = `≈ <strong>S/ ${fmt(converted)}</strong> · TC ${rate.toFixed(3)} · API`;
+  }
+
+  async function refreshProjectedFinalExchangeRate(force = true) {
+    if (projectedFinalCurrency !== 'USD') return;
+    projectedFinalTcRefreshing = true;
+    updateProjectedFinalCurrencyUI();
+    try {
+      await fetchExchangeRate(force);
+      let waits = 0;
+      while (tcFetchInProgress && waits < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waits++;
+      }
+    } catch(e) {
+      console.warn('[Luki] TC proyectado:', e);
+    }
+    projectedFinalTcRefreshing = false;
+    updateProjectedFinalCurrencyUI();
+  }
+
+  function toggleProjectedFinalCurrency() {
+    projectedFinalCurrency = projectedFinalCurrency === 'USD' ? 'PEN' : 'USD';
+    updateProjectedFinalCurrencyUI();
+    if (projectedFinalCurrency === 'USD') refreshProjectedFinalExchangeRate(true);
+  }
+
   function openEditProjectedMovement(idx) {
     const mov = state.log[idx];
     if (!mov || !esMovimientoProyectado(mov) || !mov.snapshot) {
@@ -12448,29 +12566,32 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       return;
     }
     const infoMoneda = infoMonedaOriginalMovimiento(mov);
-    const esUSD = infoMoneda.moneda === 'USD';
-    const tcDerivado = esUSD && Number(infoMoneda.montoOriginal) > 0
+    const esUSDOriginal = infoMoneda.moneda === 'USD';
+    const tcDerivado = esUSDOriginal && Number(infoMoneda.montoOriginal) > 0
       ? (Number(mov.monto) || 0) / Number(infoMoneda.montoOriginal)
       : null;
-    const tcInicial = esUSD
+    const tcOriginal = esUSDOriginal
       ? (Number(infoMoneda.tipoCambio) > 0 ? Number(infoMoneda.tipoCambio) : tcDerivado)
       : null;
-    const montoInicial = esUSD ? Number(infoMoneda.montoOriginal) : Number(mov.monto);
-    const referenciaUSD = esUSD
-      ? ` · Original: <strong>US$ ${fmt(infoMoneda.montoOriginal)}</strong>${Number(tcInicial) > 0 ? ` @ ${Number(tcInicial).toFixed(3)}` : ''}`
+    const montoInicial = esUSDOriginal ? Number(infoMoneda.montoOriginal) : Number(mov.monto);
+    projectedFinalCurrency = esUSDOriginal ? 'USD' : 'PEN';
+    const referenciaOriginal = esUSDOriginal
+      ? ` · Original: <strong>US$ ${fmt(infoMoneda.montoOriginal)}</strong>${Number(tcOriginal) > 0 ? ` @ ${Number(tcOriginal).toFixed(3)}` : ''}`
       : '';
+
     openModal(`
       <h2>Realizar <span class="accent">proyectado</span></h2>
-      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto${referenciaUSD}. Al confirmar, recién se sumará la deuda real.</p>
+      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto${referenciaOriginal}. Al confirmar, recién se sumará la deuda real.</p>
       <div class="modal-field">
-        <label>${esUSD ? 'Monto final en dólares' : 'Monto final en soles'}</label>
-        <input type="number" id="projectedFinalAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(montoInicial).toFixed(2)}">
+        <label>Monto final</label>
+        <div class="projected-final-amount-wrap">
+          <button type="button" class="projected-final-currency-toggle" id="projectedFinalCurrencyToggle" onclick="toggleProjectedFinalCurrency()" aria-label="Cambiar moneda">
+            <span id="projectedFinalCurrencyLabel">${esUSDOriginal ? 'US$' : 'S/'}</span>
+          </button>
+          <input type="number" id="projectedFinalAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(montoInicial).toFixed(2)}" oninput="updateProjectedFinalCurrencyUI()">
+        </div>
+        <div class="projected-final-tc-preview" id="projectedFinalTcPreview"></div>
       </div>
-      ${esUSD ? `
-      <div class="modal-field">
-        <label>Tipo de cambio</label>
-        <input type="number" id="projectedFinalExchangeRate" min="0.001" step="0.001" inputmode="decimal" value="${Number(tcInicial || 0).toFixed(3)}">
-      </div>` : ''}
       <div class="modal-field">
         <label>Detalle</label>
         <input type="text" id="projectedFinalDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
@@ -12491,6 +12612,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <button class="btn-primary" onclick="realizarMovimientoProyectado(${idx})">Realizar DS</button>
       </div>
     `);
+
+    requestAnimationFrame(() => {
+      updateProjectedFinalCurrencyUI();
+      if (projectedFinalCurrency === 'USD') refreshProjectedFinalExchangeRate(true);
+    });
   }
 
   function realizarMovimientoProyectado(idx) {
@@ -12503,10 +12629,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const estadoAntes = captureMovementState();
     const logAntes = JSON.parse(JSON.stringify(state.log));
     const redoAntes = state.redoMovement ? JSON.parse(JSON.stringify(state.redoMovement)) : null;
-    const infoMoneda = infoMonedaOriginalMovimiento(mov);
-    const esUSD = infoMoneda.moneda === 'USD';
+    const esUSD = projectedFinalCurrency === 'USD';
     const montoIngresado = Number(document.getElementById('projectedFinalAmount')?.value);
-    const tipoCambio = esUSD ? Number(document.getElementById('projectedFinalExchangeRate')?.value) : null;
+    const tipoCambio = esUSD ? projectedApiExchangeRate() : null;
     let detalle = String(document.getElementById('projectedFinalDetail')?.value || '').trim();
     const categoria = normalizarCategoriaMovimiento(document.getElementById('projectedFinalCategory')?.value);
     const tarjetaId = normalizarTarjetaId(document.getElementById('projectedFinalCard')?.value || 'interbank');
@@ -12515,7 +12640,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       return;
     }
     if (esUSD && (!Number.isFinite(tipoCambio) || tipoCambio <= 0)) {
-      toast('Ingresa un tipo de cambio válido', true);
+      toast(projectedFinalTcRefreshing ? 'Consultando tipo de cambio…' : 'Sin tipo de cambio disponible', true);
+      if (!projectedFinalTcRefreshing) refreshProjectedFinalExchangeRate(true);
       return;
     }
 
