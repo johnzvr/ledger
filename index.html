@@ -8138,6 +8138,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   let uiSections = loadUiSections();
   let currentView = Math.max(0, Math.min(3, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
   let viewsInitialized = false;
+  // BUILD288 · conserva en memoria la conversión Proyectado → DS para que Deshacer
+  // pueda devolver exactamente el movimiento a su estado proyectado original.
+  let lastProjectedRealizationUndo = null;
   let undoGestureActive = false;
   let balanceHidden = (() => {
     try { return localStorage.getItem('ledger-balance-hidden-v1') === '1'; }
@@ -12160,6 +12163,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
   function redoMovementIsValid(redo = state.redoMovement) {
     if (!redo) return false;
+    if (redo.kind === 're-realize-projected') {
+      return currentStateMatchesSnapshot(redo.beforeState)
+        && JSON.stringify(state.log) === redo.beforeLog;
+    }
     if (redo.kind === 'restore-deleted') {
       return currentStateMatchesSnapshot(redo.afterDeleteState)
         && JSON.stringify(state.log) === redo.afterDeleteLog;
@@ -12674,6 +12681,16 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         }
       });
       if (!ok) throw new Error('No se pudo registrar el DS real');
+      const estadoDespues = captureMovementState();
+      const logDespues = JSON.stringify(state.log);
+      const movimientoFinal = state.log[state.log.length - 1];
+      lastProjectedRealizationUndo = {
+        finalMovementId: movimientoFinal?.id || null,
+        beforeState: JSON.parse(JSON.stringify(estadoAntes)),
+        beforeLog: JSON.stringify(logAntes),
+        afterState: JSON.parse(JSON.stringify(estadoDespues)),
+        afterLog: logDespues
+      };
       closeModal();
       toast(esUSD
         ? `Proyectado realizado · DS US$ ${fmt(montoOriginal)}`
@@ -13031,7 +13048,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </p>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-danger" onclick="doDelete(${lastIdx})">Sí, deshacer</button>
+        <button class="btn-danger" onclick="doDelete(${lastIdx}, true)">Sí, deshacer</button>
       </div>
     `);
   }
@@ -13040,6 +13057,27 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const redo = state.redoMovement;
     if (!redo) {
       toast('No hay movimientos que rehacer', true);
+      return;
+    }
+    if (redo.kind === 're-realize-projected') {
+      if (!redoMovementIsValid(redo)) {
+        state.redoMovement = null;
+        toast('Ya hubo otros cambios; no se puede rehacer', true);
+        render({ markModified: false, sync: false });
+        return;
+      }
+      restoreMovementState(redo.afterState);
+      state.log = JSON.parse(redo.afterLog);
+      lastProjectedRealizationUndo = {
+        finalMovementId: redo.finalMovementId || state.log[state.log.length - 1]?.id || null,
+        beforeState: JSON.parse(JSON.stringify(redo.beforeState)),
+        beforeLog: redo.beforeLog,
+        afterState: JSON.parse(JSON.stringify(redo.afterState)),
+        afterLog: redo.afterLog
+      };
+      state.redoMovement = null;
+      toast('Proyectado realizado nuevamente');
+      render();
       return;
     }
     if (redo.kind === 'restore-deleted') {
@@ -17726,13 +17764,44 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     `);
   }
   
-  function doDelete(idx) {
+  function doDelete(idx, restoreProjectedOnUndo = false) {
     if (!getDeletableMovementIndices().includes(idx)) {
       closeModal();
       toast('Solo puedes eliminar los últimos 10 movimientos', true);
       return;
     }
     const eraUltimo = idx === state.log.length - 1;
+
+    // BUILD288 · Deshacer una conversión Proyectado → DS debe restaurar el
+    // proyectado original, no borrar ambos estados. Solo aplica al botón global
+    // Deshacer y únicamente si el DS convertido sigue siendo el último movimiento.
+    if (restoreProjectedOnUndo && eraUltimo && lastProjectedRealizationUndo) {
+      const actual = state.log[idx];
+      const undo = lastProjectedRealizationUndo;
+      const coincide = !!actual
+        && !!undo.finalMovementId
+        && actual.id === undo.finalMovementId
+        && currentStateMatchesSnapshot(undo.afterState)
+        && JSON.stringify(state.log) === undo.afterLog;
+      if (coincide) {
+        restoreMovementState(undo.beforeState);
+        state.log = JSON.parse(undo.beforeLog);
+        state.redoMovement = {
+          kind: 're-realize-projected',
+          finalMovementId: undo.finalMovementId,
+          beforeState: JSON.parse(JSON.stringify(undo.beforeState)),
+          beforeLog: undo.beforeLog,
+          afterState: JSON.parse(JSON.stringify(undo.afterState)),
+          afterLog: undo.afterLog
+        };
+        lastProjectedRealizationUndo = null;
+        closeModal();
+        toast('Gasto devuelto a proyectado');
+        render();
+        return;
+      }
+    }
+
     try {
       const reconstruido = reconstruirSinMovimiento(idx);
       const cuotaPropiaPlan = esMovimientoCuotasPropias(reconstruido.target)
