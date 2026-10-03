@@ -11434,6 +11434,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     root.appendChild(head);
 
     proyectados.forEach(({ mov, index }) => {
+      const infoMoneda = infoMonedaOriginalMovimiento(mov);
+      const monedaMeta = infoMoneda.moneda === 'USD'
+        ? `<span>US$ ${fmt(infoMoneda.montoOriginal)}${Number(infoMoneda.tipoCambio) > 0 ? ` @ ${Number(infoMoneda.tipoCambio).toFixed(3)}` : ''}</span>`
+        : '';
       const row = document.createElement('div');
       row.className = 'log-swipe swipe-enabled projected-log-swipe';
       row.dataset.canUndo = '1';
@@ -11446,7 +11450,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             <div class="log-dot PROY">PROY</div>
             <div class="log-info">
               <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-              <div class="log-meta"><span class="projected-status">Reservado</span><span>Sin deuda todavía</span></div>
+              <div class="log-meta"><span class="projected-status">Reservado</span>${monedaMeta}<span>Sin deuda todavía</span></div>
             </div>
           </div>
           <div class="log-right"><div class="log-amount">S/${fmt(mov.monto)}</div></div>
@@ -12443,13 +12447,30 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       toast('No se encontró el proyectado', true);
       return;
     }
+    const infoMoneda = infoMonedaOriginalMovimiento(mov);
+    const esUSD = infoMoneda.moneda === 'USD';
+    const tcDerivado = esUSD && Number(infoMoneda.montoOriginal) > 0
+      ? (Number(mov.monto) || 0) / Number(infoMoneda.montoOriginal)
+      : null;
+    const tcInicial = esUSD
+      ? (Number(infoMoneda.tipoCambio) > 0 ? Number(infoMoneda.tipoCambio) : tcDerivado)
+      : null;
+    const montoInicial = esUSD ? Number(infoMoneda.montoOriginal) : Number(mov.monto);
+    const referenciaUSD = esUSD
+      ? ` · Original: <strong>US$ ${fmt(infoMoneda.montoOriginal)}</strong>${Number(tcInicial) > 0 ? ` @ ${Number(tcInicial).toFixed(3)}` : ''}`
+      : '';
     openModal(`
       <h2>Realizar <span class="accent">proyectado</span></h2>
-      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto. Al confirmar, recién se sumará la deuda real.</p>
+      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto${referenciaUSD}. Al confirmar, recién se sumará la deuda real.</p>
       <div class="modal-field">
-        <label>Monto final en soles</label>
-        <input type="number" id="projectedFinalAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(mov.monto).toFixed(2)}">
+        <label>${esUSD ? 'Monto final en dólares' : 'Monto final en soles'}</label>
+        <input type="number" id="projectedFinalAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(montoInicial).toFixed(2)}">
       </div>
+      ${esUSD ? `
+      <div class="modal-field">
+        <label>Tipo de cambio</label>
+        <input type="number" id="projectedFinalExchangeRate" min="0.001" step="0.001" inputmode="decimal" value="${Number(tcInicial || 0).toFixed(3)}">
+      </div>` : ''}
       <div class="modal-field">
         <label>Detalle</label>
         <input type="text" id="projectedFinalDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
@@ -12482,13 +12503,29 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const estadoAntes = captureMovementState();
     const logAntes = JSON.parse(JSON.stringify(state.log));
     const redoAntes = state.redoMovement ? JSON.parse(JSON.stringify(state.redoMovement)) : null;
-    const monto = Number(document.getElementById('projectedFinalAmount')?.value);
-    const detalle = String(document.getElementById('projectedFinalDetail')?.value || '').trim();
+    const infoMoneda = infoMonedaOriginalMovimiento(mov);
+    const esUSD = infoMoneda.moneda === 'USD';
+    const montoIngresado = Number(document.getElementById('projectedFinalAmount')?.value);
+    const tipoCambio = esUSD ? Number(document.getElementById('projectedFinalExchangeRate')?.value) : null;
+    let detalle = String(document.getElementById('projectedFinalDetail')?.value || '').trim();
     const categoria = normalizarCategoriaMovimiento(document.getElementById('projectedFinalCategory')?.value);
     const tarjetaId = normalizarTarjetaId(document.getElementById('projectedFinalCard')?.value || 'interbank');
-    if (!Number.isFinite(monto) || monto <= 0) {
+    if (!Number.isFinite(montoIngresado) || montoIngresado <= 0) {
       toast('Ingresa un monto válido', true);
       return;
+    }
+    if (esUSD && (!Number.isFinite(tipoCambio) || tipoCambio <= 0)) {
+      toast('Ingresa un tipo de cambio válido', true);
+      return;
+    }
+
+    const montoOriginal = redondearDinero(montoIngresado);
+    const monto = esUSD
+      ? redondearDinero(montoOriginal * tipoCambio)
+      : montoOriginal;
+    if (esUSD) {
+      const usdInfo = `USD ${montoOriginal.toFixed(2)} @ ${tipoCambio.toFixed(3)}`;
+      detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
     }
 
     try {
@@ -12505,13 +12542,16 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         metadata: {
           categoria,
           tarjetaId,
-          monedaOriginal: 'PEN',
-          montoOriginal: monto
+          monedaOriginal: esUSD ? 'USD' : 'PEN',
+          montoOriginal,
+          ...(esUSD ? { tipoCambio } : {})
         }
       });
       if (!ok) throw new Error('No se pudo registrar el DS real');
       closeModal();
-      toast(`Proyectado realizado · DS S/ ${fmt(monto)}`);
+      toast(esUSD
+        ? `Proyectado realizado · DS US$ ${fmt(montoOriginal)}`
+        : `Proyectado realizado · DS S/ ${fmt(monto)}`);
       render();
     } catch(e) {
       console.error('[Luki] No se pudo realizar proyectado:', e);
@@ -13002,6 +13042,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           && esMovimientoTarjeta(mov)
           && movimientoPerteneceCicloTarjetaActual(grupoPago, pagosTarjeta.grupos);
         const esProyectado = esActual && esMovimientoProyectado(mov);
+        const infoProyectado = esProyectado ? infoMonedaOriginalMovimiento(mov) : null;
+        const metaMonedaProyectado = infoProyectado?.moneda === 'USD'
+          ? `<span class="log-date">US$ ${fmt(infoProyectado.montoOriginal)}${Number(infoProyectado.tipoCambio) > 0 ? ` @ ${Number(infoProyectado.tipoCambio).toFixed(3)}` : ''}</span>`
+          : '';
         const canUndo = esActual && (esProyectado || deletableIndices.has(originalIdx));
         const canEdit = (esActual && (esProyectado || editableIndices.has(originalIdx))) || esArchivadoTarjetaActual;
         const canSwipe = canUndo || canEdit;
@@ -13023,7 +13067,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${esProyectado ? '<span class="projected-status">Reservado</span>' : ''}${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${esActual ? chipCategoriaMovimiento(mov, originalIdx) : chipCategoriaMovimiento(mov, -1)}${esProyectado ? '' : `<span class="log-date">${escapeHtml(mov.fecha)}</span>`}</div>
+                <div class="log-meta">${esProyectado ? '<span class="projected-status">Reservado</span>' + metaMonedaProyectado : ''}${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${esActual ? chipCategoriaMovimiento(mov, originalIdx) : chipCategoriaMovimiento(mov, -1)}${esProyectado ? '' : `<span class="log-date">${escapeHtml(mov.fecha)}</span>`}</div>
               </div>
             </div>
             <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
@@ -16478,9 +16522,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     selectedMod = null;
     closeDSVariantMenu();
     updateChipsUI();
-    toast(selectedDSProjected
-      ? 'Proyectado · reservará presupuesto sin generar deuda'
-      : (selectedDSOwn ? 'DS+P · 2 cuotas propias' : 'DS+C · deuda cubierta'));
   }
 
   function handleDSClick(event) {
