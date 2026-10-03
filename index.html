@@ -6712,6 +6712,10 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   letter-spacing: -0.015em;
   font-size: 12px;
 }
+.ledger-arc-ui .chip.type-DS.projected {
+  letter-spacing: -0.02em;
+  font-size: 11px;
+}
 .ds-control {
   position: relative;
   flex: 1;
@@ -6794,6 +6798,56 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   font-size: 9.5px;
   line-height: 1.45;
   color: var(--ink-dim);
+}
+.projected-movements-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 2px;
+  padding: 10px 4px 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-dim);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.projected-movements-total {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ledger-arc-ui .log-item.projected-movement,
+.ledger-arc-ui .log-swipe .log-item.projected-movement {
+  background: var(--bg);
+}
+.ledger-arc-ui .log-item.projected-movement .log-detail,
+.ledger-arc-ui .log-item.projected-movement .log-amount {
+  color: var(--ink-dim) !important;
+}
+.ledger-arc-ui .log-dot.PROY {
+  background: var(--available-soft);
+  color: var(--ink-dim);
+  border: 1px dashed var(--line-hi);
+  font-size: 8px;
+  letter-spacing: .02em;
+}
+.projected-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--available-soft);
+  color: var(--ink-dim);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 </style>
 
@@ -7789,7 +7843,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           id="dsChip"
           data-type="DS"
           role="button"
-          aria-label="DS. Mantén presionado para elegir DS+C o DS+P."
+          aria-label="DS. Mantén presionado para elegir DS+C, DS+P o Proyectado."
           aria-haspopup="menu"
           aria-expanded="false"
           onclick="handleDSClick(event)"
@@ -7807,6 +7861,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <button class="ds-variant-menu-btn" type="button" role="menuitem" onclick="selectDSVariant(event, 'own')">
             DS+P
             <small>2 cuotas propias · 50% este ciclo + 50% próximo</small>
+          </button>
+          <button class="ds-variant-menu-btn" type="button" role="menuitem" onclick="selectDSVariant(event, 'projected')">
+            Proyectado
+            <small>Reserva presupuesto · sin deuda, categoría ni tarjeta</small>
           </button>
         </div>
       </div>
@@ -8696,7 +8754,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function chipCategoriaMovimiento(mov, index, { editable = true } = {}) {
-    if (!mov || mov.etiqueta === 'recalcula') return '';
+    if (!mov || mov.etiqueta === 'recalcula' || esMovimientoProyectado(mov)) return '';
     const categoria = categoriaMovimiento(mov);
     const label = categoria || '+ Categoría';
     if (!editable) {
@@ -9909,7 +9967,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     }
     section.style.display = 'block';
     
-    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula' && !esMovimientoProyectado(m));
     const nowS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const nowDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const nowTotal = nowS + nowDS;
@@ -9950,6 +10008,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
   function getEditableMovementIndices() {
     const indices = new Set();
+    state.log.forEach((mov, i) => {
+      if (mov?.snapshot && esMovimientoProyectado(mov)) indices.add(i);
+    });
     let pagos = null;
     try { pagos = contextoPagosTarjeta(); } catch(e) {}
 
@@ -9979,14 +10040,19 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function getDeletableMovementIndices() {
-    const indices = [];
-    for (let i = state.log.length - 1; i >= 0 && indices.length < 10; i--) {
+    const indices = new Set();
+    state.log.forEach((mov, i) => {
+      if (mov?.snapshot && esMovimientoProyectado(mov)) indices.add(i);
+    });
+    let recientes = 0;
+    for (let i = state.log.length - 1; i >= 0 && recientes < 10; i--) {
       const mov = state.log[i];
       if (!mov?.snapshot) break;
       if (mov?.planCuotasId && !esMovimientoCuotasPropias(mov)) continue;
-      indices.unshift(i);
+      indices.add(i);
+      recientes++;
     }
-    return indices;
+    return [...indices].sort((a,b) => a-b);
   }
 
   function logAmountText(mov) {
@@ -10023,7 +10089,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       && !movOTipo?.cubierto;
   }
 
+  function esMovimientoProyectado(movOTipo) {
+    if (!movOTipo || typeof movOTipo === 'string') return false;
+    return normalizarTipoMovimiento(movOTipo?.tipo) === 'DS' && !!movOTipo?.proyectado;
+  }
+
   function esMovimientoTarjeta(movOTipo) {
+    if (esMovimientoProyectado(movOTipo)) return false;
     const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
     return tipo === 'DS' || tipo === 'FDS';
   }
@@ -10149,6 +10221,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function etiquetaTipoMovimiento(movOTipo) {
+    if (esMovimientoProyectado(movOTipo)) return 'PROY';
     if (esMovimientoDSCubierto(movOTipo)) return 'DS+C';
     if (esMovimientoDSPropio(movOTipo)) return 'DS+P';
     const tipo = normalizarTipoMovimiento(typeof movOTipo === 'string' ? movOTipo : movOTipo?.tipo);
@@ -10156,6 +10229,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function claseEspecialMovimiento(mov) {
+    if (esMovimientoProyectado(mov)) return ' projected-movement';
     const tipo = normalizarTipoMovimiento(mov?.tipo);
     if (tipo === 'FDS') return ' fund-card-movement';
     if (tipo === 'F') return ' fund-movement';
@@ -10822,7 +10896,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     ciclos.forEach(ciclo => {
       if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
       ciclo.movimientos.forEach((mov, index) => {
-        if (!mov || mov.etiqueta === 'recalcula') return;
+        if (!mov || mov.etiqueta === 'recalcula' || esMovimientoProyectado(mov)) return;
         const fecha = fechaDeMovimiento(mov, index, ciclo.fechaInicio);
         if (Number.isNaN(fecha.getTime()) || fecha < corte || fecha >= inicioActual) return;
         const clave = mov.id
@@ -11251,6 +11325,46 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     root.appendChild(card);
   }
 
+  function movimientosProyectadosActuales() {
+    return (Array.isArray(state.log) ? state.log : [])
+      .map((mov, index) => ({ mov, index }))
+      .filter(({ mov }) => mov?.snapshot && esMovimientoProyectado(mov))
+      .reverse();
+  }
+
+  function appendProjectedMovementsSummary(root) {
+    if (!root || movementBankFilter !== 'all') return 0;
+    const proyectados = movimientosProyectadosActuales();
+    if (!proyectados.length) return 0;
+    const total = redondearDinero(proyectados.reduce((sum, item) => sum + (Number(item.mov?.monto) || 0), 0));
+    const head = document.createElement('div');
+    head.className = 'projected-movements-head';
+    head.innerHTML = `<span>Proyectados · ${proyectados.length}</span><span class="projected-movements-total">S/ ${fmt(total)}</span>`;
+    root.appendChild(head);
+
+    proyectados.forEach(({ mov, index }) => {
+      const row = document.createElement('div');
+      row.className = 'log-swipe swipe-enabled projected-log-swipe';
+      row.dataset.canUndo = '1';
+      row.dataset.canEdit = '1';
+      row.innerHTML = `
+        <button class="swipe-action undo" onclick="confirmDelete(${index})">Eliminar</button>
+        <button class="swipe-action edit" onclick="openEditMovement(${index})">Editar</button>
+        <div class="log-item projected-movement" data-swipe-index="${index}">
+          <div class="log-left">
+            <div class="log-dot PROY">PROY</div>
+            <div class="log-info">
+              <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
+              <div class="log-meta"><span class="projected-status">Reservado</span><span>Sin deuda todavía</span></div>
+            </div>
+          </div>
+          <div class="log-right"><div class="log-amount">S/${fmt(mov.monto)}</div></div>
+        </div>`;
+      root.appendChild(row);
+    });
+    return proyectados.length;
+  }
+
   function renderLogCore() {
     const logEl = document.getElementById('logContainer');
     const pagosTarjeta = contextoPagosTarjeta();
@@ -11294,8 +11408,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     } catch (error) {
       console.error('[Luki] No se pudo renderizar heads-up de tarjetas:', error);
     }
+    let proyectadosPintados = 0;
+    try { proyectadosPintados = appendProjectedMovementsSummary(logEl); }
+    catch (error) { console.error('[Luki] Proyectados:', error); }
 
-    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0) {
+    if (state.log.length === 0 && recientesAnteriores.length === 0 && planesActivos.length === 0 && proyectadosPintados === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = 'Sin movimientos aún';
@@ -11332,9 +11449,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         estadosAnterioresInsertados = true;
       }
     };
-    const recentSource = movementBankFilter === 'all'
+    const recentSource = (movementBankFilter === 'all'
       ? state.log
-      : state.log.filter(mov => movimientoCoincideFiltroBanco(mov));
+      : state.log.filter(mov => movimientoCoincideFiltroBanco(mov)))
+      .filter(mov => !esMovimientoProyectado(mov));
     const recent = recentSource.slice(-15).reverse();
     recent.forEach((mov) => {
       try {
@@ -11482,7 +11600,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const entradas = [];
     const vistos = new Set();
     const agregar = (entrada) => {
-      if (!entrada?.mov || entrada.mov.etiqueta === 'recalcula') return;
+      if (!entrada?.mov || entrada.mov.etiqueta === 'recalcula' || esMovimientoProyectado(entrada.mov)) return;
       if (movementBankFilter !== 'all' && !movimientoCoincideFiltroBanco(entrada.mov)) return;
       const key = claveMovimientoVista(entrada.mov);
       if (vistos.has(key)) return;
@@ -11525,8 +11643,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       const resumen = resumenTotalesBancosElement(pagos.grupos);
       if (resumen) logEl.appendChild(resumen);
     } catch(e) {}
+    let proyectadosPintados = 0;
+    try { proyectadosPintados = appendProjectedMovementsSummary(logEl); } catch(e) {}
 
-    if (!entradas.length) {
+    if (!entradas.length && proyectadosPintados === 0) {
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = 'Sin movimientos aún';
@@ -11807,7 +11927,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       ? state.log.filter(mov => mov && mov.etiqueta !== 'recalcula')
       : [];
     const totalDS = redondearDinero(movimientos
-      .filter(mov => mov.tipo === 'DS')
+      .filter(mov => mov.tipo === 'DS' && !esMovimientoProyectado(mov))
       .reduce((total, mov) => total + (Number(mov.monto) || 0), 0));
     const totalFDS = redondearDinero(movimientos
       .filter(mov => normalizarTipoMovimiento(mov.tipo) === 'FDS')
@@ -11822,10 +11942,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       totalS,
       totalGasto: redondearDinero(
         totalS + movimientos
-          .filter(mov => mov.tipo === 'DS' && !esMovimientoDSCubierto(mov))
+          .filter(mov => mov.tipo === 'DS' && !esMovimientoDSCubierto(mov) && !esMovimientoProyectado(mov))
           .reduce((total, mov) => total + (Number(mov.monto) || 0), 0)
       ),
-      cantidad: movimientos.filter(mov => afectaPresupuestoSalarial(mov) || esMovimientoTarjeta(mov)).length
+      cantidad: movimientos.filter(mov => !esMovimientoProyectado(mov) && (afectaPresupuestoSalarial(mov) || esMovimientoTarjeta(mov))).length
     };
   }
 
@@ -12033,6 +12153,17 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       return next;
     }
 
+    if (esMovimientoProyectado(mov)) {
+      const impactoPresupuesto = impactoPresupuestoMovimiento(mov);
+      next.totalDisponible -= impactoPresupuesto;
+      const fechaMovimiento = mov.fechaISO
+        ? new Date(mov.fechaISO)
+        : (Number.isFinite(Number(mov.timestamp)) ? new Date(Number(mov.timestamp)) : new Date());
+      // Sin fecha estimada: reserva el monto entre los bloques restantes.
+      aplicarGastoEnBloques(next.semanas, impactoPresupuesto, next.totalDisponible, next.metaResidual, 'sem', fechaMovimiento);
+      return next;
+    }
+
     if (tipo === 'DS' && esMovimientoDSCubierto(mov)) {
       next.deudaActual += monto;
       return next;
@@ -12121,7 +12252,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
   function recalcularResumenCicloArchivado(ciclo) {
     if (!ciclo || !Array.isArray(ciclo.movimientos)) return;
-    const gastos = ciclo.movimientos.filter(m => m && m.etiqueta !== 'recalcula');
+    const gastos = ciclo.movimientos.filter(m => m && m.etiqueta !== 'recalcula' && !esMovimientoProyectado(m));
     ciclo.totalS = redondearDinero(gastos.filter(m => m.tipo === 'S').reduce((s,m) => s + (Number(m.monto) || 0), 0));
     ciclo.totalDS = redondearDinero(gastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + (Number(m.monto) || 0), 0));
     ciclo.totalDSCubierto = redondearDinero(gastos.filter(m => esMovimientoDSCubierto(m)).reduce((s,m) => s + (Number(m.monto) || 0), 0));
@@ -12212,8 +12343,99 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     render();
   }
 
+  function openEditProjectedMovement(idx) {
+    const mov = state.log[idx];
+    if (!mov || !esMovimientoProyectado(mov) || !mov.snapshot) {
+      toast('No se encontró el proyectado', true);
+      return;
+    }
+    openModal(`
+      <h2>Realizar <span class="accent">proyectado</span></h2>
+      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto. Al confirmar, recién se sumará la deuda real.</p>
+      <div class="modal-field">
+        <label>Monto final en soles</label>
+        <input type="number" id="projectedFinalAmount" min="0.01" step="0.01" inputmode="decimal" value="${Number(mov.monto).toFixed(2)}">
+      </div>
+      <div class="modal-field">
+        <label>Detalle</label>
+        <input type="text" id="projectedFinalDetail" value="${escapeHtml(mov.detalle || '')}" autocomplete="off">
+      </div>
+      <div class="modal-field">
+        <label>Categoría</label>
+        <select id="projectedFinalCategory">${opcionesCategoriaMovimiento('')}</select>
+      </div>
+      <div class="modal-field">
+        <label>Tarjeta</label>
+        <select id="projectedFinalCard">
+          <option value="interbank">Interbank</option>
+          <option value="bcp">BCP</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="realizarMovimientoProyectado(${idx})">Realizar DS</button>
+      </div>
+    `);
+  }
+
+  function realizarMovimientoProyectado(idx) {
+    const mov = state.log[idx];
+    if (!mov || !esMovimientoProyectado(mov) || !mov.snapshot) {
+      closeModal();
+      toast('No se encontró el proyectado', true);
+      return;
+    }
+    const estadoAntes = captureMovementState();
+    const logAntes = JSON.parse(JSON.stringify(state.log));
+    const redoAntes = state.redoMovement ? JSON.parse(JSON.stringify(state.redoMovement)) : null;
+    const monto = Number(document.getElementById('projectedFinalAmount')?.value);
+    const detalle = String(document.getElementById('projectedFinalDetail')?.value || '').trim();
+    const categoria = normalizarCategoriaMovimiento(document.getElementById('projectedFinalCategory')?.value);
+    const tarjetaId = normalizarTarjetaId(document.getElementById('projectedFinalCard')?.value || 'interbank');
+    if (!Number.isFinite(monto) || monto <= 0) {
+      toast('Ingresa un monto válido', true);
+      return;
+    }
+
+    try {
+      // Quita primero la reserva proyectada y reconstruye todo lo posterior.
+      // Luego registra el DS real HOY: así el presupuesto nunca se descuenta dos veces.
+      const reconstruido = reconstruirSinMovimiento(idx);
+      restoreMovementState(reconstruido.rebuiltState);
+      state.log = reconstruido.rebuiltLog;
+      state.redoMovement = null;
+      const ok = aplicarMovimiento(monto, 'DS', null, detalle, {
+        fecha: new Date(),
+        renderizar: false,
+        notificar: false,
+        metadata: {
+          categoria,
+          tarjetaId,
+          monedaOriginal: 'PEN',
+          montoOriginal: monto
+        }
+      });
+      if (!ok) throw new Error('No se pudo registrar el DS real');
+      closeModal();
+      toast(`Proyectado realizado · DS S/ ${fmt(monto)}`);
+      render();
+    } catch(e) {
+      console.error('[Luki] No se pudo realizar proyectado:', e);
+      restoreMovementState(estadoAntes);
+      state.log = logAntes;
+      state.redoMovement = redoAntes;
+      closeModal();
+      toast('No se pudo realizar este proyectado', true);
+      render({ markModified: false, sync: false });
+    }
+  }
+
   function openEditMovement(idx) {
     const mov = state.log[idx];
+    if (esMovimientoProyectado(mov)) {
+      openEditProjectedMovement(idx);
+      return;
+    }
     const esCuotaPropia = esMovimientoCuotasPropias(mov);
     if (!mov || mov.etiqueta === 'recalcula') {
       toast('Este movimiento no se puede editar', true);
@@ -12647,7 +12869,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         )
       : entradasBase;
 
-    const soloGastos = filtrados.map(item => item.mov).filter(m => m.etiqueta !== 'recalcula');
+    const soloGastos = filtrados.map(item => item.mov).filter(m => m.etiqueta !== 'recalcula' && !esMovimientoProyectado(m));
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS').reduce((s,m) => s + m.monto, 0);
     const totalF = soloGastos.filter(m => m.tipo === 'F').reduce((s,m) => s + m.monto, 0);
@@ -12685,8 +12907,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         const esArchivadoTarjetaActual = !esActual
           && esMovimientoTarjeta(mov)
           && movimientoPerteneceCicloTarjetaActual(grupoPago, pagosTarjeta.grupos);
-        const canUndo = esActual && deletableIndices.has(originalIdx);
-        const canEdit = (esActual && editableIndices.has(originalIdx)) || esArchivadoTarjetaActual;
+        const esProyectado = esActual && esMovimientoProyectado(mov);
+        const canUndo = esActual && (esProyectado || deletableIndices.has(originalIdx));
+        const canEdit = (esActual && (esProyectado || editableIndices.has(originalIdx))) || esArchivadoTarjetaActual;
         const canSwipe = canUndo || canEdit;
         const refCicloArchivado = esArchivadoTarjetaActual && entrada.ciclo ? referenciaCicloArchivado(entrada.ciclo) : '';
         let dotType = normalizarTipoMovimiento(mov.tipo);
@@ -12699,14 +12922,14 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           && movimientoPerteneceEstadoTarjetaCerrado(grupoPago, pagosTarjeta.grupos);
         listaHTML += `
           <div class="log-swipe${canSwipe ? ' swipe-enabled' : ''}" data-can-undo="${canUndo ? '1' : '0'}" data-can-edit="${canEdit ? '1' : '0'}">
-          ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">Deshacer</button>` : ''}
+          ${canUndo ? `<button class="swipe-action undo" onclick="closeModal(); setTimeout(() => confirmDelete(${originalIdx}), 100);">${esProyectado ? 'Eliminar' : 'Deshacer'}</button>` : ''}
           ${canEdit ? `<button class="swipe-action edit" onclick="${esArchivadoTarjetaActual ? `openEditArchivedCardMovement('${refCicloArchivado}', ${entrada.index})` : `openEditMovement(${originalIdx})`}">Editar</button>` : ''}
           <div class="log-item${atenuarPorEstadoTarjetaCerrado ? ' previous-bank-cycle-movement' : ''}${claseEspecialMovimiento(mov)}" ${canSwipe ? `data-swipe-index="${esActual ? originalIdx : entrada.index}"` : ''}>
             <div class="log-left">
               <div class="log-dot ${dotType}">${dotLabel}</div>
               <div class="log-info">
                 <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-                <div class="log-meta">${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${esActual ? chipCategoriaMovimiento(mov, originalIdx) : chipCategoriaMovimiento(mov, -1)}<span class="log-date">${escapeHtml(mov.fecha)}</span></div>
+                <div class="log-meta">${esProyectado ? '<span class="projected-status">Reservado</span>' : ''}${badge}${esMovimientoTarjeta(mov) ? badgeBancoMovimiento(mov) + badgePagoTarjeta(grupoPago) : ''}${esActual ? chipCategoriaMovimiento(mov, originalIdx) : chipCategoriaMovimiento(mov, -1)}${esProyectado ? '' : `<span class="log-date">${escapeHtml(mov.fecha)}</span>`}</div>
               </div>
             </div>
             <div class="log-right"><div class="log-amount">${logAmountText(mov)}</div></div>
@@ -13796,7 +14019,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
   // ============ NUEVO CICLO ============
   function confirmarNuevoCiclo() {
-    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula' && !esMovimientoProyectado(m));
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const totalDSCubierto = soloGastos.filter(m => esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
@@ -14704,7 +14927,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     state.tarjeta = datos.tarjetaNueva;
 
     const { disponible, meta, intocable, deuda, fechaInicio, modoManual, numSem, nuevaFechaInicio, nuevoProximoSueldo, cuentasInicioCiclo } = datos;
-    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula');
+    const soloGastos = state.log.filter(m => m.etiqueta !== 'recalcula' && !esMovimientoProyectado(m));
     const totalS = soloGastos.filter(m => m.tipo === 'S').reduce((s,m) => s + m.monto, 0);
     const totalDS = soloGastos.filter(m => m.tipo === 'DS' && !esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
     const totalDSCubierto = soloGastos.filter(m => esMovimientoDSCubierto(m)).reduce((s,m) => s + m.monto, 0);
@@ -14764,6 +14987,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         montoOriginal: Number.isFinite(Number(m.montoOriginal)) ? Number(m.montoOriginal) : null,
         tipoCambio: Number.isFinite(Number(m.tipoCambio)) ? Number(m.tipoCambio) : null,
         cuotaPropia: !!m.cuotaPropia,
+        proyectado: !!m.proyectado,
         impactoPresupuesto: Number.isFinite(Number(m.impactoPresupuesto)) ? Number(m.impactoPresupuesto) : null
       }))
     };
@@ -14895,6 +15119,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
   function impactoReporteMovimiento(mov) {
     const tipo = tipoReporteMovimiento(mov);
+    if (esMovimientoProyectado(mov)) return 'Presupuesto reservado · sin deuda';
     if (esMovimientoCuotasPropias(mov)) return 'DS+P · 50% presupuesto + tarjeta';
     if (tipo === 'S') return 'Disponible';
     if (tipo === 'DS+C') return 'Tarjeta · cubierto';
@@ -15962,6 +16187,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   let selectedMod = null;
   let selectedDSCovered = false;
   let selectedDSOwn = false;
+  let selectedDSProjected = false;
 
   // BUILD241 · mantener → abre directamente el calendario de fecha del gasto.
   let sendLongPressTimer = null;
@@ -16088,16 +16314,19 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (tipo === 'S') {
       selectedDSCovered = false;
       selectedDSOwn = false;
+      selectedDSProjected = false;
       selectedType = selectedType === 'S' ? null : 'S';
     } else if (tipo === 'DS') {
       selectedDSCovered = false;
       selectedDSOwn = false;
+      selectedDSProjected = false;
       if (selectedType === 'F') selectedType = 'FDS';
       else if (selectedType === 'FDS') selectedType = 'F';
       else selectedType = selectedType === 'DS' ? null : 'DS';
     } else if (tipo === 'F') {
       selectedDSCovered = false;
       selectedDSOwn = false;
+      selectedDSProjected = false;
       if (selectedType === 'DS') selectedType = 'FDS';
       else if (selectedType === 'FDS') selectedType = 'DS';
       else selectedType = selectedType === 'F' ? null : 'F';
@@ -16151,10 +16380,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     selectedType = 'DS';
     selectedDSCovered = variant === 'covered';
     selectedDSOwn = variant === 'own';
+    selectedDSProjected = variant === 'projected';
     selectedMod = null;
     closeDSVariantMenu();
     updateChipsUI();
-    toast(selectedDSOwn ? 'DS+P · 2 cuotas propias' : 'DS+C · deuda cubierta');
+    toast(selectedDSProjected
+      ? 'Proyectado · reservará presupuesto sin generar deuda'
+      : (selectedDSOwn ? 'DS+P · 2 cuotas propias' : 'DS+C · deuda cubierta'));
   }
 
   function handleDSClick(event) {
@@ -16171,9 +16403,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       event?.stopPropagation?.();
       return;
     }
-    if (selectedType === 'DS' && (selectedDSCovered || selectedDSOwn)) {
+    if (selectedType === 'DS' && (selectedDSCovered || selectedDSOwn || selectedDSProjected)) {
       selectedDSCovered = false;
       selectedDSOwn = false;
+      selectedDSProjected = false;
       updateChipsUI();
       return;
     }
@@ -16311,6 +16544,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       toast('DS+C no usa bloques: el monto ya está cubierto', true);
       return;
     }
+    if (selectedType === 'DS' && selectedDSProjected) {
+      toast('Proyectado ya reserva el monto entre los bloques restantes', true);
+      return;
+    }
     if (selectedType === 'F' || selectedType === 'FDS') {
       toast('El fondo no usa reparto por bloques', true);
       return;
@@ -16324,9 +16561,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (dsChip) {
       const cubiertoActivo = selectedType === 'DS' && selectedDSCovered;
       const propioActivo = selectedType === 'DS' && selectedDSOwn;
-      dsChip.textContent = cubiertoActivo ? 'DS+C' : (propioActivo ? 'DS+P' : 'DS');
+      const proyectadoActivo = selectedType === 'DS' && selectedDSProjected;
+      dsChip.textContent = cubiertoActivo ? 'DS+C' : (propioActivo ? 'DS+P' : (proyectadoActivo ? 'PROY.' : 'DS'));
       dsChip.classList.toggle('covered', cubiertoActivo);
       dsChip.classList.toggle('own', propioActivo);
+      dsChip.classList.toggle('projected', proyectadoActivo);
       dsChip.setAttribute('aria-pressed', selectedType === 'DS' ? 'true' : 'false');
     }
     document.querySelectorAll('.chip[data-type]').forEach(el => {
@@ -16588,9 +16827,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       }
       monto = montoRaw * rate;
       tipoCambioOriginal = rate;
-      // Agregar info de USD al detalle
-      const usdInfo = `USD ${montoRaw.toFixed(2)} @ ${rate.toFixed(3)}`;
-      detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
+      // Los proyectados solo capturan monto + detalle. La metadata técnica queda interna.
+      if (!(selectedType === 'DS' && selectedDSProjected)) {
+        const usdInfo = `USD ${montoRaw.toFixed(2)} @ ${rate.toFixed(3)}`;
+        detalle = detalle ? `${detalle} · ${usdInfo}` : usdInfo;
+      }
     }
 
     if ((selectedType === 'F' || selectedType === 'FDS') && monto > state.montoIntocable + 0.005) {
@@ -16598,6 +16839,21 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       return;
     }
     
+    // Proyectado es captura rápida: monto + detalle. No pregunta categoría ni tarjeta.
+    if (selectedType === 'DS' && selectedDSProjected) {
+      const ok = aplicarMovimiento(monto, 'DS', null, detalle, {
+        fecha: new Date(),
+        metadata: {
+          proyectado: true,
+          monedaOriginal,
+          montoOriginal,
+          tipoCambio: tipoCambioOriginal
+        }
+      });
+      if (ok) resetInputs();
+      return;
+    }
+
     // La operación financiera ocurre recién después de elegir la categoría.
     const fechaMovimiento = fechaMovimientoForzada ? new Date(fechaMovimientoForzada) : null;
     openQuickMovementCategory({
@@ -16621,6 +16877,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     selectedMod = null;
     selectedDSCovered = false;
     selectedDSOwn = false;
+    selectedDSProjected = false;
     sendLongPressTriggered = false;
     cancelSendLongPress();
     dsLongPressTriggered = false;
@@ -16858,7 +17115,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         cuotaAutomatica: !!metadata.cuotaAutomatica
       } : {}),
       ...(normalizarCategoriaMovimiento(metadata.categoria) ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) } : {}),
-      ...(esMovimientoTarjeta(tipo) ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) } : {}),
+      ...(tipo === 'DS' && metadata.proyectado ? { proyectado: true } : {}),
+      ...(esMovimientoTarjeta(tipo) && !(tipo === 'DS' && metadata.proyectado) ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) } : {}),
       ...(metadata.monedaOriginal ? { monedaOriginal: String(metadata.monedaOriginal).toUpperCase() === 'USD' ? 'USD' : 'PEN' } : {}),
       ...(Number.isFinite(Number(metadata.montoOriginal)) ? { montoOriginal: redondearDinero(Number(metadata.montoOriginal)) } : {}),
       ...(Number.isFinite(Number(metadata.tipoCambio)) && Number(metadata.tipoCambio) > 0 ? { tipoCambio: Number(metadata.tipoCambio) } : {}),
@@ -17003,7 +17261,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       ...(normalizarCategoriaMovimiento(metadata.categoria)
         ? { categoria: normalizarCategoriaMovimiento(metadata.categoria) }
         : {}),
-      ...(esMovimientoTarjeta(tipo)
+      ...(tipo === 'DS' && metadata.proyectado ? { proyectado: true } : {}),
+      ...(esMovimientoTarjeta(tipo) && !(tipo === 'DS' && metadata.proyectado)
         ? { tarjetaId: normalizarTarjetaId(metadata.tarjetaId) }
         : {}),
       ...(metadata.monedaOriginal ? { monedaOriginal: String(metadata.monedaOriginal).toUpperCase() === 'USD' ? 'USD' : 'PEN' } : {}),
@@ -17038,6 +17297,27 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         toast(tipo === 'FDS'
           ? `F+DS · S/ ${fmt(monto)} cubiertos por el fondo`
           : `−S/ ${fmt(monto)} retirado del fondo`);
+      }
+      if (renderizar) render();
+      return true;
+    }
+
+    // Proyectado: reserva presupuesto, pero todavía no es gasto real ni deuda.
+    if (esMovimientoProyectado(mov)) {
+      state.totalDisponible -= impactoPresupuesto;
+      const resultadoBloques = aplicarGastoEnBloques(
+        state.semanas,
+        impactoPresupuesto,
+        state.totalDisponible,
+        state.metaResidual || 0,
+        'sem',
+        ahora
+      );
+      state.log.push(mov);
+      if (notificar) {
+        toast(resultadoBloques.exceso > 0
+          ? `Proyectado · S/ ${fmt(impactoPresupuesto)} reservados · presupuesto excedido`
+          : `Proyectado · S/ ${fmt(impactoPresupuesto)} reservados`);
       }
       if (renderizar) render();
       return true;
