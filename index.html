@@ -7441,6 +7441,66 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   .ledger-arc-ui .hero-actions .hero-start-snapshot-btn span { display:none; }
   .ledger-arc-ui .hero-actions .hero-start-snapshot-btn { width:40px; padding:0; }
 }
+
+
+  /* BUILD281 · Acciones de movimientos por pulsación larga.
+     El swipe deja de ser una interacción visible; las acciones siguen usando
+     las mismas funciones internas de edición y eliminación. */
+  .log-swipe.swipe-enabled .log-item {
+    cursor: pointer;
+    touch-action: pan-y;
+  }
+  .log-swipe.swipe-enabled > .swipe-action {
+    display: none !important;
+  }
+  .log-swipe.hold-pending .log-item {
+    transform: scale(.995);
+    transition: transform .12s ease;
+  }
+  .movement-action-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 420;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(26,26,26,.30);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  .movement-action-overlay.active { display: flex; }
+  .movement-action-menu {
+    width: min(100%, 310px);
+    padding: 10px;
+    border: 1px solid var(--line-hi);
+    border-radius: 18px;
+    background: var(--bg);
+    box-shadow: 0 22px 64px rgba(0,0,0,.24);
+  }
+  .movement-action-menu button {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink);
+    font: 700 14px var(--font-ui);
+    cursor: pointer;
+  }
+  .movement-action-menu button:active { background: var(--surface-soft); }
+  .movement-action-menu .movement-action-delete { color: var(--danger); }
+  .movement-action-menu .movement-action-cancel {
+    margin-top: 4px;
+    border-top: 1px solid var(--line);
+    border-radius: 0 0 12px 12px;
+    color: var(--ink-dim);
+    font-weight: 600;
+  }
+  body.dark .movement-action-menu {
+    border-color: rgba(255,255,255,.12);
+    box-shadow: 0 22px 64px rgba(0,0,0,.55);
+  }
 </style>
 
 </head>
@@ -11792,128 +11852,133 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function runSwipeOnboarding(root) {
-    if (swipeHintSeen || !root) return;
-    const row = root.querySelector('.log-swipe.swipe-enabled[data-can-undo="1"][data-can-edit="1"]')
-      || root.querySelector('.log-swipe.swipe-enabled[data-can-edit="1"]')
-      || root.querySelector('.log-swipe.swipe-enabled');
+    // BUILD281: el swipe fue reemplazado por pulsación larga; no mostrar onboarding antiguo.
+    return;
+  }
+
+  let movementActionSourceRow = null;
+
+  function ensureMovementActionOverlay() {
+    let overlay = document.getElementById('movementActionOverlay');
+    if (overlay) return overlay;
+    overlay = document.createElement('div');
+    overlay.id = 'movementActionOverlay';
+    overlay.className = 'movement-action-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = '<div class="movement-action-menu" role="dialog" aria-modal="true" aria-label="Acciones del movimiento"></div>';
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) closeMovementActionMenu();
+    });
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  function closeMovementActionMenu() {
+    const overlay = document.getElementById('movementActionOverlay');
+    overlay?.classList.remove('active');
+    overlay?.setAttribute('aria-hidden', 'true');
+    movementActionSourceRow?.classList.remove('hold-pending');
+    movementActionSourceRow = null;
+  }
+
+  function runMovementAction(action) {
+    const row = movementActionSourceRow;
     if (!row) return;
-    swipeHintSeen = true;
-    try { localStorage.setItem('ledger-hold-swipe-hint-seen-v4', '1'); } catch(e) {}
-    row.classList.add('hold-onboarding');
-    setTimeout(() => {
-      row.classList.remove('hold-onboarding');
-      row.classList.add('swipe-onboarding');
-    }, 390);
-    setTimeout(() => {
-      row.classList.remove('swipe-onboarding');
-      const hint = row.querySelector('.swipe-hint');
-      if (hint) hint.style.display = 'none';
-    }, 1500);
+    const selector = action === 'edit' ? '.swipe-action.edit' : '.swipe-action.undo';
+    const target = row.querySelector(selector);
+    closeMovementActionMenu();
+    if (target) target.click();
+  }
+
+  function openMovementActionMenu(row) {
+    if (!row) return;
+    const canEdit = row.dataset.canEdit === '1' && !!row.querySelector('.swipe-action.edit');
+    const canDelete = row.dataset.canUndo === '1' && !!row.querySelector('.swipe-action.undo');
+    if (!canEdit && !canDelete) return;
+
+    const overlay = ensureMovementActionOverlay();
+    const menu = overlay.querySelector('.movement-action-menu');
+    movementActionSourceRow = row;
+    menu.innerHTML = `
+      ${canEdit ? '<button type="button" onclick="runMovementAction(\'edit\')">Editar</button>' : ''}
+      ${canDelete ? '<button type="button" class="movement-action-delete" onclick="runMovementAction(\'delete\')">Eliminar</button>' : ''}
+      <button type="button" class="movement-action-cancel" onclick="closeMovementActionMenu()">Cancelar</button>
+    `;
+    overlay.classList.add('active');
+    overlay.setAttribute('aria-hidden', 'false');
   }
 
   function initSwipeRows(root = document) {
+    // Conservamos el nombre para no tocar los renderers existentes; desde BUILD281
+    // esta función inicializa HOLD, no swipe.
     root.querySelectorAll('.swipe-enabled .log-item[data-swipe-index]').forEach(item => {
-      if (item.dataset.swipeReady === '1') return;
-      item.dataset.swipeReady = '1';
+      if (item.dataset.holdActionReady === '1') return;
+      item.dataset.holdActionReady = '1';
       const row = item.closest('.log-swipe');
-      const canUndo = row.dataset.canUndo === '1';
-      const canEdit = row.dataset.canEdit === '1';
+      if (!row) return;
       let startX = 0;
       let startY = 0;
-      let lastX = 0;
-      let dragging = false;
-      let horizontal = false;
-      let armed = false;
+      let pressing = false;
+      let triggered = false;
       let holdTimer = null;
 
-      const cancelHold = () => {
+      const clearHold = () => {
         clearTimeout(holdTimer);
         holdTimer = null;
-      };
-
-      const closeOtherRows = () => {
-        document.querySelectorAll('.log-swipe.open .log-item').forEach(other => {
-          if (other !== item) {
-            other.style.transform = 'translateX(0)';
-            other.closest('.log-swipe').classList.remove('open', 'open-undo', 'open-edit');
-          }
-        });
+        row.classList.remove('hold-pending');
       };
 
       item.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
         if (e.target.closest('button')) return;
-        closeOtherRows();
-        item.style.transform = 'translateX(0)';
-        row.classList.remove('open', 'open-undo', 'open-edit', 'undo-armed', 'edit-armed');
         startX = e.clientX;
         startY = e.clientY;
-        lastX = e.clientX;
-        dragging = true;
-        horizontal = false;
-        armed = false;
-        cancelHold();
+        pressing = true;
+        triggered = false;
+        clearHold();
+        row.classList.add('hold-pending');
         holdTimer = setTimeout(() => {
-          if (!dragging) return;
-          armed = true;
+          if (!pressing) return;
+          triggered = true;
           undoGestureActive = true;
-          row.classList.add('dragging');
+          row.classList.remove('hold-pending');
           const track = document.getElementById('viewsTrack');
           if (track) {
             track.classList.remove('dragging');
             track.style.transform = `translateX(-${currentView * 100}%)`;
           }
-          try { item.setPointerCapture(e.pointerId); } catch(err) {}
           if (navigator.vibrate) {
             try { navigator.vibrate(18); } catch(err) {}
           }
-        }, 360);
+          openMovementActionMenu(row);
+        }, 430);
       });
 
       item.addEventListener('pointermove', e => {
-        if (!dragging) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        lastX = e.clientX;
-        if (!armed) {
-          if (Math.hypot(dx, dy) > 8) cancelHold();
-          return;
+        if (!pressing || triggered) return;
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) > 8) {
+          pressing = false;
+          clearHold();
         }
-        if (!horizontal && Math.abs(dx) > 8) horizontal = Math.abs(dx) > Math.abs(dy);
-        if (!horizontal) return;
-        let offset = 0;
-        if (dx > 0 && canEdit) offset = Math.min(94, dx);
-        if (dx < 0 && canUndo) offset = Math.max(-94, dx);
-        row.classList.toggle('edit-armed', offset > 8);
-        row.classList.toggle('undo-armed', offset < -8);
-        item.style.transform = `translateX(${offset}px)`;
       });
 
-      const finishSwipe = e => {
-        if (!dragging) return;
-        cancelHold();
-        dragging = false;
-        const wasArmed = armed;
-        const dx = (Number.isFinite(e.clientX) ? e.clientX : lastX) - startX;
-        const action = wasArmed && horizontal
-          ? (dx > 42 && canEdit ? 'edit' : (dx < -42 && canUndo ? 'undo' : null))
-          : null;
-        if (wasArmed) {
-          item.style.transform = action === 'edit'
-            ? 'translateX(94px)'
-            : (action === 'undo' ? 'translateX(-94px)' : 'translateX(0)');
-          row.classList.toggle('open', !!action);
-          row.classList.toggle('open-undo', action === 'undo');
-          row.classList.toggle('open-edit', action === 'edit');
+      const finishHold = () => {
+        clearHold();
+        pressing = false;
+        if (triggered) {
+          triggered = false;
+          setTimeout(() => { undoGestureActive = false; }, 0);
         }
-        row.classList.remove('dragging', 'undo-armed', 'edit-armed');
-        armed = false;
-        try { item.releasePointerCapture(e.pointerId); } catch(err) {}
-        if (wasArmed) setTimeout(() => { undoGestureActive = false; }, 0);
       };
 
-      item.addEventListener('pointerup', finishSwipe);
-      item.addEventListener('pointercancel', finishSwipe);
+      item.addEventListener('pointerup', finishHold);
+      item.addEventListener('pointercancel', finishHold);
+      item.addEventListener('pointerleave', e => {
+        if (e.pointerType === 'mouse' && !triggered) {
+          pressing = false;
+          clearHold();
+        }
+      });
       item.addEventListener('contextmenu', e => e.preventDefault());
     });
   }
