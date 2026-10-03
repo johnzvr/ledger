@@ -6799,12 +6799,15 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   line-height: 1.45;
   color: var(--ink-dim);
 }
+.projected-movements-menu {
+  margin: 16px 0 2px;
+}
 .projected-movements-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 16px 0 2px;
+  margin: 0;
   padding: 10px 4px 8px;
   border-bottom: 1px solid var(--line);
   color: var(--ink-dim);
@@ -6812,6 +6815,27 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  list-style: none;
+}
+.projected-movements-head::-webkit-details-marker { display: none; }
+.projected-movements-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+.projected-movements-chevron {
+  display: inline-block;
+  font-size: 13px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform .16s ease;
+}
+.projected-movements-menu[open] .projected-movements-chevron {
+  transform: rotate(90deg);
 }
 .projected-movements-total {
   font-size: 11px;
@@ -6820,6 +6844,9 @@ body.dark #modalContent:has(.all-list) .all-sum-item {
   text-transform: none;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+.projected-movements-body {
+  display: block;
 }
 .ledger-arc-ui .log-item.projected-movement,
 .ledger-arc-ui .log-swipe .log-item.projected-movement {
@@ -11482,10 +11509,17 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const proyectados = movimientosProyectadosActuales();
     if (!proyectados.length) return 0;
     const total = redondearDinero(proyectados.reduce((sum, item) => sum + (Number(item.mov?.monto) || 0), 0));
-    const head = document.createElement('div');
+
+    const menu = document.createElement('details');
+    menu.className = 'projected-movements-menu';
+
+    const head = document.createElement('summary');
     head.className = 'projected-movements-head';
-    head.innerHTML = `<span>Proyectados · ${proyectados.length}</span><span class="projected-movements-total">S/ ${fmt(total)}</span>`;
-    root.appendChild(head);
+    head.innerHTML = `<span class="projected-movements-label"><span class="projected-movements-chevron">›</span><span>Proyectados · ${proyectados.length}</span></span><span class="projected-movements-total">S/ ${fmt(total)}</span>`;
+    menu.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'projected-movements-body';
 
     proyectados.forEach(({ mov, index }) => {
       const infoMoneda = infoMonedaOriginalMovimiento(mov);
@@ -11509,8 +11543,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           </div>
           <div class="log-right"><div class="log-amount">S/${fmt(mov.monto)}</div></div>
         </div>`;
-      root.appendChild(row);
+      body.appendChild(row);
     });
+
+    menu.appendChild(body);
+    root.appendChild(menu);
     return proyectados.length;
   }
 
