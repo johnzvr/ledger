@@ -12537,6 +12537,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   let projectedFinalCurrency = 'PEN';
+  let projectedFinalType = 'DS';
   let projectedFinalTcRefreshing = false;
 
   function projectedApiExchangeRate() {
@@ -12603,6 +12604,19 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (projectedFinalCurrency === 'USD') refreshProjectedFinalExchangeRate(true);
   }
 
+  function updateProjectedFinalTypeUI() {
+    const cardRow = document.getElementById('projectedFinalCardRow');
+    const submit = document.getElementById('projectedFinalSubmit');
+    const esDS = projectedFinalType === 'DS';
+    if (cardRow) cardRow.style.display = esDS ? '' : 'none';
+    if (submit) submit.textContent = esDS ? 'Realizar DS' : 'Realizar S';
+  }
+
+  function setProjectedFinalType(tipo) {
+    projectedFinalType = tipo === 'S' ? 'S' : 'DS';
+    updateProjectedFinalTypeUI();
+  }
+
   function openEditProjectedMovement(idx) {
     const mov = state.log[idx];
     if (!mov || !esMovimientoProyectado(mov) || !mov.snapshot) {
@@ -12619,13 +12633,27 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : null;
     const montoInicial = esUSDOriginal ? Number(infoMoneda.montoOriginal) : Number(mov.monto);
     projectedFinalCurrency = esUSDOriginal ? 'USD' : 'PEN';
+    projectedFinalType = 'DS';
     const referenciaOriginal = esUSDOriginal
       ? ` · Original: <strong>US$ ${fmt(infoMoneda.montoOriginal)}</strong>${Number(tcOriginal) > 0 ? ` @ ${Number(tcOriginal).toFixed(3)}` : ''}`
       : '';
 
     openModal(`
       <h2>Realizar <span class="accent">proyectado</span></h2>
-      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto${referenciaOriginal}. Al confirmar, recién se sumará la deuda real.</p>
+      <p class="modal-sub">S/ ${fmt(mov.monto)} ya están reservados del presupuesto${referenciaOriginal}. Al confirmar, se registrará el gasto real.</p>
+      <div class="modal-field">
+        <label>Tipo final</label>
+        <div class="edit-type-grid">
+          <label class="edit-type-option">
+            <input type="radio" name="projectedFinalType" value="DS" checked onchange="setProjectedFinalType(this.value)">
+            <span>DS · Tarjeta</span>
+          </label>
+          <label class="edit-type-option">
+            <input type="radio" name="projectedFinalType" value="S" onchange="setProjectedFinalType(this.value)">
+            <span>S · Contado</span>
+          </label>
+        </div>
+      </div>
       <div class="modal-field">
         <label>Monto final</label>
         <div class="projected-final-amount-wrap">
@@ -12644,7 +12672,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <label>Categoría</label>
         <select id="projectedFinalCategory">${opcionesCategoriaMovimiento('')}</select>
       </div>
-      <div class="modal-field">
+      <div class="modal-field" id="projectedFinalCardRow">
         <label>Tarjeta</label>
         <select id="projectedFinalCard">
           <option value="interbank">Interbank</option>
@@ -12653,12 +12681,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </div>
       <div class="modal-buttons">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn-primary" onclick="realizarMovimientoProyectado(${idx})">Realizar DS</button>
+        <button class="btn-primary" id="projectedFinalSubmit" onclick="realizarMovimientoProyectado(${idx})">Realizar DS</button>
       </div>
     `);
 
     requestAnimationFrame(() => {
       updateProjectedFinalCurrencyUI();
+      updateProjectedFinalTypeUI();
       if (projectedFinalCurrency === 'USD') refreshProjectedFinalExchangeRate(true);
     });
   }
@@ -12674,6 +12703,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const logAntes = JSON.parse(JSON.stringify(state.log));
     const redoAntes = state.redoMovement ? JSON.parse(JSON.stringify(state.redoMovement)) : null;
     const esUSD = projectedFinalCurrency === 'USD';
+    const tipoFinal = projectedFinalType === 'S' ? 'S' : 'DS';
     const montoIngresado = Number(document.getElementById('projectedFinalAmount')?.value);
     const tipoCambio = esUSD ? projectedApiExchangeRate() : null;
     let detalle = String(document.getElementById('projectedFinalDetail')?.value || '').trim();
@@ -12705,7 +12735,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       restoreMovementState(reconstruido.rebuiltState);
       state.log = reconstruido.rebuiltLog;
       state.redoMovement = null;
-      const ok = aplicarMovimiento(monto, 'DS', null, detalle, {
+      const ok = aplicarMovimiento(monto, tipoFinal, null, detalle, {
         fecha: new Date(),
         renderizar: false,
         notificar: false,
@@ -12717,7 +12747,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           ...(esUSD ? { tipoCambio } : {})
         }
       });
-      if (!ok) throw new Error('No se pudo registrar el DS real');
+      if (!ok) throw new Error(`No se pudo registrar el ${tipoFinal} real`);
       const estadoDespues = captureMovementState();
       const logDespues = JSON.stringify(state.log);
       const movimientoFinal = state.log[state.log.length - 1];
@@ -12730,8 +12760,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       };
       closeModal();
       toast(esUSD
-        ? `Proyectado realizado · DS US$ ${fmt(montoOriginal)}`
-        : `Proyectado realizado · DS S/ ${fmt(monto)}`);
+        ? `Proyectado realizado · ${tipoFinal} US$ ${fmt(montoOriginal)}`
+        : `Proyectado realizado · ${tipoFinal} S/ ${fmt(monto)}`);
       render();
     } catch(e) {
       console.error('[Luki] No se pudo realizar proyectado:', e);
