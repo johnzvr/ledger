@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" id="viewportMeta" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -243,7 +243,8 @@
     -webkit-font-smoothing: antialiased;
     font-optical-sizing: auto;
   }
-  body { touch-action: pan-y pinch-zoom; }
+  /* BUILD294 · sin pellizco ni doble toque para zoom; los carruseles declaran su propio pan-x. */
+  html, body { touch-action: pan-y; }
   
   .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -0.045em; }
   input, textarea, select, button { font-family: inherit; }
@@ -7613,6 +7614,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 }
 </style>
 
+<style id="luki-292-no-sync-row">
+/* BUILD292 · con el puente, la sincronización es automática.
+   La fila Bajar/Subir/Conectar sale de la barra; esas acciones viven en el indicador de arriba. */
+.ledger-arc-ui .input-inner > .sync-row { display: none !important; }
+.ledger-arc-ui .app { padding-bottom: calc(212px + env(safe-area-inset-bottom)); }
+.ledger-arc-ui .sync-badge { cursor: pointer; min-height: 30px; }
+</style>
 </head>
 <body class="ledger-arc-ui">
 
@@ -7661,7 +7669,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   <div class="header">
     <div class="greeting">
       <span class="ledger-wordmark">luki<span>.</span></span>
-      <div class="sync-badge off" id="syncBadge" onclick="openDriveSync()">
+      <div class="sync-badge off" id="syncBadge" onclick="openDriveSync()" role="button" tabindex="0" aria-label="Estado de sincronización con Drive">
         <span class="sync-dot">○</span>
         <span>Sin sync</span>
       </div>
@@ -8063,7 +8071,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '292';
+  const LEDGER_BUILD = '294';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -20763,6 +20771,26 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     toast(`TC actualizado: ${rate.toFixed(3)}`);
   }
   
+  // ============ BUILD294 · SIN ZOOM EN iOS ============
+  (function bloquearZoom() {
+    // Pellizco con dos dedos (eventos propios de WebKit).
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(tipo => {
+      document.addEventListener(tipo, e => e.preventDefault(), { passive: false });
+    });
+    // El doble toque lo desactiva touch-action en CSS, sin bloquear toques rápidos.
+    // Si iOS llegó a hacer zoom (p. ej. al enfocar un campo), volver a escala 1 al salir.
+    const meta = document.getElementById('viewportMeta');
+    const base = meta ? meta.getAttribute('content') : '';
+    const restablecer = () => {
+      const vv = window.visualViewport;
+      if (!meta || !vv || vv.scale <= 1.01) return;
+      meta.setAttribute('content', base.replace('maximum-scale=1', 'maximum-scale=1.0001'));
+      requestAnimationFrame(() => meta.setAttribute('content', base));
+    };
+    document.addEventListener('focusout', () => setTimeout(restablecer, 60));
+    window.visualViewport?.addEventListener('resize', () => setTimeout(restablecer, 250));
+  })();
+
   // ============ INIT ============
   applyTheme();
   render({ markModified: false, sync: false });
