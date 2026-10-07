@@ -8063,7 +8063,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '255';
+  const LEDGER_BUILD = '292';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -19709,13 +19709,21 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
   
   // ============ GOOGLE DRIVE SYNC ============
+  // BUILD292 · Dos transportes:
+  //   1) Puente Apps Script (recomendado): sin login, sin expiración, escritura
+  //      condicional en el servidor (dos dispositivos nunca se pisan) y respaldos.
+  //   2) Login de Google en el navegador (anterior): token de 1 hora. Solo respaldo.
   const GOOGLE_CLIENT_ID = '944900044688-t8qsle009qmfm0vck5o2otl9gij30pq4.apps.googleusercontent.com';
   const DRIVE_FILE_NAME = 'ledger-data.json';
-  
+  const BRIDGE_URL_STORAGE = 'luki-bridge-url';
+  const BRIDGE_KEY_STORAGE = 'luki-bridge-key';
+  const UPLOAD_PENDING_STORAGE = 'luki-upload-pending';
+
   let tokenClient = null;
   let accessToken = null;
   let syncTimer = null;
   let driveFileId = null;
+  let bridgeEtag = null;
   let gisReady = false;
   let syncInProgress = false;
   let pauseAutoUpload = false;
@@ -19726,15 +19734,195 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   let lastFreshnessCheckAt = 0;
   let activeSyncAlertVersionId = null;
   let lastAnnouncedSyncVersionId = null;
-  
+  let uploadRetryTimer = null;
+  let uploadRetryAttempt = 0;
+
+  // ---------- Puente ----------
+  function bridgeConfig() {
+    try {
+      return {
+        url: (localStorage.getItem(BRIDGE_URL_STORAGE) || '').trim(),
+        key: (localStorage.getItem(BRIDGE_KEY_STORAGE) || '').trim()
+      };
+    } catch(e) { return { url: '', key: '' }; }
+  }
+
+  function bridgeActive() {
+    const cfg = bridgeConfig();
+    return !!(cfg.url && cfg.key);
+  }
+
+  function syncConnected() {
+    return bridgeActive() || !!accessToken;
+  }
+
+  async function bridgeCall(payload, { url, key, timeoutMs = 25000 } = {}) {
+    const cfg = bridgeConfig();
+    const targetUrl = url || cfg.url;
+    const targetKey = key || cfg.key;
+    if (!targetUrl || !targetKey) throw Object.assign(new Error('Puente sin configurar'), { code: 'no-config' });
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+    try {
+      // text/plain evita el preflight CORS que Apps Script no responde.
+      const res = await fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ ...payload, key: targetKey }),
+        redirect: 'follow',
+        signal: controller ? controller.signal : undefined
+      });
+      if (!res.ok) throw Object.assign(new Error('HTTP ' + res.status), { code: 'network' });
+      let data;
+      try { data = await res.json(); }
+      catch(e) { throw Object.assign(new Error('Respuesta inválida del puente'), { code: 'bad-response' }); }
+      if (data && data.error === 'clave-invalida') throw Object.assign(new Error('Clave inválida'), { code: 'auth' });
+      if (data && data.error === 'sin-configurar') throw Object.assign(new Error('Puente sin clave'), { code: 'auth' });
+      return data || {};
+    } catch (e) {
+      if (e && e.name === 'AbortError') throw Object.assign(new Error('Tiempo de espera agotado'), { code: 'network' });
+      if (e && !e.code) e.code = 'network';
+      throw e;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  function parseRemoteContent(content) {
+    if (!content) return null;
+    try {
+      const parsed = JSON.parse(content);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch(e) { return null; }
+  }
+
+  // ---------- Capa de transporte común ----------
+  // Devuelve { exists, state } o null si la sesión antigua expiró.
+  async function remoteRead() {
+    if (bridgeActive()) {
+      const data = await bridgeCall({ action: 'read' });
+      if (!data.ok) throw Object.assign(new Error(data.error || 'read'), { code: 'server' });
+      bridgeEtag = data.etag || null;
+      return { exists: !!data.exists, state: data.exists ? parseRemoteContent(data.content) : null };
+    }
+    if (!accessToken) return null;
+    driveFileId = null;
+    const file = await findDriveFile();
+    if (file === null && !accessToken) return null; // 401 → sesión expirada
+    if (!file) return { exists: false, state: null };
+    driveFileId = file.id;
+    const remoteState = await fetchDriveState(file.id);
+    if (!remoteState && !accessToken) return null;
+    return { exists: true, state: remoteState };
+  }
+
+  // Devuelve { ok:true } o { conflict:true, state } (solo el puente detecta carreras).
+  async function remoteWrite(content, { force = false } = {}) {
+    if (bridgeActive()) {
+      const data = await bridgeCall({ action: 'write', content, expectedEtag: bridgeEtag, force: !!force });
+      if (data.ok) {
+        bridgeEtag = data.etag || null;
+        return { ok: true };
+      }
+      if (data.error === 'conflicto') {
+        bridgeEtag = data.etag || null;
+        return { conflict: true, state: data.exists ? parseRemoteContent(data.content) : null };
+      }
+      throw Object.assign(new Error(data.error || 'write'), { code: 'server' });
+    }
+    if (!accessToken) return { ok: false };
+    if (!driveFileId) {
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' })
+      });
+      if (createRes.status === 401) { handleTokenExpired(); return { ok: false }; }
+      if (!createRes.ok) throw new Error('create ' + createRes.status);
+      driveFileId = (await createRes.json()).id;
+    }
+    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: content
+    });
+    if (res.status === 401) { handleTokenExpired(); return { ok: false }; }
+    if (!res.ok) throw new Error('upload ' + res.status);
+    return { ok: true };
+  }
+
+  // ---------- Cola de subida con reintentos ----------
+  function markUploadPending(pending) {
+    try {
+      if (pending) localStorage.setItem(UPLOAD_PENDING_STORAGE, '1');
+      else localStorage.removeItem(UPLOAD_PENDING_STORAGE);
+    } catch(e) {}
+  }
+
+  function uploadIsPending() {
+    try { return localStorage.getItem(UPLOAD_PENDING_STORAGE) === '1'; }
+    catch(e) { return false; }
+  }
+
+  function scheduleUploadRetry() {
+    clearTimeout(uploadRetryTimer);
+    const delays = [5000, 15000, 45000, 120000, 300000];
+    const delay = delays[Math.min(uploadRetryAttempt, delays.length - 1)];
+    uploadRetryAttempt++;
+    uploadRetryTimer = setTimeout(runAutoUpload, delay);
+  }
+
+  async function runAutoUpload() {
+    clearTimeout(uploadRetryTimer);
+    if (!syncConnected() || pauseAutoUpload) return;
+    if (syncInProgress) { scheduleUploadRetry(); return; }
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      updateSyncUI('local-newer');
+      return; // el evento "online" lo reintenta
+    }
+    syncInProgress = true;
+    try {
+      const result = await uploadToDrive();
+      uploadRetryAttempt = 0;
+      if (result?.blocked && (result.status === 'remote-newer' || result.status === 'conflict')) {
+        showDriveDataNotice(result.status, result.remoteState);
+      }
+    } catch (e) {
+      console.error('upload error:', e);
+      if (e && e.code === 'auth') {
+        updateSyncUI('error');
+        toast('La clave del puente no es válida', true);
+        return;
+      }
+      updateSyncUI(e && e.code === 'network' ? 'local-newer' : 'error');
+      scheduleUploadRetry();
+    } finally {
+      syncInProgress = false;
+    }
+  }
+
+  function scheduleSyncUpload() {
+    if (!syncConnected() || pauseAutoUpload) return;
+    markUploadPending(true);
+    clearTimeout(syncTimer);
+    updateSyncUI('local-newer');
+    syncTimer = setTimeout(runAutoUpload, 2000);
+  }
+
+  // ---------- Login de Google (anterior) ----------
   function initGoogleSync() {
+    if (bridgeActive()) {
+      updateSyncUI('syncing');
+      setTimeout(() => checkDriveFreshness({ notify: true }), 120);
+      return;
+    }
     if (typeof google === 'undefined' || !google.accounts) {
       setTimeout(initGoogleSync, 500);
       return;
     }
     if (gisReady) return;
     gisReady = true;
-    
+
     tokenClient = google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'https://www.googleapis.com/auth/drive.file',
@@ -19745,7 +19933,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           try {
             localStorage.setItem('ledger-token', accessToken);
             localStorage.setItem('ledger-token-exp', String(Date.now() + expiresIn * 1000));
-            localStorage.setItem('ledger-drive-authorized', '1'); // marca que ya autorizó una vez
+            localStorage.setItem('ledger-drive-authorized', '1');
           } catch(e){}
           updateSyncUI('syncing');
           scheduleTokenRefresh(expiresIn);
@@ -19754,66 +19942,65 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       },
       error_callback: (err) => {
         console.warn('OAuth error:', err);
-        // Si falla el silencioso, intentar con prompt visible
-        if (err && err.type === 'popup_failed_to_open') {
-          toast('Reconecta manualmente Drive', true);
-        }
+        if (err && err.type === 'popup_failed_to_open') toast('Reconecta manualmente Drive', true);
         updateSyncUI('error');
       }
     });
-    
-    // Restaurar token si existe y no expiró
+
     try {
       const saved = localStorage.getItem('ledger-token');
       const exp = parseInt(localStorage.getItem('ledger-token-exp') || '0');
       if (saved && Date.now() < exp) {
         accessToken = saved;
         updateSyncUI('syncing');
-        // Programar refresh silencioso antes de que expire
-        const msRemaining = exp - Date.now();
-        scheduleTokenRefresh(msRemaining / 1000);
+        scheduleTokenRefresh((exp - Date.now()) / 1000);
         setTimeout(() => checkDriveFreshness({ notify: true }), 120);
       } else if (localStorage.getItem('ledger-drive-authorized') === '1') {
-        // Token expirado pero ya autorizó antes → intentar refresh silencioso
         setTimeout(silentRefresh, 500);
       }
     } catch(e){}
   }
-  
+
   let refreshTimer = null;
-  
+
   function scheduleTokenRefresh(expiresInSeconds) {
-    // Refrescar 5 min antes de expirar
     clearTimeout(refreshTimer);
     const refreshInMs = Math.max(60000, (expiresInSeconds - 300) * 1000);
     refreshTimer = setTimeout(silentRefresh, refreshInMs);
   }
-  
+
   function silentRefresh() {
-    if (!tokenClient) return;
-    // Si ya autorizó antes, intentar sin prompt (silencioso)
+    if (!tokenClient || bridgeActive()) return;
     if (localStorage.getItem('ledger-drive-authorized') === '1') {
-      try {
-        tokenClient.requestAccessToken({ prompt: '' });
-      } catch (e) {
-        console.warn('Silent refresh failed:', e);
-      }
+      try { tokenClient.requestAccessToken({ prompt: '' }); }
+      catch (e) { console.warn('Silent refresh failed:', e); }
     }
   }
-  
+
   function connectDrive() {
     if (!tokenClient) {
+      gisReady = false;
+      initGoogleSync();
       toast('Google Sign-In cargando, espera un segundo', true);
       return;
     }
-    // Primera vez: con consent. Después: silencioso.
     const yaAutorizado = localStorage.getItem('ledger-drive-authorized') === '1';
-    tokenClient.requestAccessToken({ 
-      prompt: yaAutorizado ? '' : 'consent' 
-    });
+    tokenClient.requestAccessToken({ prompt: yaAutorizado ? '' : 'consent' });
   }
-  
+
   function disconnectDrive() {
+    if (bridgeActive()) {
+      try {
+        localStorage.removeItem(BRIDGE_URL_STORAGE);
+        localStorage.removeItem(BRIDGE_KEY_STORAGE);
+      } catch(e){}
+      bridgeEtag = null;
+      clearTimeout(uploadRetryTimer);
+      updateSyncUI('off');
+      closeModal();
+      toast('Puente desconectado en este dispositivo');
+      return;
+    }
     if (accessToken && typeof google !== 'undefined' && google.accounts) {
       try { google.accounts.oauth2.revoke(accessToken, () => {}); } catch(e){}
     }
@@ -19827,7 +20014,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     closeModal();
     toast('Drive desconectado');
   }
-  
+
   async function findDriveFile() {
     const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
     const res = await fetch(
@@ -19838,12 +20025,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (!res.ok) throw new Error('find ' + res.status);
     const data = await res.json();
     return (data.files && data.files[0]) || null;
-  }
-  
-  async function syncFromDrive() {
-    // Ya no se usa. La sincronización ahora es manual via subirAhora() y bajarAhora()
-    // Se deja por compatibilidad
-    return;
   }
 
   async function fetchDriveState(fileId) {
@@ -19857,26 +20038,41 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     return remoteState && typeof remoteState === 'object' ? remoteState : null;
   }
 
+  function handleTokenExpired() {
+    accessToken = null;
+    driveFileId = null;
+    try {
+      localStorage.removeItem('ledger-token');
+      localStorage.removeItem('ledger-token-exp');
+    } catch(e){}
+    updateSyncUI('off');
+    if (localStorage.getItem('ledger-drive-authorized') === '1') setTimeout(silentRefresh, 500);
+    else toast('Sesión Drive expiró, reconecta', true);
+  }
+
+  // ---------- Comparación y subida ----------
   async function checkDriveFreshness({ notify = false } = {}) {
-    if (!accessToken || syncInProgress) return null;
+    if (!syncConnected() || syncInProgress) return null;
     syncInProgress = true;
     lastFreshnessCheckAt = Date.now();
     updateSyncUI('syncing');
+    let comparisonStatus = null;
     try {
-      driveFileId = null;
-      const file = await findDriveFile();
-      if (!file) {
+      const remote = await remoteRead();
+      if (!remote) return null;
+      if (!remote.exists || !remote.state) {
         pendingRemoteState = null;
+        comparisonStatus = 'local-newer';
         updateSyncUI('local-newer');
         return { status: 'local-newer', remoteState: null };
       }
-      driveFileId = file.id;
-      const remoteState = await fetchDriveState(file.id);
-      if (!remoteState) return null;
+      const remoteState = remote.state;
       const comparison = compareDataVersions(state, remoteState);
+      comparisonStatus = comparison.status;
       pendingRemoteState = comparison.status === 'equal' ? null : remoteState;
       if (comparison.status === 'equal') {
         rememberSyncedVersion(remoteState);
+        markUploadPending(false);
         updateSyncUI('ok');
       } else {
         updateSyncUI(comparison.status);
@@ -19887,103 +20083,71 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       return { ...comparison, remoteState };
     } catch (e) {
       console.error('freshness check error:', e);
-      updateSyncUI('error');
+      if (e && e.code === 'auth') toast('La clave del puente no es válida', true);
+      updateSyncUI(e && e.code === 'network' && uploadIsPending() ? 'local-newer' : 'error');
       return null;
     } finally {
       syncInProgress = false;
+      // Cambios locales que nunca llegaron a Drive (p. ej. registrados sin señal):
+      // se suben solos. "local-newer" garantiza que Drive no cambió desde la base común.
+      if (comparisonStatus === 'local-newer') scheduleSyncUpload();
     }
   }
 
   function requestDriveFreshnessCheck({ notify = false, force = false } = {}) {
-    if (!accessToken) return;
+    if (!syncConnected()) return;
     if (!force && Date.now() - lastFreshnessCheckAt < 15000) return;
     checkDriveFreshness({ notify });
   }
-  
-  function scheduleSyncUpload() {
-    if (!accessToken || pauseAutoUpload) return;
-    clearTimeout(syncTimer);
-    updateSyncUI('local-newer');
-    syncTimer = setTimeout(async () => {
-      try {
-        const result = await uploadToDrive();
-        if (result?.blocked) showDriveDataNotice(result.status, result.remoteState);
-      } catch (e) {
-        console.error('upload error:', e);
-        updateSyncUI('error');
-      }
-    }, 2000);
-  }
-  
+
   async function uploadToDrive({ force = false } = {}) {
-    if (!accessToken) return { blocked: true, status: 'off' };
+    if (!syncConnected()) return { blocked: true, status: 'off' };
     updateSyncUI('syncing');
-    let remoteState = null;
 
-    // Comprobar siempre el contenido remoto antes de escribir, incluso cuando ya conocemos el fileId.
-    if (driveFileId) remoteState = await fetchDriveState(driveFileId);
-    
-    // Si no tengo fileId, primero crear el archivo (metadata)
-    if (!driveFileId) {
-      const file = await findDriveFile();
-      if (file) {
-        driveFileId = file.id;
-        remoteState = await fetchDriveState(file.id);
-      } else {
-        const createRes = await fetch(
-          'https://www.googleapis.com/drive/v3/files',
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              name: DRIVE_FILE_NAME,
-              mimeType: 'application/json'
-            })
-          }
-        );
-        if (createRes.status === 401) { handleTokenExpired(); return; }
-        if (!createRes.ok) throw new Error('create ' + createRes.status);
-        const created = await createRes.json();
-        driveFileId = created.id;
-      }
-    }
+    // Comprobar siempre el contenido remoto antes de escribir.
+    const remote = await remoteRead();
+    if (!remote) return { blocked: true, status: 'off' };
+    let remoteState = remote.state;
 
-    if (remoteState && !force) {
-      const comparison = compareDataVersions(state, remoteState);
+    const evaluar = (candidato) => {
+      if (!candidato || force) return null;
+      const comparison = compareDataVersions(state, candidato);
       if (comparison.status === 'equal') {
-        rememberSyncedVersion(remoteState);
+        rememberSyncedVersion(candidato);
+        markUploadPending(false);
         pendingRemoteState = null;
         updateSyncUI('ok');
         return { blocked: false, status: 'equal', uploaded: false };
       }
       if (comparison.status === 'remote-newer' || comparison.status === 'conflict') {
-        pendingRemoteState = remoteState;
-        pendingUploadRemoteState = remoteState;
+        pendingRemoteState = candidato;
+        pendingUploadRemoteState = candidato;
         updateSyncUI(comparison.status);
-        return { blocked: true, status: comparison.status, remoteState };
+        return { blocked: true, status: comparison.status, remoteState: candidato };
+      }
+      return null; // local-newer → se puede subir
+    };
+
+    const previa = evaluar(remoteState);
+    if (previa) return previa;
+
+    let result = await remoteWrite(JSON.stringify(state), { force });
+    if (result.conflict) {
+      // Otro dispositivo escribió entre la lectura y la escritura.
+      const tras = evaluar(result.state);
+      if (tras) return tras;
+      result = await remoteWrite(JSON.stringify(state), { force });
+      if (result.conflict) {
+        pendingRemoteState = result.state;
+        pendingUploadRemoteState = result.state;
+        updateSyncUI('conflict');
+        return { blocked: true, status: 'conflict', remoteState: result.state };
       }
     }
+    if (!result.ok) return { blocked: true, status: 'off' };
 
-    const content = JSON.stringify(state);
-    
-    // Actualizar contenido
-    const res = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: content
-      }
-    );
-    if (res.status === 401) { handleTokenExpired(); return; }
-    if (!res.ok) throw new Error('upload ' + res.status);
     rememberSyncedVersion(state);
+    markUploadPending(false);
     sessionHasExplicitDataChange = false;
     sessionSyncBaselineState = JSON.parse(JSON.stringify(state));
     pendingRemoteState = null;
@@ -19991,33 +20155,82 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     updateSyncUI('ok');
     return { blocked: false, status: 'ok', uploaded: true };
   }
-  
-  function handleTokenExpired() {
-    accessToken = null;
-    driveFileId = null;
-    try {
-      localStorage.removeItem('ledger-token');
-      localStorage.removeItem('ledger-token-exp');
-    } catch(e){}
-    updateSyncUI('off');
-    // Intentar refresh silencioso automáticamente
-    if (localStorage.getItem('ledger-drive-authorized') === '1') {
-      setTimeout(silentRefresh, 500);
-    } else {
-      toast('Sesión Drive expiró, reconecta', true);
-    }
-  }
-  
+
+  // ---------- UI ----------
   function handleConnectClick() {
-    if (accessToken) {
-      // Ya conectado → abrir modal con opciones (desconectar, ver estado)
-      openDriveSync();
-    } else {
-      // Desconectado → conectar directo
-      connectDrive();
+    if (syncConnected()) openDriveSync();
+    else openBridgeSetup();
+  }
+
+  function openBridgeSetup() {
+    const cfg = bridgeConfig();
+    openModal(`
+      <h2>Conectar <span class="accent">Drive</span></h2>
+      <p class="modal-sub">Pega la URL del puente de Apps Script y tu clave. Solo se hace una vez por dispositivo y no vuelve a pedir inicio de sesión.</p>
+      <div class="modal-field">
+        <label for="bridgeUrlInput">URL del puente</label>
+        <input type="url" id="bridgeUrlInput" placeholder="https://script.google.com/macros/s/…/exec" value="${escapeHtml(cfg.url)}" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="modal-field">
+        <label for="bridgeKeyInput">Clave</label>
+        <input type="password" id="bridgeKeyInput" placeholder="Pega tu clave" value="${escapeHtml(cfg.key)}" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <p class="modal-sub" id="bridgeSetupStatus" style="font-size:11px;min-height:16px;margin:4px 0 0;"></p>
+      <div class="modal-buttons">
+        <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" id="bridgeSaveBtn" onclick="saveBridgeSetup()">Probar y conectar</button>
+      </div>
+      <button type="button" onclick="closeModal(); connectDrive();" style="margin-top:14px;width:100%;background:none;border:0;color:var(--ink-mute);font:500 11px var(--font-ui);cursor:pointer;text-decoration:underline;">Usar el inicio de sesión de Google anterior</button>
+    `);
+    requestAnimationFrame(() => document.getElementById(cfg.url ? 'bridgeKeyInput' : 'bridgeUrlInput')?.focus());
+  }
+
+  async function saveBridgeSetup() {
+    const url = String(document.getElementById('bridgeUrlInput')?.value || '').trim();
+    const key = String(document.getElementById('bridgeKeyInput')?.value || '').trim();
+    const status = document.getElementById('bridgeSetupStatus');
+    const btn = document.getElementById('bridgeSaveBtn');
+    const setStatus = (text, error = false) => {
+      if (!status) return;
+      status.textContent = text;
+      status.style.color = error ? 'var(--danger)' : 'var(--ink-dim)';
+    };
+    if (!/^https:\/\/script\.google(usercontent)?\.com\/.+/i.test(url)) {
+      setStatus('La URL debe empezar con https://script.google.com/…', true);
+      return;
+    }
+    if (key.length < 16) {
+      setStatus('La clave parece incompleta.', true);
+      return;
+    }
+    if (btn) btn.disabled = true;
+    setStatus('Probando conexión…');
+    try {
+      const data = await bridgeCall({ action: 'ping' }, { url, key });
+      if (!data.ok) throw Object.assign(new Error(data.error || 'ping'), { code: 'server' });
+      localStorage.setItem(BRIDGE_URL_STORAGE, url);
+      localStorage.setItem(BRIDGE_KEY_STORAGE, key);
+      // El puente reemplaza al login anterior en este dispositivo.
+      accessToken = null;
+      clearTimeout(refreshTimer);
+      bridgeEtag = null;
+      closeModal();
+      toast('Drive conectado · ya no te pedirá iniciar sesión');
+      lastFreshnessCheckAt = 0;
+      checkDriveFreshness({ notify: true });
+    } catch (e) {
+      console.error('bridge setup error:', e);
+      setStatus(
+        e && e.code === 'auth'
+          ? 'La clave no coincide con la del puente.'
+          : 'No se pudo contactar al puente. Revisa la URL y que el acceso sea "Cualquier usuario".',
+        true
+      );
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
-  
+
   function updateSyncUI(estado) {
     currentSyncStatus = estado || 'off';
     const badge = document.getElementById('syncBadge');
@@ -20035,22 +20248,20 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       badge.className = 'sync-badge ' + c.cls;
       badge.innerHTML = `<span class="sync-dot">${c.icon}</span><span>${c.text}</span>`;
     }
-    // Habilitar/deshabilitar botones quick sync
     const btnBajar = document.getElementById('btnBajar');
     const btnSubir = document.getElementById('btnSubir');
     if (btnBajar && btnSubir) {
-      const disabled = !accessToken;
+      const disabled = !syncConnected();
       btnBajar.classList.toggle('disabled', disabled);
       btnSubir.classList.toggle('disabled', disabled);
     }
-    // Botón cuadrado de conectar
     const btnConnect = document.getElementById('btnConnect');
     const btnConnectIcon = document.getElementById('btnConnectIcon');
     if (btnConnect && btnConnectIcon) {
       const icons = { off: '○', ok: '●', syncing: '↻', 'remote-newer': '↓', 'local-newer': '↑', conflict: '!', error: '!' };
       btnConnect.className = 'sync-connect ' + (estado || 'off');
       btnConnectIcon.textContent = icons[estado] || '○';
-      btnConnect.setAttribute('aria-label', 
+      btnConnect.setAttribute('aria-label',
         estado === 'ok' ? 'Drive conectado' :
         estado === 'syncing' ? 'Sincronizando' :
         estado === 'remote-newer' ? 'Drive tiene datos más recientes' :
@@ -20075,9 +20286,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       syncing: { label: 'Comprobando…', color: '#4A6F8A', note: 'Luki está comparando este dispositivo con Drive.' },
       ok: { label: 'Sincronizado', color: 'var(--gain)', note: 'Este dispositivo y Drive tienen el mismo contenido.' },
       'remote-newer': { label: 'Drive tiene cambios', color: '#72540A', note: 'Otro dispositivo guardó información más reciente. Baja los datos antes de editar.' },
-      'local-newer': { label: 'Pendiente de subir', color: '#3F6682', note: 'Este dispositivo tiene cambios que todavía no están en Drive.' },
+      'local-newer': { label: 'Pendiente de subir', color: '#3F6682', note: 'Este dispositivo tiene cambios que todavía no están en Drive. Se subirán solos en cuanto haya conexión.' },
       conflict: { label: 'Cambios en ambos', color: 'var(--danger)', note: 'Los dos dispositivos fueron editados. Luki no reemplazará nada sin tu confirmación.' },
-      error: { label: 'No se pudo comprobar', color: 'var(--danger)', note: 'Revisa tu conexión o vuelve a conectar Drive.' }
+      error: { label: 'No se pudo comprobar', color: 'var(--danger)', note: 'Luki lo reintentará automáticamente. Si persiste, revisa la conexión del puente.' }
     };
     return configs[status] || configs.off;
   }
@@ -20128,22 +20339,27 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function openDriveSync() {
-    const conectado = !!accessToken;
+    const conectado = syncConnected();
+    const usaPuente = bridgeActive();
     const syncStatus = getSyncStatusPresentation(conectado ? currentSyncStatus : 'off');
     const localVersion = getDataVersionInfo(state);
     const remoteVersion = pendingRemoteState ? getDataVersionInfo(pendingRemoteState) : null;
-    const lastMod = state.lastModified 
+    const lastMod = state.lastModified
       ? new Date(state.lastModified).toLocaleString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
       : 'nunca';
-    
+
     openModal(`
       <h2>Google Drive <span class="accent">sync</span></h2>
-<div class="rollover-breakdown">
+      <div class="rollover-breakdown">
         <div class="rollover-row">
           <span class="rollover-week">Estado de los datos</span>
           <span class="rollover-amount" style="color:${syncStatus.color};">${syncStatus.label}</span>
         </div>
         ${conectado ? `
+          <div class="rollover-row">
+            <span class="rollover-week">Conexión</span>
+            <span class="rollover-amount" style="font-size:11px;">${usaPuente ? 'Puente · permanente' : 'Login Google · expira cada hora'}</span>
+          </div>
           <div class="rollover-row">
             <span class="rollover-week">Última edición local</span>
             <span class="rollover-amount" style="font-size:11px;">${lastMod}</span>
@@ -20155,17 +20371,16 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         ` : ''}
       </div>
       <p class="modal-sub" style="font-size:11px;margin-top:12px;color:${syncStatus.color};">${syncStatus.note}</p>
-      
+
       ${conectado ? `
         <div class="sync-actions">
           <button class="sync-action-btn upload" onclick="subirAhora()">
             <div class="sync-action-icon">⬆</div>
             <div class="sync-action-content">
               <div class="sync-action-title">Subir a Drive</div>
-              <div class="sync-action-sub">Envía tus datos locales · pisa lo que hay en Drive</div>
+              <div class="sync-action-sub">Envía tus datos locales a Drive</div>
             </div>
           </button>
-          
           <button class="sync-action-btn download" onclick="bajarAhora()">
             <div class="sync-action-icon">⬇</div>
             <div class="sync-action-content">
@@ -20173,45 +20388,50 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
               <div class="sync-action-sub">Trae los datos de Drive · pisa lo local</div>
             </div>
           </button>
-
+          ${usaPuente ? '' : `
+          <button class="sync-action-btn download" onclick="openBridgeSetup()">
+            <div class="sync-action-icon">∞</div>
+            <div class="sync-action-content">
+              <div class="sync-action-title">Cambiar a conexión permanente</div>
+              <div class="sync-action-sub">Usa el puente de Apps Script y deja de iniciar sesión</div>
+            </div>
+          </button>`}
         </div>
-      ` : `
-        <p class="modal-sub" style="font-size:11px;margin-top:14px;">
-          💡 Al conectar por primera vez, Google te pedirá permiso. Aprueba solo los permisos de "ver y administrar archivos que creaste con esta app".
-        </p>
-      `}
-      
+      ` : ''}
+
       <div class="modal-buttons">
-        ${conectado 
+        ${conectado
           ? `<button class="btn-secondary" onclick="closeModal()">Cerrar</button>
              <button class="btn-danger" onclick="disconnectDrive()">Desconectar</button>`
           : `<button class="btn-secondary" onclick="closeModal()">Cancelar</button>
-             <button class="btn-primary" onclick="connectDrive(); closeModal();">Conectar Google Drive</button>`
+             <button class="btn-primary" onclick="openBridgeSetup()">Conectar Drive</button>`
         }
       </div>
     `);
   }
-  
+
   async function subirAhora() {
-    if (!accessToken) {
+    if (!syncConnected()) {
       toast('Conecta Drive primero', true);
-      openDriveSync();
+      openBridgeSetup();
       return;
     }
     closeModal();
     updateSyncUI('syncing');
+    syncInProgress = true;
     try {
-      driveFileId = null;
       const result = await uploadToDrive();
       if (result?.blocked) {
-        openUploadBlockedModal(result.status, result.remoteState);
+        if (result.status === 'remote-newer' || result.status === 'conflict') openUploadBlockedModal(result.status, result.remoteState);
         return;
       }
       toast(result?.uploaded ? '↑ Datos subidos a Drive' : 'Drive ya tenía estos datos');
     } catch (e) {
       console.error(e);
       updateSyncUI('error');
-      toast('Error al subir', true);
+      toast(e && e.code === 'auth' ? 'La clave del puente no es válida' : 'Error al subir', true);
+    } finally {
+      syncInProgress = false;
     }
   }
 
@@ -20235,7 +20455,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <span class="rollover-amount" style="font-size:11px;">Rev. ${remoteInfo.revision} · ${formatSyncTimestamp(remoteInfo.modified)}</span>
         </div>
       </div>
-      <p class="modal-sub" style="font-size:11px;margin-top:12px;">Bajar conserva Drive. Subir de todos modos reemplaza Drive con este dispositivo.</p>
+      <p class="modal-sub" style="font-size:11px;margin-top:12px;">Bajar conserva Drive. Subir de todos modos reemplaza Drive con este dispositivo${bridgeActive() ? ' (queda un respaldo en la carpeta "Luki · respaldos")' : ''}.</p>
       <div class="modal-buttons modal-buttons-three">
         <button class="btn-secondary" onclick="pendingUploadRemoteState=null; closeModal();">Cancelar</button>
         <button class="btn-secondary" onclick="bajarAhora()">Usar Drive</button>
@@ -20247,6 +20467,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   async function confirmarSubidaForzada() {
     closeModal();
     updateSyncUI('syncing');
+    syncInProgress = true;
     try {
       const result = await uploadToDrive({ force: true });
       if (!result?.blocked) toast('↑ Drive reemplazado con estos datos');
@@ -20254,28 +20475,28 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       console.error(e);
       updateSyncUI('error');
       toast('Error al subir', true);
+    } finally {
+      syncInProgress = false;
     }
   }
-  
+
   async function bajarAhora() {
-    if (!accessToken) {
+    if (!syncConnected()) {
       toast('Conecta Drive primero', true);
-      openDriveSync();
+      openBridgeSetup();
       return;
     }
     closeModal();
     updateSyncUI('syncing');
     try {
-      driveFileId = null;
-      const file = await findDriveFile();
-      if (!file) {
+      const remote = await remoteRead();
+      if (!remote) return;
+      if (!remote.exists || !remote.state) {
         updateSyncUI('local-newer');
         toast('No hay datos en Drive todavía', true);
         return;
       }
-      driveFileId = file.id;
-      const remoteState = await fetchDriveState(file.id);
-      if (!remoteState) return;
+      const remoteState = remote.state;
       pendingRemoteState = remoteState;
       const comparison = compareDataVersions(state, remoteState);
       pendingRemoteComparisonStatus = comparison.status;
@@ -20313,7 +20534,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     } catch (e) {
       console.error(e);
       updateSyncUI('error');
-      toast('Error al bajar', true);
+      toast(e && e.code === 'auth' ? 'La clave del puente no es válida' : 'Error al bajar', true);
     }
   }
 
@@ -20349,6 +20570,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     pendingRemoteState = null;
     pendingUploadRemoteState = null;
     pendingRemoteComparisonStatus = 'equal';
+    markUploadPending(false);
     updateSyncUI('ok');
     toast('↓ Datos traídos de Drive');
   }
@@ -20550,6 +20772,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (document.visibilityState === 'visible') requestDriveFreshnessCheck({ notify: true });
   });
   window.addEventListener('focus', () => requestDriveFreshnessCheck({ notify: true }));
+  // BUILD292 · al recuperar señal, subir lo pendiente o volver a comparar.
+  window.addEventListener('online', () => {
+    if (uploadIsPending()) runAutoUpload();
+    else requestDriveFreshnessCheck({ notify: true, force: true });
+  });
   // Precargar TC en background (silencioso, solo si es viejo)
   const cacheAge = getTcAgeHours();
   if (cacheAge === null || cacheAge > 1) {
