@@ -8160,6 +8160,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   asegurarRitmoDiarioBloques(state);
   ensureSyncMetadata(state);
   let lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
+  // BUILD291 · abrir/renderizar Luki no es una edición del usuario.
+  // Conservamos una foto de la versión cargada para comparar con Drive mientras
+  // no exista un cambio explícito en esta sesión. Los ajustes automáticos de
+  // render/fecha pueden persistirse localmente sin convertir la copia local en
+  // una revisión "más reciente" por el mero hecho de abrir la app.
+  let sessionSyncBaselineState = JSON.parse(JSON.stringify(state));
+  let sessionHasExplicitDataChange = false;
   // Limpia el respaldo temporal usado por una versión anterior.
   try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
   let uiSections = loadUiSections();
@@ -8825,7 +8832,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function compareDataVersions(localSource, remoteSource) {
-    const local = getDataVersionInfo(localSource);
+    const localSourceForComparison = (
+      localSource === state
+      && sessionSyncBaselineState
+      && !sessionHasExplicitDataChange
+    ) ? sessionSyncBaselineState : localSource;
+    const local = getDataVersionInfo(localSourceForComparison);
     const remote = getDataVersionInfo(remoteSource);
     if (local.hash === remote.hash) return { status: 'equal', local, remote };
 
@@ -8859,6 +8871,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     const realDataChange = markModified && fingerprint !== lastPersistedSyncFingerprint;
     try {
       if (realDataChange) {
+        sessionHasExplicitDataChange = true;
+        sessionSyncBaselineState = null;
         state.lastModified = Date.now();
         state.dataRevision = Math.max(0, parseInt(state.dataRevision, 10) || 0) + 1;
         state.dataVersionId = createDataVersionId(state.dataRevision, fingerprint);
@@ -10125,9 +10139,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     applySectionState();
     initViews();
     requestAnimationFrame(updateViewHeight);
+    // BUILD291 · los cambios automáticos de render/fecha no cuentan como una
+    // edición del usuario. Se guardan localmente, pero no avanzan revisión ni
+    // fecha de modificación. Solo una acción explícita (markModified=true) lo hace.
     saveState({
-      markModified: markModified || huboCambioAutomatico,
-      sync: sync && (markModified || huboCambioAutomatico)
+      markModified,
+      sync: sync && markModified
     });
   }
   
@@ -19859,7 +19876,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       const comparison = compareDataVersions(state, remoteState);
       pendingRemoteState = comparison.status === 'equal' ? null : remoteState;
       if (comparison.status === 'equal') {
-        rememberSyncedVersion(state);
+        rememberSyncedVersion(remoteState);
         updateSyncUI('ok');
       } else {
         updateSyncUI(comparison.status);
@@ -19937,7 +19954,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (remoteState && !force) {
       const comparison = compareDataVersions(state, remoteState);
       if (comparison.status === 'equal') {
-        rememberSyncedVersion(state);
+        rememberSyncedVersion(remoteState);
         pendingRemoteState = null;
         updateSyncUI('ok');
         return { blocked: false, status: 'equal', uploaded: false };
@@ -19967,6 +19984,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     if (res.status === 401) { handleTokenExpired(); return; }
     if (!res.ok) throw new Error('upload ' + res.status);
     rememberSyncedVersion(state);
+    sessionHasExplicitDataChange = false;
+    sessionSyncBaselineState = JSON.parse(JSON.stringify(state));
     pendingRemoteState = null;
     pendingUploadRemoteState = null;
     updateSyncUI('ok');
@@ -20320,6 +20339,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     asegurarRitmoDiarioBloques(state);
     state.lastModified = remoteModified;
     lastPersistedSyncFingerprint = syncRelevantFingerprint(state);
+    sessionHasExplicitDataChange = false;
+    sessionSyncBaselineState = JSON.parse(JSON.stringify(state));
     rememberSyncedVersion(state);
     closeModal();
     applyTheme();
