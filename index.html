@@ -7787,7 +7787,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   </div>
 
   <!-- Tarjetas -->
-  <div class="arc-section-heading">Tus tarjetas <span>Cuándo pagarías si compras hoy</span></div>
+  <div class="arc-section-heading">Tus tarjetas</div>
   <div class="tc-carousel-shell">
     <div class="tc-carousel" id="creditCardCarousel" data-page-swipe-lock onscroll="syncCreditCardCarouselDots()">
       <div class="tc-card" data-credit-card="interbank">
@@ -7795,7 +7795,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <div class="tc-header-left">
             <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
             <div class="tc-title-wrap">
-              <div class="tc-title">Calendario tarjeta</div>
               <div class="tc-bank-name">Interbank</div>
               <div class="tc-calendar-source" id="ccSourceInterbank">Pago 20</div>
             </div>
@@ -7838,7 +7837,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <div class="tc-header-left">
             <div class="tc-icon"><svg class="ui-icon"><use href="#icon-card"></use></svg></div>
             <div class="tc-title-wrap">
-              <div class="tc-title">Calendario tarjeta</div>
               <div class="tc-bank-name">BCP</div>
               <div class="tc-calendar-source" id="ccSourceBcp">Visa Gold Qore · cronograma oficial 2026</div>
             </div>
@@ -8071,7 +8069,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '298';
+  const LEDGER_BUILD = '299';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -8290,7 +8288,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : `Presupuesto restante: ${Math.round(visual.remainingPercent)} por ciento`);
     document.getElementById('arcUsedAmount').textContent = money(model.used);
     document.getElementById('arcBudgetAmount').textContent = balanceHidden ? 'S/ ****' : money(model.budget);
-    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Gastable' : 'Presupuesto';
+    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Límite' : 'Presupuesto';
     document.getElementById('arcPercent').textContent = model.budget > 0 ? Math.round(visual.remainingPercent) + '% libre' : '—';
     const hero = document.getElementById('heroCard');
     hero.classList.toggle('arc-exhausted', model.exhausted);
@@ -9398,7 +9396,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     document.getElementById('ccProxPago' + suffix).textContent = formatFecha(pago);
     document.getElementById('ccCierreSub' + suffix).textContent = diasCierre === 0 ? 'hoy' : (diasCierre > 0 ? 'en ' + diasCierre + ' días' : 'cerró');
     document.getElementById('ccPagoSub' + suffix).textContent = diasPago === 0 ? 'hoy' : (diasPago > 0 ? 'en ' + diasPago + ' días' : 'venció');
-    document.getElementById('ccCompraPago' + suffix).textContent = 'Paga hasta el ' + formatFechaCompleta(pago);
+    document.getElementById('ccCompraPago' + suffix).textContent = 'Paga hasta el ' + fechaPagoSinAnio(pago);
     const sueldosAntesPago = fechasSueldoEntre(new Date(), pago);
     const cierreCompacto = `Cierra ${formatFecha(cierre)}`;
     const diasCompacto = diasPago === 0 ? 'vence hoy' : `${diasPago} días`;
@@ -11266,11 +11264,25 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     render();
   }
 
+  // BUILD299 · los grupos se calculan una vez por render, no por fila.
+  let gruposPagoCacheRender = null;
+  function gruposPagoParaBadges() {
+    if (!gruposPagoCacheRender) {
+      gruposPagoCacheRender = gruposPagoTarjetas();
+      setTimeout(() => { gruposPagoCacheRender = null; }, 0);
+    }
+    return gruposPagoCacheRender;
+  }
+
   function badgePagoTarjeta(grupo) {
     if (!grupo) return '';
     if (pagoPendienteParaGrupo(grupo)) {
       return '<span class="payment-badge paid">Pago marcado</span>';
     }
+    // BUILD299 · si la compra es del ciclo bancario que ya muestra el heads-up, la fecha sobra.
+    try {
+      if (movimientoPerteneceCicloTarjetaActual(grupo, gruposPagoParaBadges())) return '';
+    } catch (e) {}
     return grupo.pendiente
       ? '<span class="payment-badge">Ciclo en curso</span>'
       : `<span class="payment-badge">Paga ${etiquetaPagoCorta(grupo.pago)}</span>`;
@@ -11563,7 +11575,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             <div class="log-dot PROY">PROY</div>
             <div class="log-info">
               <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-              <div class="log-meta"><span class="projected-status">Reservado</span>${monedaMeta}<span>Sin deuda todavía</span></div>
+              <div class="log-meta"><span class="projected-status">Reservado</span>${monedaMeta}</div>
             </div>
           </div>
           <div class="log-right"><div class="log-amount">S/${fmt(mov.monto)}</div></div>
@@ -13366,7 +13378,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     openModal(`
       <h2>Todos los <span class="accent">movimientos</span></h2>
       <p class="modal-sub">${totalGeneral} ${totalGeneral === 1 ? 'movimiento' : 'movimientos'}${nombreFiltroBanco ? ` · ${nombreFiltroBanco}` : ' relevantes'} ${filtroActivo}</p>
-      <p class="modal-sub" style="font-size:11px;margin-top:-8px;">Incluye el ciclo salarial actual y compras archivadas que aún pertenecen al ciclo vigente de tarjeta.</p>
       ${tabsBanco}
       <div class="search-box">
         <span class="search-icon">⌕</span>
@@ -18166,6 +18177,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </div>
       <div class="help-item">
         <div class="help-item-head">
+          <span class="help-item-chip DS">PROY</span>
+          <span class="help-item-title">Proyectado</span>
+        </div>
+        <div class="help-item-desc">Mantén DS presionado y elige Proyectado. Reserva presupuesto para un gasto que vendrá, sin crear deuda. Cuando ocurra: doble tap → Editar → Realizar DS o S; solo impacta la diferencia con lo reservado.</div>
+      </div>
+      <div class="help-item">
+        <div class="help-item-head">
           <span class="help-item-chip F">F</span>
           <span class="help-item-title">Retiro del fondo</span>
         </div>
@@ -18194,17 +18212,17 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">←</span>
+          <span class="help-item-chip MOD">↶</span>
           <span class="help-item-title">Deshacer último movimiento</span>
         </div>
-        <div class="help-item-desc">Mantén presionado el movimiento más reciente y, sin soltar, deslízalo hacia la izquierda. Aparecerá “Deshacer” en rojo.</div>
+        <div class="help-item-desc">Toca «Deshacer» arriba de Movimientos para revertir el último movimiento.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
-          <span class="help-item-chip MOD">→</span>
-          <span class="help-item-title">Editar entradas recientes</span>
+          <span class="help-item-chip MOD">2×</span>
+          <span class="help-item-title">Editar o eliminar</span>
         </div>
-        <div class="help-item-desc">Monto, tipo y eliminación están disponibles para los últimos 10 movimientos. La categoría puede cambiarse en cualquier gasto del ciclo porque no altera los cálculos.</div>
+        <div class="help-item-desc">Doble tap en un movimiento → Editar o Eliminar. Monto, tipo y eliminación están disponibles para los últimos 10 movimientos. La categoría puede cambiarse en cualquier gasto del ciclo porque no altera los cálculos.</div>
       </div>
       <div class="help-item">
         <div class="help-item-head">
