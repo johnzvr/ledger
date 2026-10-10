@@ -6036,9 +6036,6 @@ body.dark {
 .arc-help { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-hi); color: var(--ink-dim); border-radius: 50%; background: transparent; font: 12px inherit; cursor: pointer; }
 .arc-status { font-size: 13px; color: var(--ink-dim); background: var(--surface); padding: 10px; border-radius: 10px; margin-top: 12px; text-align: center; }
 .arc-exhausted .arc-status { color: var(--danger); }
-/* BUILD298 · fila de proyectado con chip de categoría: los textos no se parten */
-.projected-movement .log-meta { flex-wrap: wrap; row-gap: 5px; }
-.projected-movement .log-meta > span { white-space: nowrap; }
 .ledger-arc-ui .hero-meta-info { flex-wrap: wrap; justify-content: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
 .ledger-arc-ui .hero-meta-dot { background: var(--fund); }
 .ledger-arc-ui .hero-meta-chip strong { color: var(--fund); }
@@ -8951,7 +8948,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function chipCategoriaMovimiento(mov, index, { editable = true } = {}) {
-    if (!mov || mov.etiqueta === 'recalcula') return '';
+    if (!mov || mov.etiqueta === 'recalcula' || esMovimientoProyectado(mov)) return '';
     const categoria = categoriaMovimiento(mov);
     const label = categoria || '+ Categoría';
     if (!editable) {
@@ -8975,10 +8972,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     allMovementsScrollTop = document.getElementById('modalContent')?.scrollTop || 0;
     const mov = state.log[index];
     if (!mov || mov.etiqueta === 'recalcula') return;
-    // BUILD298 · desde "Ver todos" se abre encima (anidado); desde la lista principal, como modal normal.
-    categoryModalNested = !!document.getElementById('modalOverlay')?.classList.contains('active');
-    const abrir = categoryModalNested ? openNestedModal : openModal;
-    abrir(`
+    openNestedModal(`
       <h2>Categoría</h2>
       <p class="modal-sub">${escapeHtml(mov.detalle || 'Sin detalle')}</p>
       <div class="modal-field">
@@ -8986,38 +8980,31 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         <select id="quickMovementCategory">${opcionesCategoriaMovimiento(mov.categoria)}</select>
       </div>
       <div class="modal-buttons">
-        <button class="btn-secondary" onclick="closeMovementCategoryModal()">Cancelar</button>
+        <button class="btn-secondary" onclick="closeNestedModal()">Cancelar</button>
         <button class="btn-primary" onclick="saveMovementCategory(${index})">Guardar</button>
       </div>
     `);
     requestAnimationFrame(() => document.getElementById('quickMovementCategory')?.focus());
   }
 
-  let categoryModalNested = true;
-  function closeMovementCategoryModal() {
-    if (categoryModalNested) closeNestedModal();
-    else closeModal();
-  }
-
   function actualizarChipCategoriaEnLista(index, categoria) {
-    // BUILD298 · el chip puede estar en "Ver todos" o en la sección Proyectados de Movimientos.
-    const chips = document.querySelectorAll(`[data-category-index="${index}"]`);
-    if (!chips.length) return false;
-    chips.forEach(chip => {
-      chip.textContent = categoria || '+ Categoría';
-      chip.classList.toggle('is-empty', !categoria);
-      chip.setAttribute(
-        'aria-label',
-        categoria ? `Editar categoría ${categoria}` : 'Asignar categoría'
-      );
-    });
+    const modal = document.getElementById('modalContent');
+    const chip = modal?.querySelector(`[data-category-index="${index}"]`);
+    if (!chip) return false;
+
+    chip.textContent = categoria || '+ Categoría';
+    chip.classList.toggle('is-empty', !categoria);
+    chip.setAttribute(
+      'aria-label',
+      categoria ? `Editar categoría ${categoria}` : 'Asignar categoría'
+    );
     return true;
   }
 
   function saveMovementCategory(index) {
     const mov = state.log[index];
     if (!mov || mov.etiqueta === 'recalcula') {
-      closeMovementCategoryModal();
+      closeNestedModal();
       return;
     }
     const categoria = normalizarCategoriaMovimiento(document.getElementById('quickMovementCategory')?.value);
@@ -9036,11 +9023,11 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     }
 
     saveState({ markModified: true, sync: true });
-    closeMovementCategoryModal();
+    closeNestedModal();
 
     // Categoría es metadata: en una lista normal actualizamos solo el chip,
     // evitando reconstruir el modal y perder la posición de scroll.
-    if (categoryModalNested && searchQuery.trim()) {
+    if (searchQuery.trim()) {
       renderAllMovements({ preserveScroll: true });
     } else {
       actualizarChipCategoriaEnLista(index, categoria);
@@ -11576,7 +11563,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
             <div class="log-dot PROY">PROY</div>
             <div class="log-info">
               <div class="log-detail">${escapeHtml(mov.detalle || 'Sin detalle')}</div>
-              <div class="log-meta"><span class="projected-status">Reservado</span>${monedaMeta}<span>Sin deuda todavía</span>${chipCategoriaMovimiento(mov, index)}</div>
+              <div class="log-meta"><span class="projected-status">Reservado</span>${monedaMeta}<span>Sin deuda todavía</span></div>
             </div>
           </div>
           <div class="log-right"><div class="log-amount">S/${fmt(mov.monto)}</div></div>
@@ -12717,8 +12704,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           <option value="bcp">BCP</option>
         </select>
       </div>
-      <div class="modal-buttons">
+      <div class="modal-buttons modal-buttons-three">
         <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn-secondary" onclick="guardarCategoriaProyectado(${idx})">Guardar categoría</button>
         <button class="btn-primary" id="projectedFinalSubmit" onclick="realizarMovimientoProyectado(${idx})">Realizar DS</button>
       </div>
     `);
@@ -12728,6 +12716,23 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       updateProjectedFinalTypeUI();
       if (projectedFinalCurrency === 'USD') refreshProjectedFinalExchangeRate(true);
     });
+  }
+
+  // BUILD298 · guarda solo la categoría; el proyectado sigue reservado (no toca monto, bloques ni deuda).
+  function guardarCategoriaProyectado(idx) {
+    const mov = state.log[idx];
+    if (!mov || !esMovimientoProyectado(mov)) {
+      closeModal();
+      toast('No se encontró el proyectado', true);
+      return;
+    }
+    const categoria = normalizarCategoriaMovimiento(document.getElementById('projectedFinalCategory')?.value);
+    if (categoria) mov.categoria = categoria;
+    else delete mov.categoria;
+    closeModal();
+    saveState({ markModified: true, sync: true });
+    render({ markModified: false, sync: false });
+    toast(categoria ? `Proyectado · ${categoria}` : 'Categoría eliminada');
   }
 
   function realizarMovimientoProyectado(idx) {
