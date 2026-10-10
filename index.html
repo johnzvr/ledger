@@ -8069,7 +8069,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '299';
+  const LEDGER_BUILD = '300';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -8288,7 +8288,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       : `Presupuesto restante: ${Math.round(visual.remainingPercent)} por ciento`);
     document.getElementById('arcUsedAmount').textContent = money(model.used);
     document.getElementById('arcBudgetAmount').textContent = balanceHidden ? 'S/ ****' : money(model.budget);
-    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Límite' : 'Presupuesto';
+    document.getElementById('arcBaseLabel').textContent = model.reserve > 0 ? 'Total ciclo' : 'Presupuesto';
     document.getElementById('arcPercent').textContent = model.budget > 0 ? Math.round(visual.remainingPercent) + '% libre' : '—';
     const hero = document.getElementById('heroCard');
     hero.classList.toggle('arc-exhausted', model.exhausted);
