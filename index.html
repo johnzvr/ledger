@@ -8069,7 +8069,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '300';
+  const LEDGER_BUILD = '301';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -8177,6 +8177,8 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   try { localStorage.removeItem('ledger-backup-before-drive-v1'); } catch(e) {}
   let uiSections = loadUiSections();
   let currentView = Math.max(0, Math.min(3, parseInt(localStorage.getItem('ledger-active-view-v1') || '0')));
+  // BUILD301 · el desplegable de Proyectados se cierra solo al cambiar de pantalla.
+  let projectedMenuOpen = false;
   let viewsInitialized = false;
   // BUILD288 · conserva en memoria la conversión Proyectado → DS para que Deshacer
   // pueda devolver exactamente el movimiento a su estado proyectado original.
@@ -8357,7 +8359,12 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
   }
 
   function goToView(index, options = {}) {
-    currentView = Math.max(0, Math.min(3, Number(index) || 0));
+    const nextView = Math.max(0, Math.min(3, Number(index) || 0));
+    if (nextView !== currentView) {
+      projectedMenuOpen = false;
+      document.querySelectorAll('.projected-movements-menu').forEach(menu => { menu.open = false; });
+    }
+    currentView = nextView;
     const track = document.getElementById('viewsTrack');
     if (track) {
       track.classList.remove('dragging');
@@ -11549,6 +11556,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 
     const menu = document.createElement('details');
     menu.className = 'projected-movements-menu';
+    // BUILD301 · conserva abierto/cerrado entre renders (p. ej. al guardar una categoría).
+    menu.open = projectedMenuOpen;
+    menu.addEventListener('toggle', () => { projectedMenuOpen = menu.open; });
 
     const head = document.createElement('summary');
     head.className = 'projected-movements-head';
