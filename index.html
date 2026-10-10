@@ -6036,10 +6036,6 @@ body.dark {
 .arc-help { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 1px solid var(--line-hi); color: var(--ink-dim); border-radius: 50%; background: transparent; font: 12px inherit; cursor: pointer; }
 .arc-status { font-size: 13px; color: var(--ink-dim); background: var(--surface); padding: 10px; border-radius: 10px; margin-top: 12px; text-align: center; }
 .arc-exhausted .arc-status { color: var(--danger); }
-/* BUILD296 · pronóstico de cierre del ciclo */
-.arc-forecast { font-size: 12.5px; line-height: 1.45; color: var(--ink-dim); margin-top: 12px; text-align: center; padding: 0 6px; }
-.arc-forecast strong { color: var(--ink); font-weight: 650; }
-.arc-forecast.warn strong.forecast-key { color: var(--danger); }
 .ledger-arc-ui .hero-meta-info { flex-wrap: wrap; justify-content: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
 .ledger-arc-ui .hero-meta-dot { background: var(--fund); }
 .ledger-arc-ui .hero-meta-chip strong { color: var(--fund); }
@@ -7723,7 +7719,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       <div class="arc-stat base"><span class="arc-stat-label" id="arcBaseLabel">Presupuesto</span><strong id="arcBudgetAmount">S/ 0.00</strong></div>
     </div>
     <div class="arc-status" id="arcStatus" hidden></div>
-    <div class="arc-forecast" id="arcForecast" hidden></div>
     <div class="hero-meta-info" id="heroMetaInfo" style="display:none;">
       <div class="hero-meta-chip"><span class="hero-meta-dot"></span><span>Meta ahorro: <strong id="heroMetaValue">S/ 0</strong></span></div>
     </div>
@@ -8076,7 +8071,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '296';
+  const LEDGER_BUILD = '297';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -8311,71 +8306,6 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       ? `${formatFecha(ranges[0].inicio)} — ${formatFecha(ranges[ranges.length - 1].fin)}` : 'Ciclo de sueldo';
     const metaValue = document.getElementById('heroMetaValue');
     if (metaValue) metaValue.textContent = 'S/ ' + fmt(model.reserve);
-    renderCycleForecast();
-  }
-
-  // ============ BUILD296 · PRONÓSTICO DE CIERRE ============
-  // Solo lectura: no modifica state ni marca cambios.
-  // Ritmo = gasto real del ciclo (S/DS, sin proyectados, sin "sem", sin ajustes) ÷ días transcurridos.
-  // Cierre = Disponible actual − ritmo × días que faltan. Los proyectados ya están reservados en el Disponible.
-  function pronosticoCierreCiclo() {
-    if (!state.fechaInicioCiclo) return null;
-    const inicio = inicioDelDia(state.fechaInicioCiclo);
-    const fin = inicioDelDia(diaAnterior(proximoSueldoDelCiclo()));
-    const hoy = inicioDelDia(new Date());
-    if ([inicio, fin].some(d => Number.isNaN(d.getTime())) || hoy < inicio || hoy > fin) return null;
-    const diasTranscurridos = diasEntreInclusive(inicio, hoy);
-    const diasRestantes = Math.max(0, diasEntreInclusive(hoy, fin) - 1);
-    if (diasTranscurridos < 3 || diasRestantes < 1) return null;
-
-    const finHoy = finDelDia(hoy);
-    let gastoRitmo = 0;
-    (Array.isArray(state.log) ? state.log : []).forEach((mov, idx) => {
-      if (!mov || mov.etiqueta === 'recalcula' || mov.etiqueta === 'sem') return;
-      if (esMovimientoProyectado(mov) || !afectaPresupuestoSalarial(mov)) return;
-      const fecha = fechaDeMovimiento(mov, idx);
-      if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime()) || fecha < inicio || fecha > finHoy) return;
-      gastoRitmo += impactoPresupuestoMovimiento(mov);
-    });
-
-    const ritmo = gastoRitmo / diasTranscurridos;
-    const disponible = Number(state.totalDisponible) || 0;
-    const meta = Math.max(0, Number(state.metaResidual) || 0);
-    const cierre = redondearDinero(disponible - ritmo * diasRestantes);
-    const diasParaTope = diasRestantes + 1; // incluye hoy
-    return {
-      fin, ritmo: redondearDinero(ritmo), cierre, meta,
-      margen: redondearDinero(cierre - meta),
-      topeDiario: redondearDinero(Math.max(0, disponible - meta) / diasParaTope)
-    };
-  }
-
-  function renderCycleForecast() {
-    const el = document.getElementById('arcForecast');
-    if (!el) return;
-    let p = null;
-    try { p = pronosticoCierreCiclo(); } catch (e) { p = null; }
-    if (!p) { el.hidden = true; el.textContent = ''; return; }
-    const m = value => balanceHidden ? 'S/ ****' : 'S/ ' + fmt(Math.abs(value));
-    const fecha = formatFecha(p.fin);
-    let html;
-    let warn = false;
-    if (p.meta > 0) {
-      if (p.margen >= 0) {
-        html = `A este ritmo cierras el ${fecha} con <strong>${m(p.cierre)}</strong> · <strong class="forecast-key">${m(p.margen)}</strong> sobre tu meta.`;
-      } else {
-        warn = true;
-        html = `A este ritmo te comes <strong class="forecast-key">${m(p.margen)}</strong> de tu meta. Para cumplirla: máx. <strong>${m(p.topeDiario)}/día</strong>.`;
-      }
-    } else if (p.cierre >= 0) {
-      html = `A este ritmo cierras el ${fecha} con <strong class="forecast-key">${m(p.cierre)}</strong>.`;
-    } else {
-      warn = true;
-      html = `A este ritmo te faltan <strong class="forecast-key">${m(p.cierre)}</strong> antes del sueldo. Para llegar: máx. <strong>${m(p.topeDiario)}/día</strong>.`;
-    }
-    el.innerHTML = html;
-    el.classList.toggle('warn', warn);
-    el.hidden = false;
   }
 
   function openBudgetArcHelp() {
