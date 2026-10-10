@@ -8071,7 +8071,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
 <div class="toast" id="toast"></div>
 
 <script>
-  const LEDGER_BUILD = '294';
+  const LEDGER_BUILD = '295';
   document.documentElement.dataset.ledgerBuild = LEDGER_BUILD;
 
   const DEFAULT_STATE = {
@@ -15346,6 +15346,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         ? redondearDinero(Number(state.cuentasInicioCiclo.fondo))
         : redondearDinero((Number(state.montoIntocable) || 0) + totalF + totalFDS),
       fondoFinalCiclo: redondearDinero(Number(state.montoIntocable) || 0),
+      // BUILD295 · para que el Excel del ciclo archivado termine en el mismo Gastable.
+      metaResidual: redondearDinero(Number(state.metaResidual) || 0),
+      gastableFinal: redondearDinero(Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0))),
       totalS,
       totalDS,
       totalDSCubierto,
@@ -15728,13 +15731,76 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     });
   }
 
+  // BUILD295 · Inicio − Gastado = Quedó − Meta de ahorro = Gastable.
+  // gastableApp (ciclo actual) es exactamente el Gastable de Inicio; si el saldo se
+  // corrigió a mano y la cadena no cuadra, una línea de ajuste explica la diferencia.
+  function addExcelGastableBreakdown(sheet, startRow, { inicio, gastado, metaAhorro, gastableApp }) {
+    const inicioValido = Number.isFinite(Number(inicio)) && inicio !== null;
+    const gastadoValor = redondearDinero(Number(gastado) || 0);
+    const metaValor = Number.isFinite(Number(metaAhorro)) && metaAhorro !== null
+      ? redondearDinero(Math.max(0, Number(metaAhorro)))
+      : null;
+    const quedo = inicioValido ? redondearDinero(Number(inicio) - gastadoValor) : null;
+    const cadena = quedo === null ? null : redondearDinero(quedo - (metaValor || 0));
+    const appValido = Number.isFinite(Number(gastableApp)) && gastableApp !== null;
+    // Igual que Inicio: el Gastable nunca baja de 0.
+    const gastable = appValido
+      ? redondearDinero(Math.max(0, Number(gastableApp)))
+      : (cadena === null ? null : redondearDinero(Math.max(0, cadena)));
+    const ajuste = gastable !== null && cadena !== null && cadena >= 0
+      ? redondearDinero(gastable - cadena)
+      : 0;
+    const metaExcedida = cadena !== null && cadena < 0 ? redondearDinero(Math.abs(cadena)) : 0;
+
+    const lineas = [
+      { label: 'Inicio del ciclo', value: inicioValido ? redondearDinero(Number(inicio)) : 'No registrado' },
+      { label: '− Gastado', value: -gastadoValor },
+      { label: '= Quedó', value: quedo === null ? '—' : quedo, subtotal: true }
+    ];
+    if (metaValor !== null && metaValor > 0) lineas.push({ label: '− Meta de ahorro', value: -metaValor });
+    if (Math.abs(ajuste) >= 0.005) lineas.push({ label: '± Ajustes manuales de saldo', value: ajuste });
+    lineas.push({
+      label: metaExcedida > 0 ? `= Gastable · meta excedida en S/ ${fmt(metaExcedida)}` : '= Gastable',
+      value: gastable === null ? '—' : gastable,
+      total: true
+    });
+
+    sheet.mergeCells(`A${startRow}:F${startRow}`);
+    sheet.getCell(`A${startRow}`).value = 'DEL INICIO AL GASTABLE';
+    sheet.getCell(`A${startRow}`).font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    sheet.getRow(startRow).height = 24;
+
+    lineas.forEach((linea, index) => {
+      const row = startRow + 1 + index;
+      sheet.mergeCells(`A${row}:D${row}`);
+      sheet.mergeCells(`E${row}:F${row}`);
+      const labelCell = sheet.getCell(`A${row}`);
+      const valueCell = sheet.getCell(`E${row}`);
+      labelCell.value = linea.label;
+      valueCell.value = linea.value;
+      if (typeof linea.value === 'number') valueCell.numFmt = '"S/" #,##0.00;-"S/" #,##0.00';
+      const destacado = linea.total || linea.subtotal;
+      styleExcelRange(sheet, row, 1, row, 6, {
+        fill: excelFill(linea.total ? EXCEL_PALETTE.cream : EXCEL_PALETTE.paleGray),
+        border: excelBorder(EXCEL_PALETTE.bg),
+        font: { name: 'Aptos', size: linea.total ? 12 : 10, bold: !!destacado, color: { argb: EXCEL_PALETTE.ink } },
+        alignment: { vertical: 'middle' }
+      });
+      labelCell.alignment = { vertical: 'middle', horizontal: 'left' };
+      valueCell.alignment = { vertical: 'middle', horizontal: 'right' };
+      sheet.getRow(row).height = linea.total ? 26 : 22;
+    });
+  }
+
   async function construirReporteExcel({
     movimientos,
     periodo,
     nombreArchivo,
     saldoInicialCiclo = null,
     fondoInicialCiclo = null,
-    fondoFinalCiclo = null
+    fondoFinalCiclo = null,
+    metaAhorro = null,
+    gastableApp = null
   }) {
     if (!window.ExcelJS?.Workbook) throw new Error('ExcelJS no disponible');
 
@@ -15815,11 +15881,20 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
     });
     addExcelMetricCard(summary, ['D13:F13', 'D14:F15'], 'MOVIMIENTOS', resumen.movimientos, EXCEL_PALETTE.cream, false);
 
-    summary.mergeCells('A17:F17');
-    summary.getCell('A17').value = 'GASTOS POR TIPO';
-    summary.getCell('A17').font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+    // BUILD295 · Del inicio al Gastable: termina en el mismo Gastable que muestra Inicio.
+    addExcelGastableBreakdown(summary, 17, {
+      inicio: saldoInicialReporte,
+      gastado: resumen.gastoDisponible,
+      metaAhorro,
+      gastableApp
+    });
+    const R = 7; // filas que ocupa la sección anterior; todo lo de abajo baja R filas.
 
-    const breakdownHeader = summary.getRow(18);
+    summary.mergeCells(`A${17 + R}:F${17 + R}`);
+    summary.getCell(`A${17 + R}`).value = 'GASTOS POR TIPO';
+    summary.getCell(`A${17 + R}`).font = { name: 'Aptos', size: 13, bold: true, color: { argb: EXCEL_PALETTE.ink } };
+
+    const breakdownHeader = summary.getRow(18 + R);
     ['Tipo', 'Qué representa', 'Movimientos', 'Monto'].forEach((value, index) => {
       const cell = breakdownHeader.getCell(index + 1);
       cell.value = value;
@@ -15827,19 +15902,19 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       cell.fill = excelFill(EXCEL_PALETTE.ink);
       cell.alignment = { vertical: 'middle', horizontal: index > 1 ? 'right' : 'left' };
     });
-    summary.mergeCells('B18:C18');
-    summary.mergeCells('D18:E18');
-    summary.getCell('D18').value = 'Movimientos';
-    summary.getCell('F18').value = 'Monto';
-    styleExcelRange(summary, 18, 1, 18, 6, {
+    summary.mergeCells(`B${18 + R}:C${18 + R}`);
+    summary.mergeCells(`D${18 + R}:E${18 + R}`);
+    summary.getCell(`D${18 + R}`).value = 'Movimientos';
+    summary.getCell(`F${18 + R}`).value = 'Monto';
+    styleExcelRange(summary, 18 + R, 1, 18 + R, 6, {
       fill: excelFill(EXCEL_PALETTE.ink),
       font: { name: 'Aptos', size: 10, bold: true, color: { argb: EXCEL_PALETTE.white } },
       border: excelBorder(EXCEL_PALETTE.bg)
     });
-    summary.getCell('A18').alignment = { vertical: 'middle', horizontal: 'left' };
-    summary.getCell('B18').alignment = { vertical: 'middle', horizontal: 'left' };
-    summary.getCell('D18').alignment = { vertical: 'middle', horizontal: 'right' };
-    summary.getCell('F18').alignment = { vertical: 'middle', horizontal: 'right' };
+    summary.getCell(`A${18 + R}`).alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell(`B${18 + R}`).alignment = { vertical: 'middle', horizontal: 'left' };
+    summary.getCell(`D${18 + R}`).alignment = { vertical: 'middle', horizontal: 'right' };
+    summary.getCell(`F${18 + R}`).alignment = { vertical: 'middle', horizontal: 'right' };
 
     const tipos = [
       ['S', 'Sale del disponible', resumen.conteos.S, resumen.S, EXCEL_PALETTE.green],
@@ -15848,7 +15923,7 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       ['F+DS', 'Fondo + tarjeta', resumen.conteos.FDS, resumen.FDS, EXCEL_PALETTE.lavender]
     ];
     tipos.forEach((item, index) => {
-      const row = 19 + index;
+      const row = 19 + R + index;
       summary.mergeCells(`B${row}:C${row}`);
       summary.mergeCells(`D${row}:E${row}`);
       summary.getCell(`A${row}`).value = item[0];
@@ -15868,13 +15943,13 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
       summary.getRow(row).height = 23;
     });
 
-    summary.mergeCells('A25:F27');
-    summary.getCell('A25').value = 'Cómo leer el reporte\nEl inicio del ciclo es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. La tarjeta de Fondo muestra cuánto había al inicio, cuánto se utilizó y cuánto quedó. Las redistribuciones son ajustes internos y no se suman como gasto.';
-    summary.getCell('A25').font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
-    summary.getCell('A25').alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
-    styleExcelRange(summary, 25, 1, 27, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
+    summary.mergeCells(`A${25 + R}:F${27 + R}`);
+    summary.getCell(`A${25 + R}`).value = 'Cómo leer el reporte\nEl inicio del ciclo es el monto con el que arrancó el ciclo. S y DS afectan el dinero del sueldo. F y F+DS salen del fondo. La tarjeta de Fondo muestra cuánto había al inicio, cuánto se utilizó y cuánto quedó. La meta de ahorro se descuenta de lo que quedó para llegar al Gastable, igual que en Inicio. Las redistribuciones son ajustes internos y no se suman como gasto.';
+    summary.getCell(`A${25 + R}`).font = { name: 'Aptos', size: 10, color: { argb: EXCEL_PALETTE.muted } };
+    summary.getCell(`A${25 + R}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+    styleExcelRange(summary, 25 + R, 1, 27 + R, 6, { fill: excelFill(EXCEL_PALETTE.paleGray), border: excelBorder(EXCEL_PALETTE.line) });
 
-    const categoryTitleRow = 30;
+    const categoryTitleRow = 30 + R;
     summary.mergeCells(`A${categoryTitleRow}:F${categoryTitleRow}`);
     summary.getCell(`A${categoryTitleRow}`).value = 'GASTOS POR CATEGORÍA';
     summary.getCell(`A${categoryTitleRow}`).font = {
@@ -16507,7 +16582,10 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
         fondoInicialCiclo: Number.isFinite(Number(state.cuentasInicioCiclo?.fondo))
           ? Number(state.cuentasInicioCiclo.fondo)
           : redondearDinero((Number(state.montoIntocable) || 0) + resumenReporteMovimientos(state.log).fondoUtilizado),
-        fondoFinalCiclo: Number(state.montoIntocable) || 0
+        fondoFinalCiclo: Number(state.montoIntocable) || 0,
+        metaAhorro: Number(state.metaResidual) || 0,
+        // Misma fórmula que el Gastable de Inicio (applyBalancePrivacy / renderHero).
+        gastableApp: Math.max(0, (Number(state.totalDisponible) || 0) - (Number(state.metaResidual) || 0))
       });
       toast('Excel descargado');
     } catch (error) {
@@ -16538,7 +16616,9 @@ body.dark .cycle-start-snapshot .snapshot-card { background: rgba(255,255,255,.0
           : (Number.isFinite(Number(ciclo.cuentasInicioCiclo?.fondo)) ? Number(ciclo.cuentasInicioCiclo.fondo) : null),
         fondoFinalCiclo: Number.isFinite(Number(ciclo.fondoFinalCiclo))
           ? Number(ciclo.fondoFinalCiclo)
-          : null
+          : null,
+        metaAhorro: Number.isFinite(Number(ciclo.metaResidual)) ? Number(ciclo.metaResidual) : null,
+        gastableApp: Number.isFinite(Number(ciclo.gastableFinal)) ? Number(ciclo.gastableFinal) : null
       });
       toast('Ciclo descargado en Excel');
     } catch (error) {
